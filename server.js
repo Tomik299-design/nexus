@@ -16,9 +16,12 @@ const PORT = process.env.PORT || 3001;
 // ══════════════════════════════════════════
 const CHANGELOG = [
   {
-    version: '2.0',
-    date: '2026-03-17',
-    items: [
+  version: '2.1',
+  date: '2026-03-18',
+  items: [
+      { type: 'new', text: 'Nová funkce...' },
+      { type: 'fix', text: 'Opravena chyba...' },
+      { type: 'imp', text: 'Vylepšení...' },
       { type: 'new',  text: 'Real WebRTC voice calls — hear each other!' },
       { type: 'new',  text: 'Server isolation — join only via invite link' },
       { type: 'new',  text: 'Language switcher — EN / CS' },
