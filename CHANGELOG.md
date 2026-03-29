@@ -1,4 +1,8 @@
 # NexusChat Changelog
+v3.3 | 2026-04-01
++ Voice chat tlačítko funguje správně
+* Opraveno zobrazení členů
+* Opraveno po prihlášení do jiného prohlížeče se přenesou servery, role a fotka profilu
 
 ## v3.2 | 2026-03-29
 + Login system — ID + přezdívka = účet přes prohlížeče
