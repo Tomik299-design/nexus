@@ -4733,8 +4733,11 @@ function profAccount() {
     + '<div style="font-size:11px;color:var(--t3)">' + ME.tag + '</div></div></div>'
     + '<div style="font-size:11px;color:var(--t3);margin-bottom:5px">TVOJE ID — potřebuješ ho pro přihlášení</div>'
     + '<div style="display:flex;gap:6px;align-items:center">'
-    + '<code style="flex:1;background:var(--bg3);padding:5px 8px;border-radius:6px;font-size:10px;color:var(--acc);word-break:break-all;line-height:1.5">' + idVal + '</code>'
-    + '<button class="ssbtn p" style="flex-shrink:0;padding:6px 10px" onclick="copyMyId()">📋</button>'
+    + '<code id="prof-id-val" style="flex:1;background:var(--bg3);padding:5px 8px;border-radius:6px;font-size:10px;color:var(--acc);word-break:break-all;line-height:1.5;filter:blur(0px);transition:filter .2s">' + idVal + '</code>'
+    + '</div>'
+    + '<div style="display:flex;gap:6px;margin-top:6px">'
+    + '<button class="ssbtn" style="flex:1;justify-content:center" onclick="toggleIdVisible()" id="prof-id-toggle">👁️ Skrýt ID</button>'
+    + '<button class="ssbtn p" style="flex:1;justify-content:center" onclick="copyMyId()">📋 Kopírovat</button>'
     + '</div></div>'
     + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">'
     + '<button class="ssbtn p" onclick="showIdReveal()">🔑 Zobrazit ID</button>'
@@ -4800,9 +4803,10 @@ function showLoginForm() {
     + '<div class="mf"><label>Tvoje ID</label>'
     + '<input id="login-id" class="ssinp" placeholder="Vlož své ID (z účtu)" style="width:100%;font-family:var(--fm);font-size:12px" maxlength="128" value="' + savedId + '"></div>'
     + '<div id="login-err" style="color:var(--red);font-size:12px;min-height:16px;margin:-4px 0 8px"></div>'
-    + '<label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--t2);cursor:pointer;margin-bottom:12px">'
-    + '<input type="checkbox" id="login-remember" ' + (savedName ? 'checked' : '') + ' style="width:15px;height:15px;accent-color:var(--acc);cursor:pointer">'
-    + 'Zapamatovat jméno a ID v tomto prohlížeči</label>'
+    + '<label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--t2);cursor:pointer;margin-bottom:12px;padding:8px;background:var(--bg3);border-radius:8px">'
+    + '<input type="checkbox" id="login-remember" checked style="width:15px;height:15px;accent-color:var(--acc);cursor:pointer">'
+    + '<div><div style="color:var(--t1);font-size:12px;font-weight:600">Zapamatovat přezdívku a ID</div>'
+    + '<div style="color:var(--t3);font-size:10px;margin-top:1px">Příště se přihlásíš automaticky</div></div></label>'
     + '<div class="mbtns"><button class="mbtn mbtn-p" style="width:100%;padding:11px" onclick="doLogin()">🔑 Přihlásit se</button></div>'
     + '<div style="text-align:center;margin-top:10px;font-size:11px;color:var(--t3)">Nemáš účet? <a onclick="showRegisterForm()" style="color:var(--acc);cursor:pointer">Vytvoř nový</a></div>'
     + '<div style="border-top:1px solid var(--bd);margin-top:12px;padding-top:10px;text-align:center">'
@@ -4891,7 +4895,8 @@ function showIdReveal() {
     + '</div>'
     + '<div style="background:var(--bg0);border:2px solid var(--acc);border-radius:12px;padding:14px;margin-bottom:12px;text-align:center">'
     + '<div style="font-size:11px;color:var(--t3);margin-bottom:6px">TVOJE ID</div>'
-    + '<div style="font-family:var(--fm);font-size:12px;color:var(--acc);font-weight:600;word-break:break-all;line-height:1.6" id="id-reveal-val">' + ME.id + '</div>'
+    + '<div style="font-family:var(--fm);font-size:12px;color:var(--acc);font-weight:600;word-break:break-all;line-height:1.6;filter:blur(6px);transition:filter .2s;cursor:pointer" id="id-reveal-val" onclick="revealId(this)" title="Klikni pro zobrazení">' + ME.id + '</div>'
+    + '<div style="font-size:10px;color:var(--t3);margin-top:4px">👆 Klikni pro zobrazení</div>'
     + '<div style="font-size:11px;color:var(--t3);margin-top:6px">Přezdívka: <strong style="color:var(--t1)">' + ME.name + '</strong></div>'
     + '</div>'
     + '<button class="mbtn mbtn-p" style="width:100%;margin-bottom:8px" onclick="copyMyId()">📋 Zkopírovat ID</button>'
@@ -4941,6 +4946,16 @@ function doLogin() {
 }
 
 function copyMyId() { navigator.clipboard && navigator.clipboard.writeText(ME.id); toast('ID zkopírováno 📋', 'ok'); }
+
+function revealId(el){el.style.filter='blur(0px)';el.nextElementSibling&&(el.nextElementSibling.style.display='none');}
+let _idHidden = false;
+function toggleIdVisible() {
+  _idHidden = !_idHidden;
+  const el  = document.getElementById('prof-id-val');
+  const btn = document.getElementById('prof-id-toggle');
+  if (el)  el.style.filter  = _idHidden ? 'blur(6px)' : 'blur(0px)';
+  if (btn) btn.textContent   = _idHidden ? '👁️ Zobrazit ID' : '👁️ Skrýt ID';
+}
 
 function exportAccount() {
   // Pack all account data into a single base64 string
@@ -5800,9 +5815,24 @@ function mentionKeydown(e, inp) {
     document.getElementById('hdrt').textContent = t('selectChannel');
   }
   // No auto server sync — users join via invite only
-  // Check if account should be remembered
-  const _remembered = ls('nx_remember', true);
-  if (!ME.name || !_remembered) setTimeout(openFirstRun, 500);
+  // Auto-login: show login only if no saved credentials
+  const _savedName = ls('nx_saved_name', '');
+  const _savedId   = ls('nx_saved_id', '');
+  const _remember  = ls('nx_remember', true);
+  if (!ME.name) {
+    if (_remember && _savedName && _savedId) {
+      // Auto-restore saved credentials silently
+      ME.name = _savedName;
+      ME.id   = _savedId;
+      lss('nx_name', _savedName);
+      lss('nx_id',   _savedId);
+      applyProfile();
+      // Request account data from server
+      setTimeout(() => { if (wsConn && wsConn.readyState === 1) bcast({ type: 'account_req', userId: ME.id, name: ME.name }); }, 1500);
+    } else {
+      setTimeout(openFirstRun, 500);
+    }
+  }
   renderDmList();
 
   // ── Clear VC restore on refresh — don't auto-rejoin ──
