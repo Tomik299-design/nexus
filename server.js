@@ -102,7 +102,8 @@ const PORT = process.env.PORT || 3001;
 // Show loading screen on EVERY start (deploy or cold start)
 // Users see changelog while server warms up
 let serverReady = false;
-setTimeout(() => { serverReady = true; }, 5000); // 5s — enough to show changelog
+let serverStartTime = Date.now();
+setTimeout(() => { serverReady = true; console.log('[NexusChat] Server ready!'); }, 12000);
 
 // ── HTTP server ──
 // ══════════════════════════════════════════
@@ -182,7 +183,7 @@ const LOADING_HTML = `<!DOCTYPE html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="refresh" content="8">
+<meta http-equiv="refresh" content="4">
 <title>NexusChat — Loading</title>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
@@ -229,7 +230,14 @@ h1{font-size:20px;font-weight:700;color:#e2e8f0;margin-bottom:6px}
 ${buildChangelogHtml()}
 </div>
 <script>
-setTimeout(function(){location.reload();},8000);
+var start = Date.now();
+function tryConnect() {
+  fetch('/health').then(function(r){ return r.json(); }).then(function(d){
+    if(d.ready) { location.reload(); }
+    else { setTimeout(tryConnect, 1500); }
+  }).catch(function(){ setTimeout(tryConnect, 2000); });
+}
+setTimeout(tryConnect, 2000);
 </script>
 </body>
 </html>`;
@@ -387,8 +395,10 @@ const httpServer = http.createServer((req, res) => {
 
   if (urlPath === '/' || urlPath === '/index.html' || urlPath === '/NexusChat.html') {
     // Show loading screen during warmup (only to browsers, not health checks)
-    const acceptsHtml = (req.headers['accept'] || '').includes('text/html');
-    if (!serverReady && acceptsHtml) {
+    // Show loading screen during warmup — to browsers (not API/WS clients)
+    const ua = req.headers['user-agent'] || '';
+    const isBrowser = ua.includes('Mozilla') || ua.includes('Chrome') || ua.includes('Safari');
+    if (!serverReady && isBrowser) {
       res.writeHead(200, { 'Content-Type': 'text/html; charset=UTF-8' });
       res.end(LOADING_HTML);
       return;
