@@ -183,61 +183,33 @@ const LOADING_HTML = `<!DOCTYPE html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="refresh" content="4">
-<title>NexusChat — Loading</title>
+<title>NexusChat — Starting</title>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{background:#070809;font-family:'Syne',system-ui,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px}
-.wrap{width:min(500px,100%);display:flex;flex-direction:column;gap:12px}
-.card{background:#0d0f12;border:1px solid #1f2836;border-radius:18px;padding:32px 28px;text-align:center}
-.logo{font-size:40px;margin-bottom:12px;display:inline-block;animation:pulse 2s ease infinite}
-@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.1)}}
-h1{font-size:20px;font-weight:700;color:#e2e8f0;margin-bottom:6px}
-.sub{font-size:13px;color:#64748b;margin-bottom:20px}
-.badge{display:inline-flex;align-items:center;gap:8px;background:rgba(79,255,176,.07);border:1px solid rgba(79,255,176,.2);border-radius:20px;padding:6px 16px;font-size:12px;color:#4fffb0;margin-bottom:18px;font-weight:600}
-.dot{width:7px;height:7px;border-radius:50%;background:#4fffb0;animation:blink 1.2s ease infinite}
-@keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
-.bar{background:#1a1f2e;border-radius:8px;height:3px;overflow:hidden;margin-bottom:14px}
-.bar-fill{height:100%;background:linear-gradient(90deg,#4fffb0,#7c6aff);border-radius:8px;animation:prog 8s linear forwards}
-@keyframes prog{from{width:0}to{width:100%}}
-.note{font-size:11px;color:#3a4654}
-.note a{color:#4fffb0;cursor:pointer;text-decoration:none}
-.changelog{background:#0d0f12;border:1px solid #1f2836;border-radius:18px;padding:22px 24px}
-.cl-header{display:flex;align-items:center;gap:8px;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid #1f2836}
-.cl-title{font-size:13px;font-weight:700;color:#e2e8f0;flex:1}
-.cl-version{font-size:11px;background:rgba(79,255,176,.1);color:#4fffb0;padding:2px 8px;border-radius:6px;border:1px solid rgba(79,255,176,.2)}
-.cl-date{font-size:11px;color:#3a4654}
-.cl-item{display:flex;align-items:flex-start;gap:8px;padding:5px 0;border-bottom:1px solid #131720;font-size:12px;color:#94a3b8;line-height:1.5}
-.cl-item:last-child{border-bottom:none}
-.cl-badge{font-size:9px;font-weight:700;padding:2px 5px;border-radius:4px;flex-shrink:0;margin-top:2px;letter-spacing:.4px;text-transform:uppercase}
-.cl-badge.new{background:rgba(79,255,176,.12);color:#4fffb0}
-.cl-badge.fix{background:rgba(124,106,255,.12);color:#7c6aff}
-.cl-badge.imp{background:rgba(255,203,107,.12);color:#ffcb6b}
-.cl-badge.rem{background:rgba(255,83,112,.12);color:#ff5370}
+body{background:#070809;font-family:'Syne',system-ui,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh}
+.card{background:#0d0f12;border:1px solid #1f2836;border-radius:20px;padding:40px 36px;text-align:center;width:min(400px,90vw)}
+.logo{font-size:48px;margin-bottom:16px;display:inline-block;animation:pulse 1.8s ease infinite}
+@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.12)}}
+h1{font-size:22px;font-weight:700;color:#e2e8f0;margin-bottom:8px}
+.sub{font-size:14px;color:#64748b;margin-bottom:24px}
+.dots{display:flex;justify-content:center;gap:8px}
+.dot{width:10px;height:10px;border-radius:50%;background:#4fffb0;animation:bounce 1.2s ease infinite}
+.dot:nth-child(2){animation-delay:.2s}
+.dot:nth-child(3){animation-delay:.4s}
+@keyframes bounce{0%,100%{opacity:.2;transform:scale(.7)}50%{opacity:1;transform:scale(1)}}
 </style>
 </head>
 <body>
-<div class="wrap">
 <div class="card">
   <div class="logo">⚡</div>
-  <h1>NexusChat</h1>
-  <p class="sub">Server se spouští, chvilku počkej...</p>
-  <div class="badge"><div class="dot"></div>Deploying...</div>
-  <div class="bar"><div class="bar-fill"></div></div>
-  <p class="note">Automaticky se obnoví &nbsp;·&nbsp; <a href="javascript:location.reload()">Obnovit teď</a></p>
-</div>
-${buildChangelogHtml()}
+  <h1>NexusChat is starting</h1>
+  <p class="sub">Připojování k serveru...</p>
+  <div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
 </div>
 <script>
-var start = Date.now();
-function tryConnect() {
-  fetch('/health').then(function(r){ return r.json(); }).then(function(d){
-    if(d.ready) { location.reload(); }
-    else { setTimeout(tryConnect, 1500); }
-  }).catch(function(){ setTimeout(tryConnect, 2000); });
-}
-setTimeout(tryConnect, 2000);
+function tryConnect(){fetch('/health').then(function(r){return r.json();}).then(function(d){if(d.ready){location.reload();}else{setTimeout(tryConnect,1500);}}).catch(function(){setTimeout(tryConnect,2000);});}
+setTimeout(tryConnect,1500);
 </script>
 </body>
 </html>`;
