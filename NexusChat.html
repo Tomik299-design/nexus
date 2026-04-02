@@ -1618,7 +1618,10 @@ let searchQ = '';
 let emoOpen = false;
 let wsConn  = null;
 let bcCh    = null;
-let wsUrl   = ls('nx_wsurl', '') || 'wss://nexus-g7k4.onrender.com';
+// WSS URL — vždy připojit na hlavní server
+const DEFAULT_WSS = 'wss://nexus-g7k4.onrender.com';
+let wsUrl = ls('nx_wsurl', '') || DEFAULT_WSS;
+if (!wsUrl) wsUrl = DEFAULT_WSS;
 let wsReconnT = null;
 let wsDelay   = 3000;
 let onlineMbrs  = {};
