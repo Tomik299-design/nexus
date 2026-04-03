@@ -457,6 +457,7 @@ const history      = {};
 const vcState      = {};
 const offlineState = {}; // id -> memberInfo — kdo se odpojil
 const MAX_HIST     = 300;
+const serverData   = {}; // srvId -> server structure (pro sync)
 const HISTORY_FILE = '/tmp/nexus_history.json';
 
 function loadHistory() {
@@ -486,6 +487,10 @@ wss.on('connection', (ws, req) => {
 
   if (Object.keys(vcState).length > 0)
     try { ws.send(JSON.stringify({ type: 'vc_state_sync', state: vcState })); } catch {}
+
+  // Send saved server structures to new client
+  if (Object.keys(serverData).length > 0)
+    try { ws.send(JSON.stringify({ type: 'servers_sync', servers: serverData })); } catch {}
 
   // Merge in-memory + persistent offline and send to new client
   const mergedOffline = { ...savedOffline, ...offlineState };
@@ -656,6 +661,11 @@ wss.on('connection', (ws, req) => {
         }
       }
       return;
+    }
+
+    // Store server structure updates for new clients
+    if (msg.type === 'srv_update' && msg.srvId && msg.srv) {
+      serverData[msg.srvId] = msg.srv;
     }
 
     // Audio relay — only to others in same voice channel (don't broadcast to everyone)

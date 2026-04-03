@@ -1583,8 +1583,20 @@ let MESSAGES = ls('nx_msgs', {});
 function saveSrvsLocal() { lss('nx_servers', SERVERS); }
 
 function broadcastSrv() {
-  // Send updated server structure to all members
+  if (!SERVERS[curSrv]) return;
   bcast({ type: 'srv_update', srvId: curSrv, srv: SERVERS[curSrv] });
+  // Also save to cloud account so it persists
+  if (wsConn && wsConn.readyState === 1 && ME.id) {
+    try {
+      wsConn.send(JSON.stringify({
+        type: 'account_save',
+        userId: ME.id,
+        servers: SERVERS,
+        roles: MBROLES,
+        profile: { name: ME.name, color: ME.color, tag: ME.tag, avatar: ME.avatar, font: ME.font, status: ME.status }
+      }));
+    } catch {}
+  }
 }
 
 function saveSrvs() {
@@ -2081,16 +2093,37 @@ function handleNet(d) {
     } else if (d.notFound) {
       toast('ℹ️ Účet nenalezen na serveru — poprvé na tomto zařízení?', 'inf');
     }
+  } else if (d.type === 'servers_sync') {
+    // Server sent all known server structures — apply to servers I'm in
+    if (d.servers) {
+      let changed = false;
+      for (const [srvId, srvData] of Object.entries(d.servers)) {
+        if (SERVERS[srvId]) {
+          SERVERS[srvId] = srvData;
+          changed = true;
+        }
+      }
+      if (changed) {
+        saveSrvsLocal();
+        renderRail(); renderChs();
+        if (curCh && !chById(curCh)) {
+          const s = SERVERS[curSrv];
+          if (s) for (const cat of s.cats) {
+            const tc = cat.chs.find(ch => ch.type === 'text');
+            if (tc) { switchCh(tc); break; }
+          }
+        }
+      }
+    }
   } else if (d.type === 'srv_update') {
     // Someone updated server structure — apply if I'm on that server
     if (d.srvId && d.srv && SERVERS[d.srvId]) {
       SERVERS[d.srvId] = d.srv;
       saveSrvsLocal();
       renderRail(); renderChs();
-      // If current channel was deleted, switch to first available
       if (curCh && !chById(curCh)) {
-        const srv = SERVERS[curSrv];
-        if (srv) for (const cat of srv.cats) {
+        const s2 = SERVERS[curSrv];
+        if (s2) for (const cat of s2.cats) {
           const tc = cat.chs.find(ch => ch.type === 'text');
           if (tc) { switchCh(tc); break; }
         }
