@@ -387,6 +387,18 @@ const httpServer = http.createServer((req, res) => {
     return;
   }
 
+  if (urlPath === '/download') {
+    const dlPath = path.join(__dirname, 'download.html');
+    if (fs.existsSync(dlPath)) {
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=UTF-8' });
+      fs.createReadStream(dlPath).pipe(res);
+    } else {
+      res.writeHead(302, { 'Location': 'https://github.com/Tomik299-design/nexus/releases' });
+      res.end();
+    }
+    return;
+  }
+
   if (urlPath === '/invite' || urlPath === '/invite.html') {
     const filePath = path.join(__dirname, 'invite.html');
     if (fs.existsSync(filePath)) {

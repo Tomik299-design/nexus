@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NexusChat — Stáhnout</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Syne+Mono&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg0:#070809; --bg1:#0d0f12; --bg2:#111318; --bg3:#161b22;
+  --bd:#1f2836; --acc:#4fffb0; --acc2:#7c6aff; --t1:#e2e8f0; --t2:#94a3b8; --t3:#475569;
+  --red:#ff5370; --yel:#ffcb6b;
+}
+html{background:var(--bg0);color:var(--t1);font-family:'Syne',system-ui,sans-serif;min-height:100vh}
+body{min-height:100vh;overflow-x:hidden}
+
+/* ── Background ── */
+.bg-glow{
+  position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:
+    radial-gradient(ellipse 80% 60% at 20% 20%, rgba(79,255,176,.04) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 50% at 80% 80%, rgba(124,106,255,.05) 0%, transparent 60%);
+}
+
+/* ── Nav ── */
+nav{
+  position:fixed;top:0;left:0;right:0;z-index:100;
+  display:flex;align-items:center;padding:0 40px;height:64px;
+  background:rgba(7,8,9,.8);backdrop-filter:blur(20px);
+  border-bottom:1px solid rgba(255,255,255,.05);
+}
+.nav-logo{display:flex;align-items:center;gap:10px;font-size:18px;font-weight:700;color:var(--t1);text-decoration:none}
+.nav-logo-icon{width:32px;height:32px;border-radius:9px;background:linear-gradient(135deg,#0d1117,#161b22);border:1px solid rgba(79,255,176,.3);display:flex;align-items:center;justify-content:center;font-size:16px}
+.nav-links{display:flex;gap:28px;margin-left:auto;align-items:center}
+.nav-links a{font-size:13px;color:var(--t2);text-decoration:none;font-weight:600;transition:color .2s}
+.nav-links a:hover{color:var(--t1)}
+.nav-btn{background:var(--acc);color:#000;padding:8px 20px;border-radius:8px;font-size:13px;font-weight:700;text-decoration:none;transition:all .2s}
+.nav-btn:hover{background:#3de8a0;transform:translateY(-1px)}
+
+/* ── Hero ── */
+.hero{
+  position:relative;z-index:1;
+  display:flex;flex-direction:column;align-items:center;
+  padding:140px 20px 80px;text-align:center;
+}
+.hero-badge{
+  display:inline-flex;align-items:center;gap:8px;
+  background:rgba(79,255,176,.08);border:1px solid rgba(79,255,176,.2);
+  border-radius:99px;padding:6px 16px;font-size:12px;color:var(--acc);
+  font-weight:600;margin-bottom:28px;letter-spacing:.5px;
+}
+.hero-badge-dot{width:7px;height:7px;border-radius:50%;background:var(--acc);animation:blink 2s ease infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+
+.hero h1{
+  font-size:clamp(42px,6vw,72px);font-weight:800;
+  color:var(--t1);line-height:1.05;letter-spacing:-2px;
+  margin-bottom:20px;
+}
+.hero h1 span{
+  background:linear-gradient(90deg,var(--acc),var(--acc2));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+}
+.hero-sub{
+  font-size:clamp(15px,2vw,19px);color:var(--t2);max-width:560px;
+  line-height:1.7;margin-bottom:40px;
+}
+
+/* ── Download buttons ── */
+.dl-wrap{display:flex;flex-wrap:wrap;gap:14px;justify-content:center;margin-bottom:16px}
+.dl-btn{
+  display:flex;align-items:center;gap:12px;
+  padding:14px 28px;border-radius:14px;font-size:15px;font-weight:700;
+  text-decoration:none;transition:all .25s;cursor:pointer;border:none;
+  font-family:'Syne',sans-serif;
+}
+.dl-btn.primary{
+  background:var(--acc);color:#000;
+  box-shadow:0 8px 32px rgba(79,255,176,.25);
+}
+.dl-btn.primary:hover{background:#3de8a0;transform:translateY(-2px);box-shadow:0 12px 40px rgba(79,255,176,.35)}
+.dl-btn.secondary{
+  background:var(--bg2);color:var(--t1);
+  border:1px solid var(--bd);
+}
+.dl-btn.secondary:hover{background:var(--bg3);transform:translateY(-2px);border-color:rgba(255,255,255,.15)}
+.dl-btn-ico{font-size:22px;line-height:1}
+.dl-btn-info{text-align:left}
+.dl-btn-label{display:block;font-size:11px;font-weight:600;opacity:.6;letter-spacing:.5px;text-transform:uppercase;margin-bottom:2px}
+.dl-btn-name{display:block;font-size:15px;font-weight:700}
+
+.dl-note{font-size:12px;color:var(--t3);margin-bottom:60px}
+.dl-note a{color:var(--t2);text-decoration:none}
+.dl-note a:hover{color:var(--acc)}
+
+/* ── App preview ── */
+.preview-wrap{
+  position:relative;width:min(900px,90vw);margin:0 auto 100px;z-index:1;
+}
+.preview-chrome{
+  background:var(--bg1);border:1px solid var(--bd);border-radius:16px;
+  overflow:hidden;box-shadow:0 40px 80px rgba(0,0,0,.6);
+}
+.preview-bar{
+  display:flex;align-items:center;gap:8px;padding:12px 16px;
+  background:var(--bg2);border-bottom:1px solid var(--bd);
+}
+.preview-dots{display:flex;gap:6px}
+.preview-dot{width:12px;height:12px;border-radius:50%}
+.preview-title{font-size:12px;color:var(--t3);margin:0 auto;font-family:'Syne Mono',monospace}
+.preview-body{
+  display:grid;grid-template-columns:220px 1fr;height:460px;
+}
+.preview-sidebar{
+  background:var(--bg2);border-right:1px solid var(--bd);
+  padding:16px 0;
+}
+.preview-srv{display:flex;gap:10px;align-items:center;padding:0 16px;margin-bottom:20px}
+.preview-srv-ico{width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,var(--acc)22,var(--acc2)22);border:1px solid var(--bd);display:flex;align-items:center;justify-content:center;font-size:16px}
+.preview-srv-name{font-size:13px;font-weight:700;color:var(--t1)}
+.preview-cat{font-size:10px;color:var(--t3);font-weight:700;letter-spacing:1px;padding:0 16px;margin-bottom:8px;text-transform:uppercase}
+.preview-ch{display:flex;align-items:center;gap:8px;padding:6px 12px;margin:0 4px;border-radius:8px;font-size:13px;color:var(--t2);cursor:pointer}
+.preview-ch.act{background:rgba(255,255,255,.07);color:var(--t1)}
+.preview-ch-ico{font-size:12px;opacity:.6}
+.preview-main{display:flex;flex-direction:column}
+.preview-hdr{
+  display:flex;align-items:center;gap:10px;padding:12px 20px;
+  border-bottom:1px solid var(--bd);
+}
+.preview-hdr-name{font-size:15px;font-weight:700}
+.preview-hdr-desc{font-size:12px;color:var(--t3);margin-left:4px}
+.preview-msgs{flex:1;padding:20px;display:flex;flex-direction:column;gap:14px;overflow:hidden}
+.preview-msg{display:flex;gap:12px;align-items:flex-start}
+.preview-av{width:36px;height:36px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#000}
+.preview-msg-body{}
+.preview-msg-meta{display:flex;align-items:baseline;gap:8px;margin-bottom:3px}
+.preview-msg-name{font-size:13px;font-weight:700}
+.preview-msg-time{font-size:11px;color:var(--t3)}
+.preview-msg-text{font-size:13px;color:var(--t2);line-height:1.5}
+.preview-inp{
+  padding:12px 16px;border-top:1px solid var(--bd);
+  display:flex;align-items:center;gap:10px;
+}
+.preview-inp-box{
+  flex:1;background:var(--bg3);border:1px solid var(--bd);border-radius:10px;
+  padding:9px 14px;font-size:13px;color:var(--t3);font-family:'Syne',sans-serif;
+}
+
+/* ── Features ── */
+.features{
+  position:relative;z-index:1;
+  padding:0 20px 100px;max-width:1100px;margin:0 auto;
+}
+.features-title{text-align:center;font-size:clamp(28px,4vw,42px);font-weight:800;margin-bottom:10px;letter-spacing:-1px}
+.features-sub{text-align:center;color:var(--t2);font-size:15px;margin-bottom:50px}
+.features-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px}
+.feat-card{
+  background:var(--bg1);border:1px solid var(--bd);border-radius:16px;
+  padding:24px;transition:all .25s;
+}
+.feat-card:hover{border-color:rgba(79,255,176,.25);transform:translateY(-3px)}
+.feat-ico{font-size:28px;margin-bottom:14px;display:block}
+.feat-name{font-size:16px;font-weight:700;margin-bottom:8px;color:var(--t1)}
+.feat-desc{font-size:13px;color:var(--t2);line-height:1.6}
+
+/* ── CTA ── */
+.cta{
+  position:relative;z-index:1;text-align:center;
+  padding:60px 20px 100px;
+}
+.cta h2{font-size:clamp(28px,4vw,48px);font-weight:800;margin-bottom:16px;letter-spacing:-1px}
+.cta p{color:var(--t2);font-size:15px;margin-bottom:36px}
+
+/* ── Footer ── */
+footer{
+  position:relative;z-index:1;
+  border-top:1px solid var(--bd);padding:24px 40px;
+  display:flex;align-items:center;justify-content:space-between;
+  flex-wrap:wrap;gap:12px;
+}
+footer .logo{font-size:14px;font-weight:700;color:var(--t2)}
+footer .links{display:flex;gap:20px}
+footer .links a{font-size:12px;color:var(--t3);text-decoration:none}
+footer .links a:hover{color:var(--t1)}
+footer .copy{font-size:12px;color:var(--t3)}
+
+@media(max-width:600px){
+  nav{padding:0 20px}
+  .nav-links .nav-link{display:none}
+  .preview-body{grid-template-columns:1fr;height:auto}
+  .preview-sidebar{display:none}
+  .preview-body{height:320px}
+}
+</style>
+</head>
+<body>
+<div class="bg-glow"></div>
+
+<!-- Nav -->
+<nav>
+  <a href="/" class="nav-logo">
+    <div class="nav-logo-icon">⚡</div>
+    NexusChat
+  </a>
+  <div class="nav-links">
+    <a href="#features" class="nav-link">Funkce</a>
+    <a href="#download" class="nav-link">Stáhnout</a>
+    <a href="/" class="nav-btn">Otevřít web verzi →</a>
+  </div>
+</nav>
+
+<!-- Hero -->
+<section class="hero">
+  <div class="hero-badge">
+    <div class="hero-badge-dot"></div>
+    Nyní dostupné pro Windows
+  </div>
+  <h1>Chat který<br><span>prostě funguje</span></h1>
+  <p class="hero-sub">
+    NexusChat Desktop — plnohodnotná chat aplikace s voice kanály, soukromými zprávami a automatickými aktualizacemi.
+  </p>
+
+  <div class="dl-wrap" id="download">
+    <a class="dl-btn primary" href="https://github.com/Tomik299-design/nexus/releases/latest/download/NexusChat.Setup.1.0.0.exe" id="dl-win">
+      <div class="dl-btn-ico">🪟</div>
+      <div class="dl-btn-info">
+        <span class="dl-btn-label">Stáhnout pro</span>
+        <span class="dl-btn-name">Windows</span>
+      </div>
+    </a>
+    <a class="dl-btn secondary" href="/" >
+      <div class="dl-btn-ico">🌐</div>
+      <div class="dl-btn-info">
+        <span class="dl-btn-label">Nebo použij</span>
+        <span class="dl-btn-name">Web verzi</span>
+      </div>
+    </a>
+  </div>
+  <p class="dl-note">Aktuální verze: <span id="ver-badge">v1.0.0</span> &nbsp;·&nbsp; <a href="https://github.com/Tomik299-design/nexus/releases">Všechny verze →</a></p>
+</section>
+
+<!-- App preview -->
+<div class="preview-wrap">
+  <div class="preview-chrome">
+    <div class="preview-bar">
+      <div class="preview-dots">
+        <div class="preview-dot" style="background:#ff5f57"></div>
+        <div class="preview-dot" style="background:#febc2e"></div>
+        <div class="preview-dot" style="background:#28c840"></div>
+      </div>
+      <div class="preview-title">NexusChat</div>
+    </div>
+    <div class="preview-body">
+      <div class="preview-sidebar">
+        <div class="preview-srv">
+          <div class="preview-srv-ico">⚡</div>
+          <div class="preview-srv-name">Nexus Hub</div>
+        </div>
+        <div class="preview-cat">Obecné</div>
+        <div class="preview-ch act"><span class="preview-ch-ico">#</span> obecný</div>
+        <div class="preview-ch"><span class="preview-ch-ico">#</span> off-topic</div>
+        <div class="preview-ch"><span class="preview-ch-ico">#</span> oznámení</div>
+        <div class="preview-cat" style="margin-top:14px">Hlas</div>
+        <div class="preview-ch"><span class="preview-ch-ico">🔊</span> Gaming</div>
+        <div class="preview-ch"><span class="preview-ch-ico">🔊</span> Hudba</div>
+      </div>
+      <div class="preview-main">
+        <div class="preview-hdr">
+          <span style="color:var(--t3);font-size:15px">#</span>
+          <span class="preview-hdr-name">obecný</span>
+          <span class="preview-hdr-desc">Hlavní chat</span>
+        </div>
+        <div class="preview-msgs">
+          <div class="preview-msg">
+            <div class="preview-av" style="background:#4fffb0">T</div>
+            <div class="preview-msg-body">
+              <div class="preview-msg-meta">
+                <span class="preview-msg-name" style="color:#4fffb0">Tomik299</span>
+                <span class="preview-msg-time">dnes v 14:32</span>
+              </div>
+              <div class="preview-msg-text">Vítejte na serveru! 🎉</div>
+            </div>
+          </div>
+          <div class="preview-msg">
+            <div class="preview-av" style="background:#7c6aff">A</div>
+            <div class="preview-msg-body">
+              <div class="preview-msg-meta">
+                <span class="preview-msg-name" style="color:#7c6aff">aLu</span>
+                <span class="preview-msg-time">dnes v 14:33</span>
+              </div>
+              <div class="preview-msg-text">Nakonec máme vlastní chat app 🚀</div>
+            </div>
+          </div>
+          <div class="preview-msg">
+            <div class="preview-av" style="background:#ffcb6b">Z</div>
+            <div class="preview-msg-body">
+              <div class="preview-msg-meta">
+                <span class="preview-msg-name" style="color:#ffcb6b">zkouska</span>
+                <span class="preview-msg-time">dnes v 14:35</span>
+              </div>
+              <div class="preview-msg-text">A funguje voice i na desktopu? 🎤</div>
+            </div>
+          </div>
+        </div>
+        <div class="preview-inp">
+          <div class="preview-inp-box">Zpráva do #obecný...</div>
+          <span style="font-size:18px">😊</span>
+          <span style="background:var(--acc);color:#000;width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700">▶</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Features -->
+<section class="features" id="features">
+  <h2 class="features-title">Vše co potřebuješ</h2>
+  <p class="features-sub">Žádné předplatné, žádné reklamy — jen čistý chat.</p>
+  <div class="features-grid">
+    <div class="feat-card">
+      <span class="feat-ico">💬</span>
+      <div class="feat-name">Textové kanály</div>
+      <div class="feat-desc">Organizuj konverzace do kanálů a kategorií. Reakce, připínání, odpovídání na zprávy.</div>
+    </div>
+    <div class="feat-card">
+      <span class="feat-ico">🎤</span>
+      <div class="feat-name">Voice kanály</div>
+      <div class="feat-desc">Volání přes WebSocket relay — funguje všude bez speciálního nastavení. Noise gate, nastavení hlasitosti.</div>
+    </div>
+    <div class="feat-card">
+      <span class="feat-ico">💌</span>
+      <div class="feat-name">Soukromé zprávy</div>
+      <div class="feat-desc">Soukromý chat s kýmkoliv na serveru. DM seznam v sidebaru s odznaky nepřečtených.</div>
+    </div>
+    <div class="feat-card">
+      <span class="feat-ico">🔄</span>
+      <div class="feat-name">Auto aktualizace</div>
+      <div class="feat-desc">Aplikace se automaticky aktualizuje při každém spuštění. Vždy nejnovější verze.</div>
+    </div>
+    <div class="feat-card">
+      <span class="feat-ico">🔒</span>
+      <div class="feat-name">Přihlášení přes ID</div>
+      <div class="feat-desc">Žádné heslo. Přihlásíš se svým ID a přezdívkou — funguje na webu i v aplikaci.</div>
+    </div>
+    <div class="feat-card">
+      <span class="feat-ico">🎨</span>
+      <div class="feat-name">Vlastní profil</div>
+      <div class="feat-desc">Avatar, barva, font, status. Vlastní role s barvami. Plně přizpůsobitelný server.</div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="cta">
+  <h2>Připojte se ke komunitě</h2>
+  <p>Stáhněte si NexusChat a přidejte se na server přes invite odkaz.</p>
+  <div class="dl-wrap">
+    <a class="dl-btn primary" href="https://github.com/Tomik299-design/nexus/releases/latest/download/NexusChat.Setup.1.0.0.exe">
+      <div class="dl-btn-ico">⬇️</div>
+      <div class="dl-btn-info">
+        <span class="dl-btn-label">Stáhnout zdarma</span>
+        <span class="dl-btn-name">NexusChat pro Windows</span>
+      </div>
+    </a>
+  </div>
+</section>
+
+<!-- Footer -->
+<footer>
+  <div class="logo">⚡ NexusChat</div>
+  <div class="links">
+    <a href="https://github.com/Tomik299-design/nexus">GitHub</a>
+    <a href="https://github.com/Tomik299-design/nexus/releases">Releases</a>
+    <a href="/">Web verze</a>
+  </div>
+  <div class="copy">© 2026 NexusChat</div>
+</footer>
+
+<script>
+// Načti aktuální verzi z GitHubu
+fetch('https://raw.githubusercontent.com/Tomik299-design/nexus/main/version.json')
+  .then(r => r.json())
+  .then(d => {
+    if (d.version) {
+      document.getElementById('ver-badge').textContent = 'v' + d.version;
+      const dlBtn = document.getElementById('dl-win');
+      if (dlBtn) {
+        const ver = d.version;
+        dlBtn.href = 'https://github.com/Tomik299-design/nexus/releases/latest/download/NexusChat.Setup.' + ver + '.exe';
+      }
+    }
+  }).catch(() => {});
+</script>
+</body>
+</html>
