@@ -344,7 +344,7 @@
 
   <!-- Brand -->
   <div class="brand">
-    <div class="brand-icon">N</div>
+    <div class="brand-icon">⚡</div>
     <span class="brand-name">NexusChat</span>
   </div>
 
@@ -356,7 +356,7 @@
     </div>
 
     <div class="srv-icon-wrap">
-      <div class="srv-icon" id="srvIcon">N</div>
+      <div class="srv-icon" id="srvIcon">⚡</div>
     </div>
 
     <div class="card-body">
@@ -385,20 +385,44 @@
 
       <div class="divider"></div>
 
-      <button class="dl-btn" id="dlBtn" onclick="startDownload()">
-        <span class="btn-icon">⬇️</span>
-        Stáhnout NexusChat a připojit se
-      </button>
+      <!-- Záložky -->
+      <div style="display:flex;gap:5px;background:rgba(255,255,255,.07);border-radius:10px;padding:4px;margin-bottom:14px">
+        <button onclick="showTab('web')" id="tab-web" style="flex:1;padding:9px 4px;border:none;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;background:#4fffb0;color:#000;font-family:inherit;transition:all .2s">🌐 Web</button>
+        <button onclick="showTab('app')" id="tab-app" style="flex:1;padding:9px 4px;border:none;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;background:transparent;color:rgba(255,255,255,.45);font-family:inherit;transition:all .2s">💻 Aplikace</button>
+        <button onclick="showTab('dl')" id="tab-dl" style="flex:1;padding:9px 4px;border:none;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;background:transparent;color:rgba(255,255,255,.45);font-family:inherit;transition:all .2s">⬇️ Stáhnout</button>
+      </div>
 
-      <button class="already-btn" id="connect-btn" onclick="connectExisting()">
-        ⚡ I already have NexusChat — Connect me
-      </button>
+      <!-- Web panel -->
+      <div id="panel-web">
+        <button class="dl-btn" onclick="connectWeb()" style="width:100%;justify-content:center;background:#4fffb0;color:#000;margin-bottom:8px">
+          <span class="btn-icon">🌐</span>Připojit přes web
+        </button>
+        <p style="font-size:12px;color:rgba(255,255,255,.3);text-align:center">Otevře NexusChat v prohlížeči</p>
+      </div>
 
-      <!-- Connect status -->
-      <div class="steps" id="connectStatus" style="display:none">
-        <div class="step" id="connect-step">
-          <div class="step-num" id="connect-icon">⏳</div>
-          <div class="step-text" id="connect-text">Opening NexusChat...</div>
+      <!-- Aplikace panel -->
+      <div id="panel-app" style="display:none">
+        <button class="dl-btn" onclick="connectApp()" style="width:100%;justify-content:center;background:#7c6aff;color:#fff;margin-bottom:8px">
+          <span class="btn-icon">💻</span>Připojit přes aplikaci
+        </button>
+        <p style="font-size:12px;color:rgba(255,255,255,.3);text-align:center;margin-bottom:10px">Otevře NexusChat Desktop automaticky</p>
+        <div id="app-status" style="display:none;padding:10px;background:rgba(79,255,176,.1);border:1px solid rgba(79,255,176,.2);border-radius:8px;font-size:12px;color:#4fffb0;text-align:center;line-height:1.5"></div>
+        <p style="font-size:11px;color:rgba(255,255,255,.2);text-align:center;margin-top:8px">Nemáš aplikaci? <a onclick="showTab('dl')" style="color:#4fffb0;cursor:pointer;text-decoration:none">Stáhni →</a></p>
+      </div>
+
+      <!-- Stáhnout panel -->
+      <div id="panel-dl" style="display:none">
+        <button class="dl-btn" id="dlBtn" onclick="startDownload()" style="width:100%;justify-content:center;margin-bottom:8px">
+          <span class="btn-icon">⬇️</span>Stáhnout pro Windows
+        </button>
+        <p style="font-size:12px;color:rgba(255,255,255,.3);text-align:center">Desktop s auto-aktualizacemi</p>
+      </div>
+
+      <!-- Status -->
+      <div id="connectStatus" style="display:none;margin-top:10px">
+        <div style="display:flex;align-items:center;gap:10px;padding:11px;background:rgba(255,255,255,.05);border-radius:10px">
+          <div id="connect-icon" style="font-size:16px">⏳</div>
+          <div id="connect-text" id="connect-text" style="font-size:13px;color:rgba(255,255,255,.55)">Opening NexusChat...</div>
         </div>
       </div>
 
@@ -501,48 +525,27 @@ function downloadNexusChat() {
     });
 }
 
-function connectExisting() {
-  const btn = document.getElementById('connect-btn');
-  const status = document.getElementById('connectStatus');
-  const icon = document.getElementById('connect-icon');
-  const text = document.getElementById('connect-text');
-
-  btn.style.display = 'none';
-  status.style.display = 'flex';
-  icon.textContent = '⏳';
-  text.innerHTML = 'Opening NexusChat...';
-
-  // Try to open NexusChat via custom protocol or postMessage
-  // Method 1: Open nexuschat.html on the server with invite params
-  const connectUrl = 'https://nexus-g7k4.onrender.com/?invite=' + encodeURIComponent(SERVER_ID) + '&s=' + encodeURIComponent(SERVER_NAME);
-  const win = window.open(connectUrl, '_blank');
-
-  if (win) {
-    icon.textContent = '✅';
-    text.innerHTML = 'NexusChat opened! You will be connected to <strong>' + SERVER_NAME + '</strong> automatically.';
-  } else {
-    // Popup blocked — fallback
-    icon.textContent = '⚠️';
-    text.innerHTML = 'Popup blocked. <a href="' + connectUrl + '" target="_blank" style="color:var(--acc)">Click here to open NexusChat</a> and connect automatically.';
-  }
-
-  // Also set localStorage so when they open NexusChat it auto-connects
-  try {
-    localStorage.setItem('nx_wsurl', JSON.stringify(WSS_URL));
-    localStorage.setItem('nx_invite_srvid', JSON.stringify(SERVER_ID));
-    localStorage.setItem('nx_invite_server', JSON.stringify(SERVER_NAME));
-    icon.textContent = '✅';
-    text.innerHTML = 'Connected! Switch to the NexusChat tab — you will be on <strong>' + SERVER_NAME + '</strong>.';
-  } catch(e) {}
-}
-
-function copyWss() {
-  if (WSS_URL) {
-    navigator.clipboard?.writeText(WSS_URL).then(() => {
-      const el = document.querySelector('.wss-copy');
-      el.textContent = '✅';
-      setTimeout(() => { el.textContent = '📋'; }, 2000);
-    });
+function showTab(t) {
+      ['web','app','dl'].forEach(function(x) {
+        var p=document.getElementById('panel-'+x), b=document.getElementById('tab-'+x);
+        if(p) p.style.display=x===t?'block':'none';
+        if(b){b.style.background=x===t?'#4fffb0':'transparent';b.style.color=x===t?'#000':'rgba(255,255,255,.45)';}
+      });
+    }
+    function connectWeb() {
+      var url='https://nexus-g7k4.onrender.com/?invite='+encodeURIComponent(SERVER_ID)+'&s='+encodeURIComponent(SERVER_NAME);
+      window.open(url,'_blank')||(window.location.href=url);
+    }
+    function connectApp() {
+      var s=document.getElementById('app-status');
+      var link='nexuschat://join?id='+encodeURIComponent(SERVER_ID)+'&name='+encodeURIComponent(SERVER_NAME)+'&wss='+encodeURIComponent('wss://nexus-g7k4.onrender.com');
+      if(s){s.style.display='block';s.innerHTML='⏳ Otevírám NexusChat aplikaci...';}
+      window.location.href=link;
+      setTimeout(function(){
+        if(s) s.innerHTML='✅ Pokud se neotevřela: <a href="'+link+'" style="color:#4fffb0">zkus znovu</a><br><small style="color:rgba(255,255,255,.3)">Nebo se připoj přes <a onclick="showTab('web')" style="color:#4fffb0;cursor:pointer">web →</a></small>';
+      },1500);
+    }
+    function connectExisting() { connectWeb(); });
   }
 }
 
