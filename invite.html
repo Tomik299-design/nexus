@@ -449,10 +449,10 @@
 // ── Přečti parametry z URL ──
 // Formát: invite.html?s=SERVERNAME&w=WSS_URL&d=POPIS&c=COUNT
 const params = new URLSearchParams(window.location.search);
-const SERVER_NAME    = decodeURIComponent(params.get('s') || 'Nexus Server');
+const SERVER_NAME    = params.get('s') || 'Nexus Server';
 const SERVER_ID      = params.get('id') || '';
 const WSS_URL = 'wss://nexus-g7k4.onrender.com';
-const SERVER_DESC    = decodeURIComponent(params.get('d') || 'Připoj se k tomuto serveru v NexusChatuu');
+const SERVER_DESC    = params.get('d') || 'Připoj se k tomuto serveru v NexusChatuu';
 const MEMBER_COUNT   = params.get('c') || '?';
 const ONLINE_COUNT   = params.get('o') || '?';
 const SERVER_INITIALS = SERVER_NAME.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
@@ -526,28 +526,36 @@ function downloadNexusChat() {
 }
 
 function showTab(t) {
-      ['web','app','dl'].forEach(function(x) {
-        var p=document.getElementById('panel-'+x), b=document.getElementById('tab-'+x);
-        if(p) p.style.display=x===t?'block':'none';
-        if(b){b.style.background=x===t?'#4fffb0':'transparent';b.style.color=x===t?'#000':'rgba(255,255,255,.45)';}
-      });
+  ['web','app','dl'].forEach(function(x) {
+    var p = document.getElementById('panel-'+x);
+    var b = document.getElementById('tab-'+x);
+    if (p) p.style.display = x===t ? 'block' : 'none';
+    if (b) {
+      b.style.background = x===t ? '#4fffb0' : 'transparent';
+      b.style.color = x===t ? '#000' : 'rgba(255,255,255,.45)';
     }
-    function connectWeb() {
-      var url='https://nexus-g7k4.onrender.com/?invite='+encodeURIComponent(SERVER_ID)+'&s='+encodeURIComponent(SERVER_NAME);
-      window.open(url,'_blank')||(window.location.href=url);
-    }
-    function connectApp() {
-      var s=document.getElementById('app-status');
-      var link='nexuschat://join?id='+encodeURIComponent(SERVER_ID)+'&name='+encodeURIComponent(SERVER_NAME)+'&wss='+encodeURIComponent('wss://nexus-g7k4.onrender.com');
-      if(s){s.style.display='block';s.innerHTML='⏳ Otevírám NexusChat aplikaci...';}
-      window.location.href=link;
-      setTimeout(function(){
-        if(s) s.innerHTML='✅ Pokud se neotevřela: <a href="'+link+'" style="color:#4fffb0">zkus znovu</a><br><small style="color:rgba(255,255,255,.3)">Nebo se připoj přes <a onclick="showTab('web')" style="color:#4fffb0;cursor:pointer">web →</a></small>';
-      },1500);
-    }
-    function connectExisting() { connectWeb(); });
-  }
+  });
 }
+
+function connectWeb() {
+  var url = 'https://nexus-g7k4.onrender.com/?invite=' + encodeURIComponent(SERVER_ID) + '&s=' + encodeURIComponent(SERVER_NAME);
+  var w = window.open(url, '_blank');
+  if (!w) window.location.href = url;
+}
+
+function connectApp() {
+  var s = document.getElementById('app-status');
+  var link = 'nexuschat://join?id=' + encodeURIComponent(SERVER_ID)
+    + '&name=' + encodeURIComponent(SERVER_NAME)
+    + '&wss=' + encodeURIComponent('wss://nexus-g7k4.onrender.com');
+  if (s) { s.style.display = 'block'; s.innerHTML = '⏳ Otevírám NexusChat aplikaci...'; }
+  window.location.href = link;
+  setTimeout(function() {
+    if (s) s.innerHTML = '✅ Hotovo! Pokud se neotevřela: <a href="' + link + '" style="color:#4fffb0">zkus znovu</a>';
+  }, 1500);
+}
+
+function connectExisting() { connectWeb(); }
 
 // ── Vygeneruj odkaz pro sdílení (pro NexusChat) ──
 // Tato funkce se volá z NexusChatuu pro vytvoření invite linku
