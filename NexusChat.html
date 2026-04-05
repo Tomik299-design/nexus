@@ -890,7 +890,7 @@ textarea { -webkit-user-select: text; user-select: text; }
         <button class="hb" id="notif-btn" onclick="toggleNotifPanel()" title="Notifikace">🔔</button>
         <button class="hb" onclick="openSupport()" title="Podpora & Nápady">💡</button>
         <button class="hb" onclick="openHelp()">❓</button>
-        <button class="hb" id="vtog" onclick="vtoggle()" title="Přepnout PC / Mobilní verzi" style="font-size:16px;margin-left:4px;border-left:1px solid var(--bd);padding-left:6px;width:34px">🖥️</button>
+
       </div>
     </div>
     <div id="connbar">
@@ -5239,20 +5239,36 @@ function doConnWs() {
   if (!url) { toast('Zadej WSS adresu', 'er'); return; }
   wsUrl = url; lss('nx_wsurl', url); closeModal(); connectWS(url);
 }
+function copyInviteLink() {
+  const inp = document.getElementById('inv-modal-inp');
+  if (!inp) return;
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(inp.value).then(() => toast('Odkaz zkopírován! 🎉', 'ok')).catch(() => {
+      inp.select(); document.execCommand('copy'); toast('Odkaz zkopírován! 🎉', 'ok');
+    });
+  } else {
+    inp.select(); document.execCommand('copy'); toast('Odkaz zkopírován! 🎉', 'ok');
+  }
+}
+
 function openInvite() {
   const srv    = SERVERS[curSrv] || {};
   const others = Object.values(onlineMbrs);
   const inviteUrl = buildInviteLink(srv.name, '', srv.desc || '', others.length + 1, others.length, curSrv);
-  openModal('<h2>🔗 Pozvat kamarády</h2>'
+  openModal(
+    '<h2>🔗 Pozvat kamarády</h2>'
     + '<div class="ibox" style="margin-bottom:12px">'
-    + '<strong>Invite odkaz:</strong><br>'
-    + '<div style="display:flex;gap:6px;margin-top:7px">'
-    + '<input style="flex:1;background:var(--bg0);border:1px solid var(--bd);border-radius:var(--r);padding:6px 8px;color:var(--t1);font-size:11px;font-family:var(--fm);outline:none" value="' + inviteUrl + '" readonly id="inv-modal-inp">'
-    + '<button class="mbtn mbtn-p" style="padding:6px 12px;font-size:12px" onclick="navigator.clipboard&&navigator.clipboard.writeText(document.getElementById(\'inv-modal-inp\').value);toast(\'Odkaz zkopírován! 🎉\',\'ok\')">📋 Kopírovat</button>'
+    + '<div style="font-size:12px;color:var(--t2);margin-bottom:8px">Pošli tento odkaz kamarádovi — klikne a automaticky se připojí na server:</div>'
+    + '<div style="display:flex;gap:6px">'
+    + '<input id="inv-modal-inp" style="flex:1;background:var(--bg0);border:1px solid var(--bd);border-radius:var(--r);padding:7px 9px;color:var(--t1);font-size:11px;font-family:var(--fm);outline:none" value="' + inviteUrl + '" readonly onclick="this.select()">'
     + '</div>'
-    + '<div style="font-size:11px;color:var(--t3);margin-top:6px">Kamarád klikne → stáhne NexusChat → server je předvyplněný</div>'
+    + '<button class="mbtn mbtn-p" style="width:100%;margin-top:8px;font-size:13px" onclick="copyInviteLink()">📋 Kopírovat odkaz</button>'
+    + '<div style="font-size:11px;color:var(--t3);margin-top:8px;line-height:1.5">Kamarád klikne na odkaz → připojí se přes web nebo stáhne aplikaci</div>'
     + '</div>'
-    + '<div class="mbtns"><button class="mbtn mbtn-g" onclick="closeModal()">Zavřít</button></div>');
+    + '<div class="mbtns"><button class="mbtn mbtn-g" onclick="closeModal()">Zavřít</button></div>'
+  );
+  // Auto-select the input after modal opens
+  setTimeout(() => { const i = document.getElementById('inv-modal-inp'); if(i) i.select(); }, 100);
 }
 function openDeployGuide() {
   openModal('<h2>🚀 Nasazení serveru zdarma</h2>'
