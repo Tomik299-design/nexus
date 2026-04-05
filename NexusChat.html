@@ -893,11 +893,9 @@ textarea { -webkit-user-select: text; user-select: text; }
 
       </div>
     </div>
-    <div id="connbar">
+    <div id="connbar" style="gap:8px">
       <div class="cdot"></div>
-      <span id="conntxt">Lokální režim</span>
-      <a onclick="openInvite()" style="margin-left:auto;font-weight:600;color:var(--acc)">🔗 Pozvat →</a>
-      <a onclick="openJoinSrv()" style="margin-left:auto;font-weight:600;color:var(--acc2)">🌐 Připojit se k serveru →</a>
+      <span id="conntxt" style="font-size:12px;color:var(--t2)">Připojeno</span>
     </div>
     <!-- VOICE ROOM -->
     <div id="vcroom">
@@ -4378,13 +4376,13 @@ function ssInvite() {
     + '<div class="ibox" style="margin:0 0 10px">Sdílej tento odkaz — kamarád klikne, stáhne NexusChat s předvyplněným serverem a rovnou se připojí.</div>'
     + '<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">'
     + '<input class="ssinp" style="flex:1;font-size:11px;font-family:var(--fm)" id="inv-link-inp" value="' + inviteUrl + '" readonly>'
-    + '<button class="ssbtn p" onclick="navigator.clipboard&&navigator.clipboard.writeText(document.getElementById(\'inv-link-inp\').value);toast(\'Odkaz zkopírován! 🎉\',\'ok\')">📋 Kopírovat</button>'
+    + '<button class="ssbtn p" onclick="copyById(\'inv-link-inp\',\'Odkaz zkopírován! 🎉\')">📋 Kopírovat</button>'
     + '</div>'
     + '</div>'
     + '<div class="sssec"><h3>Web adresa serveru</h3>'
     + '<div style="display:flex;gap:8px;align-items:center">'
     + '<input class="ssinp" style="flex:1" value="' + httpsUrl + '" readonly>'
-    + '<button class="ssbtn p" onclick="navigator.clipboard&&navigator.clipboard.writeText(\'' + httpsUrl + '\');toast(\'Adresa zkopírována\',\'ok\')">📋</button>'
+    + '<button class="ssbtn p" onclick="copyText(\'https://nexus-g7k4.onrender.com\',\'Adresa zkopírována\')">📋</button>'
     + '</div></div>';
 }
 function leaveSrv() {
@@ -5239,6 +5237,27 @@ function doConnWs() {
   if (!url) { toast('Zadej WSS adresu', 'er'); return; }
   wsUrl = url; lss('nx_wsurl', url); closeModal(); connectWS(url);
 }
+function copyById(id, msg) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const text = el.value || el.textContent;
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(text).then(() => toast(msg || 'Zkopírováno!', 'ok')).catch(() => {
+      try { el.select(); document.execCommand('copy'); toast(msg || 'Zkopírováno!', 'ok'); } catch {}
+    });
+  } else {
+    try { el.select(); document.execCommand('copy'); toast(msg || 'Zkopírováno!', 'ok'); } catch {}
+  }
+}
+
+function copyText(text, msg) {
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(text).then(() => toast(msg || 'Zkopírováno!', 'ok')).catch(() => toast('Zkopírování selhalo', 'er'));
+  } else {
+    toast('Zkopírování není podporováno', 'er');
+  }
+}
+
 function copyInviteLink() {
   const inp = document.getElementById('inv-modal-inp');
   if (!inp) return;
