@@ -4371,19 +4371,45 @@ function ssInvite() {
   const others = Object.values(onlineMbrs);
   const inviteUrl = buildInviteLink(srv.name, '', srv.desc || '', others.length + 1, others.length, curSrv);
   const httpsUrl  = 'https://nexus-g7k4.onrender.com';
+  // Store invite URL globally so buttons can access it
+  window._ssInviteUrl = inviteUrl;
+  window._ssHttpsUrl  = httpsUrl;
   return '<div class="sstitle">' + t('inviteTitle') + '</div>'
     + '<div class="sssec"><h3>⚡ Invite odkaz</h3>'
-    + '<div class="ibox" style="margin:0 0 10px">Sdílej tento odkaz — kamarád klikne, stáhne NexusChat s předvyplněným serverem a rovnou se připojí.</div>'
+    + '<div class="ibox" style="margin:0 0 10px">Sdílej tento odkaz — kamarád klikne a připojí se na server.</div>'
     + '<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">'
-    + '<input class="ssinp" style="flex:1;font-size:11px;font-family:var(--fm)" id="inv-link-inp" value="' + inviteUrl + '" readonly>'
-    + '<button class="ssbtn p" onclick="copyById(\'inv-link-inp\',\'Odkaz zkopírován! 🎉\')">📋 Kopírovat</button>'
+    + '<input class="ssinp" style="flex:1;font-size:11px;font-family:var(--fm)" id="inv-link-inp" value="' + inviteUrl + '" readonly onclick="this.select()">'
+    + '<button class="ssbtn p" onclick="copyInviteSS()">📋 Kopírovat</button>'
     + '</div>'
     + '</div>'
     + '<div class="sssec"><h3>Web adresa serveru</h3>'
     + '<div style="display:flex;gap:8px;align-items:center">'
-    + '<input class="ssinp" style="flex:1" value="' + httpsUrl + '" readonly>'
-    + '<button class="ssbtn p" onclick="copyText(\'https://nexus-g7k4.onrender.com\',\'Adresa zkopírována\')">📋</button>'
+    + '<input class="ssinp" style="flex:1" value="' + httpsUrl + '" readonly onclick="this.select()">'
+    + '<button class="ssbtn p" onclick="copyHttpsSS()">📋</button>'
     + '</div></div>';
+}
+
+function copyInviteSS() {
+  const url = window._ssInviteUrl || (document.getElementById('inv-link-inp') && document.getElementById('inv-link-inp').value) || '';
+  if (!url) return;
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(url).then(() => toast('Odkaz zkopírován! 🎉', 'ok')).catch(() => {
+      const el = document.getElementById('inv-link-inp');
+      if (el) { el.select(); document.execCommand('copy'); toast('Odkaz zkopírován! 🎉', 'ok'); }
+    });
+  } else {
+    const el = document.getElementById('inv-link-inp');
+    if (el) { el.select(); document.execCommand('copy'); toast('Odkaz zkopírován! 🎉', 'ok'); }
+  }
+}
+
+function copyHttpsSS() {
+  const url = window._ssHttpsUrl || 'https://nexus-g7k4.onrender.com';
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(url).then(() => toast('Adresa zkopírována', 'ok')).catch(() => toast('Zkopírování selhalo', 'er'));
+  } else {
+    toast('Zkopírování není podporováno', 'er');
+  }
 }
 function leaveSrv() {
   const srv = SERVERS[curSrv];
