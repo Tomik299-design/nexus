@@ -103,13 +103,6 @@ button, input, textarea, select { font-family: var(--f); }
 #srch::placeholder { color: var(--t3); }
 
 /* ── CONN BAR ── */
-#connbar { padding: 4px 12px; font-size: 11px; display: flex; align-items: center; gap: 6px; flex-shrink: 0; background: var(--bg1); border-bottom: 1px solid var(--bd); }
-#connbar .cdot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; background: var(--yel); }
-#connbar.ok .cdot { background: var(--acc); animation: pulse 2s ease infinite; }
-#connbar.er .cdot { background: var(--red); }
-@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
-#connbar span { color: var(--t2); font-size: 11px; }
-#connbar a { color: var(--acc); cursor: pointer; text-decoration: underline; font-size: 11px; margin-left: auto; }
 
 /* ── VOICE ROOM ── */
 #vcroom { flex: 1; display: none; flex-direction: column; align-items: center; justify-content: center; gap: 20px; padding: 28px; }
@@ -534,9 +527,7 @@ button, input, textarea, select { font-family: var(--f); }
   #inpbox { padding: 6px 8px; border-radius: 16px; }
 
   /* Conn bar */
-  #connbar { padding: 3px 10px; font-size: 10px; }
-  #connbar a { font-size: 10px; }
-
+  
   /* Header */
   #chdr { height: 48px; padding: 0 10px; gap: 6px; }
   #chdr .ht { font-size: 14px; }
@@ -893,10 +884,7 @@ textarea { -webkit-user-select: text; user-select: text; }
 
       </div>
     </div>
-    <div id="connbar" style="gap:8px">
-      <div class="cdot"></div>
-      <span id="conntxt" style="font-size:12px;color:var(--t2)">Připojeno</span>
-    </div>
+
     <!-- VOICE ROOM -->
     <div id="vcroom">
       <div class="vc-bar"><div class="vp"></div><span id="vcstxt">Připojuji...</span></div>
@@ -1508,15 +1496,7 @@ function applyLang() {
   }
 
   // Connbar
-  const connLink = document.querySelector('#connbar a');
-  if (connLink) connLink.textContent = t('inviteLink');
-  const connStatus = document.querySelector('#connbar .connst');
-  if (connStatus) {
-    // Update local mode text
-    if (connStatus.textContent.includes('Lokální') || connStatus.textContent.includes('Local')) {
-      connStatus.textContent = t('localMode');
-    }
-  }
+  const connLink = document.querySelector('#connbar a')
 
   // Bottom nav labels
   [['mnav-chat','navChat'],['mnav-channels','navChannels'],['mnav-servers','navServers'],['mnav-profile','navProfile']].forEach(([id,key]) => {
@@ -1794,12 +1774,12 @@ function getInviteUrl() {
   return buildInviteLink(srv.name, wsUrl || 'wss://nexus-g7k4.onrender.com', '', others.length + 1, others.length);
 }
 
-function setConn(cls, txt) {
-  const b = document.getElementById('connbar');
-  b.className = cls;
-  document.getElementById('conntxt').textContent = txt;
+function setConn(state, msg) {
+  // connbar removed — just update internal state
+  if (state === 'ok') {
+    document.title = 'NexusChat';
+  }
 }
-
 function handleNet(d) {
   if (!d || !d.type) return;
   if (d.type === 'dm') {
@@ -4390,25 +4370,39 @@ function ssInvite() {
 }
 
 function copyInviteSS() {
-  const url = window._ssInviteUrl || (document.getElementById('inv-link-inp') && document.getElementById('inv-link-inp').value) || '';
-  if (!url) return;
-  if (navigator.clipboard) {
-    navigator.clipboard.writeText(url).then(() => toast('Odkaz zkopírován! 🎉', 'ok')).catch(() => {
-      const el = document.getElementById('inv-link-inp');
-      if (el) { el.select(); document.execCommand('copy'); toast('Odkaz zkopírován! 🎉', 'ok'); }
-    });
+  const url = window._ssInviteUrl || '';
+  if (!url) { toast('Žádný odkaz', 'er'); return; }
+  // Method 1: Clipboard API
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(url).then(() => {
+      toast('Odkaz zkopírován! 🎉', 'ok');
+    }).catch(() => _fallbackCopy(url));
   } else {
-    const el = document.getElementById('inv-link-inp');
-    if (el) { el.select(); document.execCommand('copy'); toast('Odkaz zkopírován! 🎉', 'ok'); }
+    _fallbackCopy(url);
   }
+}
+
+function _fallbackCopy(text) {
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.cssText = 'position:fixed;top:-9999px;left:-9999px;opacity:0';
+  document.body.appendChild(ta);
+  ta.focus(); ta.select();
+  try {
+    const ok = document.execCommand('copy');
+    toast(ok ? 'Odkaz zkopírován! 🎉' : 'Kopírování selhalo', ok ? 'ok' : 'er');
+  } catch(e) {
+    toast('Kopírování selhalo', 'er');
+  }
+  document.body.removeChild(ta);
 }
 
 function copyHttpsSS() {
   const url = window._ssHttpsUrl || 'https://nexus-g7k4.onrender.com';
-  if (navigator.clipboard) {
-    navigator.clipboard.writeText(url).then(() => toast('Adresa zkopírována', 'ok')).catch(() => toast('Zkopírování selhalo', 'er'));
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(url).then(() => toast('Adresa zkopírována', 'ok')).catch(() => _fallbackCopy(url));
   } else {
-    toast('Zkopírování není podporováno', 'er');
+    _fallbackCopy(url);
   }
 }
 function leaveSrv() {
