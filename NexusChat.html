@@ -5664,59 +5664,22 @@ function updateMobHeader() {
 
 
 // ── VIEW TOGGLE ──
-let VMODE = localStorage.getItem('nx_view') || (
-  (/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || window.innerWidth <= 600) ? 'mobile' : 'pc'
-);
+let VMODE = 'pc'; // Always PC mode
 
-function vtoggle() {
-  VMODE = (VMODE === 'pc') ? 'mobile' : 'pc';
-  localStorage.setItem('nx_view', VMODE);
-  vapply();
-}
+function vtoggle() { /* disabled */ }
 
 function vapply() {
-  const mob = (VMODE === 'mobile');
-  const btn = document.getElementById('vtog');
-  if (btn) btn.textContent = mob ? '🖥️' : '📱';
-  if (btn) btn.title = mob ? 'Přepnout na PC verzi' : 'Přepnout na mobilní verzi';
-
-  // Sidebars
+  // Always PC mode — mobile toggle removed
   const rail  = document.getElementById('rail');
   const chpan = document.getElementById('chpan');
   const mbr   = document.getElementById('mbrpan');
   const mnav  = document.getElementById('mobile-nav');
   const mmenu = document.getElementById('mob-menu-btn');
-
-  if (mob) {
-    if (rail)  rail.style.display  = 'none';
-    if (chpan) chpan.style.display = 'none';
-    if (mbr)   mbr.classList.add('hid');
-    if (mnav)  mnav.style.display  = 'flex';
-    if (mmenu) mmenu.style.display = 'flex';
-    // Input padding for bottom nav
-    const inpa = document.getElementById('inpa');
-    if (inpa) inpa.style.paddingBottom = 'calc(58px + env(safe-area-inset-bottom))';
-    const msgs = document.getElementById('msgs');
-    if (msgs) msgs.style.paddingBottom = '54px';
-    const scb = document.getElementById('scbtn');
-    if (scb) scb.style.bottom = '68px';
-  } else {
-    if (rail)  rail.style.display  = '';
-    if (chpan) chpan.style.display = '';
-    if (mbr)   { mbr.classList.remove('hid'); if (!mbrVis) mbr.classList.add('hid'); }
-    if (mnav)  mnav.style.display  = 'none';
-    if (mmenu) mmenu.style.display = 'none';
-    if (document.getElementById('mob-drawer')) closeMobDrawer();
-    const inpa = document.getElementById('inpa');
-    if (inpa) inpa.style.paddingBottom = '';
-    const msgs = document.getElementById('msgs');
-    if (msgs) msgs.style.paddingBottom = '';
-    const scb = document.getElementById('scbtn');
-    if (scb) scb.style.bottom = '';
-  }
-
-  // Toast notification
-  toast(mob ? '📱 Mobilní verze' : '🖥️ PC verze', 'inf');
+  if (rail)  rail.style.display  = '';
+  if (chpan) chpan.style.display = '';
+  if (mbr)   { mbr.classList.remove('hid'); if (!mbrVis) mbr.classList.add('hid'); }
+  if (mnav)  mnav.style.display  = 'none';
+  if (mmenu) mmenu.style.display = 'none';
 }
 
 
@@ -5844,16 +5807,9 @@ function mentionKeydown(e, inp) {
 
 
   // Show mobile menu button on small screens
-  function checkMobile() {
-    const isMob = window.innerWidth <= 600;
-    const btn = document.getElementById('mob-menu-btn');
-    if (btn) btn.style.display = isMob ? 'flex' : 'none';
-    // Add bottom padding to input on mobile for bottom nav
-    const inpa = document.getElementById('inpa');
-    if (inpa) inpa.style.paddingBottom = isMob ? 'calc(58px + env(safe-area-inset-bottom))' : '';
-  }
-  checkMobile();
-  window.addEventListener('resize', checkMobile);
+  // Mobile check disabled — always PC mode
+  const mob_btn = document.getElementById('mob-menu-btn');
+  if (mob_btn) mob_btn.style.display = 'none';
   // Apply saved view preference
   initBC();
   if (wsUrl) setTimeout(() => connectWS(wsUrl), 600);
