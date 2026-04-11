@@ -905,7 +905,7 @@ textarea { -webkit-user-select: text; user-select: text; }
     <div id="inpa">
       <div id="inpbox">
         <button class="ib" onclick="toast('Brzy!','inf')">📎</button>
-        <textarea id="msginp" placeholder="Zpráva..." rows="1" onkeydown="if(mentionKeydown(event,this))return;onKey(event)" oninput="autoR(this);onTyping();onMentionInput(this)" onblur="setTimeout(hideMention,200)" onfocus="checkMsgMode()"></textarea>
+        <textarea id="msginp" placeholder="Zpráva..." rows="1" onkeydown="if(mentionKeydown(event,this))return;onKey(event)" oninput="autoR(this);onTyping();onMentionInput(this)" onblur="setTimeout(hideMention,200)" onfocus="checkMsgMode()" onpaste="handlePaste(event)"></textarea>
         <button class="ib" id="emobtn" onclick="toggleEmo()">😊</button>
         <button id="sndbtn" onclick="sendMsg()">➤</button>
       </div>
@@ -2724,6 +2724,12 @@ function chById(id) {
 }
 
 function fmt(t) {
+  if (!t) return '';
+  // Image message — starts with data: or __IMG__
+  if (t.startsWith('__IMG__')) {
+    const src = t.slice(7);
+    return '<img src="' + src + '" style="max-width:320px;max-height:280px;border-radius:10px;cursor:pointer;margin-top:4px;display:block" onclick="openImgFull(this.src)" loading="lazy">';
+  }
   let s = t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   s = s.replace(/```([\s\S]+?)```/g, '<code>$1</code>');
   s = s.replace(/`([^`\n]+)`/g, '<code>$1</code>');
@@ -3104,6 +3110,106 @@ function checkMsgMode() {
     // We're in channel mode — clear any stale curDm
     if (curDm) { curDm = null; }
   }
+}
+
+function handleImageUpload(input) {
+  const file = input.files[0];
+  if (!file) return;
+  if (!file.type.startsWith('image/')) { toast('Pouze obrázky!', 'er'); return; }
+  if (file.size > 4 * 1024 * 1024) { toast('Obrázek je příliš velký (max 4MB)', 'er'); return; }
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const dataUrl = e.target.result;
+    // Compress image if needed
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const MAX = 1200;
+      let w = img.width, h = img.height;
+      if (w > MAX || h > MAX) {
+        if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
+        else       { w = Math.round(w * MAX / h); h = MAX; }
+      }
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      const compressed = canvas.toDataURL('image/jpeg', 0.82);
+      sendImageMsg(compressed);
+    };
+    img.src = dataUrl;
+  };
+  reader.readAsDataURL(file);
+  input.value = ''; // reset so same file can be sent again
+}
+
+
+function handlePaste(e) {
+  const items = e.clipboardData && e.clipboardData.items;
+  if (!items) return;
+  for (const item of items) {
+    if (item.type.startsWith('image/')) {
+      e.preventDefault();
+      const file = item.getAsFile();
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const MAX = 1200;
+          let w = img.width, h = img.height;
+          if (w > MAX || h > MAX) {
+            if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
+            else       { w = Math.round(w * MAX / h); h = MAX; }
+          }
+          canvas.width = w; canvas.height = h;
+          canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+          sendImageMsg(canvas.toDataURL('image/jpeg', 0.82));
+        };
+        img.src = ev.target.result;
+      };
+      reader.readAsDataURL(file);
+      return;
+    }
+  }
+}
+
+function sendImageMsg(dataUrl) {
+  if (!ME.name) { toast('Nastav si jméno (⚙️)', 'er'); return; }
+  if (!curCh && !curDm) { toast('Vyber kanál', 'er'); return; }
+  const mid = gid();
+  const msg = { mid, author: ME.name, authorId: ME.id, color: ME.color,
+    avatar: ME.avatar, font: ME.font, text: '__IMG__' + dataUrl,
+    ts: Date.now(), reactions: [] };
+
+  if (curDm) {
+    // DM image
+    if (!dmConvs[curDm]) dmConvs[curDm] = [];
+    dmConvs[curDm].push(msg);
+    lss('nx_dms', dmConvs);
+    bcast({ type: 'dm', to: curDm, msg });
+    renderMsgs();
+  } else {
+    // Channel image
+    if (!MESSAGES[curCh]) MESSAGES[curCh] = [];
+    MESSAGES[curCh].push(msg);
+    saveMsgs();
+    bcast({ type: 'chat', ch: curCh, srvId: curSrv, msg });
+    renderMsgs();
+    toast('📷 Obrázek odeslán', 'ok');
+  }
+}
+
+function openImgFull(src) {
+  // Open image in fullscreen overlay
+  const ov = document.createElement('div');
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:9999;display:flex;align-items:center;justify-content:center;cursor:zoom-out';
+  ov.onclick = () => document.body.removeChild(ov);
+  const img = document.createElement('img');
+  img.src = src;
+  img.style.cssText = 'max-width:92vw;max-height:92vh;border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,.8)';
+  ov.appendChild(img);
+  document.body.appendChild(ov);
 }
 
 function sendMsg() {
