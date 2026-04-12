@@ -3741,13 +3741,101 @@ function toggleVcDeaf() {
   renderVcParts();
 }
 async function toggleScreen() {
-  if (VC.scrStream) { VC.scrStream.getTracks().forEach(t => t.stop()); VC.scrStream = null; document.getElementById('vcscrbtn').classList.remove('am'); toast('Sdílení ukončeno', 'inf'); return; }
+  if (VC.scrStream) {
+    VC.scrStream.getTracks().forEach(t => t.stop());
+    VC.scrStream = null;
+    document.getElementById('vcscrbtn').classList.remove('am');
+    // Hide screen share overlay for all
+    bcast({ type: 'screen_stop', from: ME.id, chId: vcChId });
+    hideScreenShare();
+    toast('Sdílení ukončeno', 'inf');
+    return;
+  }
   try {
-    VC.scrStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
+    // Let user choose window, tab or screen
+    VC.scrStream = await navigator.mediaDevices.getDisplayMedia({
+      video: { cursor: 'always', displaySurface: 'window' },
+      audio: { echoCancellation: false, noiseSuppression: false }
+    });
     document.getElementById('vcscrbtn').classList.add('am');
-    toast('Sdílení obrazovky aktivní 🖥️', 'ok');
-    VC.scrStream.getVideoTracks()[0].onended = () => { VC.scrStream = null; document.getElementById('vcscrbtn').classList.remove('am'); toast('Sdílení ukončeno', 'inf'); };
-  } catch { toast('Sdílení zrušeno', 'inf'); }
+    toast('Sdílení obrazovky aktivní 🖥️ — ostatní teď vidí tvoji obrazovku', 'ok', 5000);
+
+    // Send video frames to other VC members via WebRTC-like approach
+    // We'll use canvas capture + send as chunks
+    startScreenShare(VC.scrStream);
+
+    VC.scrStream.getVideoTracks()[0].onended = () => {
+      VC.scrStream = null;
+      document.getElementById('vcscrbtn').classList.remove('am');
+      bcast({ type: 'screen_stop', from: ME.id, chId: vcChId });
+      hideScreenShare();
+      toast('Sdílení ukončeno', 'inf');
+    };
+  } catch(e) {
+    if (e.name !== 'NotAllowedError') toast('❌ ' + e.message, 'er');
+  }
+}
+
+let _screenInterval = null;
+let _screenCanvas = null;
+let _screenCtx = null;
+
+function startScreenShare(stream) {
+  const video = document.createElement('video');
+  video.srcObject = stream;
+  video.play();
+
+  _screenCanvas = document.createElement('canvas');
+  _screenCtx = _screenCanvas.getContext('2d');
+
+  // Notify others that screen share started
+  bcast({ type: 'screen_start', from: ME.id, chId: vcChId, name: ME.name });
+
+  // Send frames every 200ms (5fps) - enough for screen sharing
+  _screenInterval = setInterval(() => {
+    if (!VC.scrStream || !wsConn || wsConn.readyState !== 1) {
+      clearInterval(_screenInterval); return;
+    }
+    const vt = stream.getVideoTracks()[0];
+    if (!vt || vt.readyState === 'ended') { clearInterval(_screenInterval); return; }
+
+    // Scale down for bandwidth
+    const settings = vt.getSettings();
+    const w = Math.min(settings.width || 1280, 1280);
+    const h = Math.min(settings.height || 720, 720);
+    _screenCanvas.width = w;
+    _screenCanvas.height = h;
+    _screenCtx.drawImage(video, 0, 0, w, h);
+    const frame = _screenCanvas.toDataURL('image/jpeg', 0.5);
+
+    try {
+      wsConn.send(JSON.stringify({ type: 'screen_frame', from: ME.id, chId: vcChId, frame }));
+    } catch {}
+  }, 200);
+}
+
+function hideScreenShare() {
+  clearInterval(_screenInterval);
+  _screenInterval = null;
+  const el = document.getElementById('screen-share-overlay');
+  if (el) el.remove();
+}
+
+function showScreenFrame(fromId, frame, fromName) {
+  let overlay = document.getElementById('screen-share-overlay');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'screen-share-overlay';
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:8000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px';
+    overlay.innerHTML = '<div style="display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.08);padding:8px 16px;border-radius:20px">'
+      + '<span style="font-size:13px;color:#fff;font-weight:600" id="scr-sharer-name">🖥️ ' + fromName + ' sdílí obrazovku</span>'
+      + '<button onclick="hideScreenShare()" style="background:rgba(255,83,112,.3);border:1px solid #ff5370;color:#ff5370;border-radius:8px;padding:4px 10px;cursor:pointer;font-size:12px">✕ Zavřít</button>'
+      + '</div>'
+      + '<img id="scr-frame-img" style="max-width:95vw;max-height:85vh;border-radius:10px;box-shadow:0 20px 60px rgba(0,0,0,.8)" src="">';
+    document.body.appendChild(overlay);
+  }
+  const img = document.getElementById('scr-frame-img');
+  if (img) img.src = frame;
 }
 function toggleMic() { const b = document.getElementById('micbtn'); b.classList.toggle('mut'); toast(b.classList.contains('mut') ? 'Mikrofon deaktivován' : 'Mikrofon aktivován', 'inf'); }
 function toggleDeaf() { const b = document.getElementById('dfbtn'); b.classList.toggle('mut'); toast(b.classList.contains('mut') ? 'Sluchátka deaktivována' : 'Sluchátka aktivována', 'inf'); }
@@ -5013,22 +5101,71 @@ function saveOutDevice(deviceId) {
   toast('🎧 Výstup změněn', 'inf');
 }
 async function loadAudioDevices() {
+  const micSel = document.getElementById('mic-device-sel');
+  const outSel = document.getElementById('out-device-sel');
+  if (!micSel && !outSel) return;
+
   try {
-    await navigator.mediaDevices.getUserMedia({ audio: true }).then(s => s.getTracks().forEach(t => t.stop())).catch(() => {});
+    // Musíme získat povolení aby browser ukázal názvy zařízení
+    const permStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    permStream.getTracks().forEach(t => t.stop());
+  } catch(e) {
+    if (micSel) micSel.innerHTML = '<option value="">❌ Mikrofon odepřen — povol přístup</option>';
+    return;
+  }
+
+  try {
     const devs = await navigator.mediaDevices.enumerateDevices();
     const mics = devs.filter(d => d.kind === 'audioinput');
     const outs = devs.filter(d => d.kind === 'audiooutput');
-    const sm = ls('nx_mic_device',''), so = ls('nx_out_device','');
-    const micSel = document.getElementById('mic-device-sel');
-    const outSel = document.getElementById('out-device-sel');
+    const sm = ls('nx_mic_device','');
+    const so = ls('nx_out_device','');
+
+    // Zvýrazni sluchátka s mikrofonem vs PC mikrofon
+    const labelMic = (d) => {
+      const l = d.label || '';
+      if (l.toLowerCase().includes('headset') || l.toLowerCase().includes('sluchátk') || l.toLowerCase().includes('headphone')) return '🎧 ' + l;
+      if (l.toLowerCase().includes('usb')) return '🔌 ' + l;
+      if (l.toLowerCase().includes('built') || l.toLowerCase().includes('vestavěn') || l.toLowerCase().includes('internal')) return '💻 ' + l;
+      if (l.toLowerCase().includes('default') || l.toLowerCase().includes('výchozí')) return '⭐ ' + l;
+      return '🎤 ' + (l || 'Mikrofon');
+    };
+    const labelOut = (d) => {
+      const l = d.label || '';
+      if (l.toLowerCase().includes('headset') || l.toLowerCase().includes('sluchátk') || l.toLowerCase().includes('headphone')) return '🎧 ' + l;
+      if (l.toLowerCase().includes('usb')) return '🔌 ' + l;
+      if (l.toLowerCase().includes('speaker') || l.toLowerCase().includes('reproduktor')) return '🔊 ' + l;
+      if (l.toLowerCase().includes('built') || l.toLowerCase().includes('vestavěn')) return '💻 ' + l;
+      if (l.toLowerCase().includes('default') || l.toLowerCase().includes('výchozí')) return '⭐ ' + l;
+      return '🔊 ' + (l || 'Výstup');
+    };
+
     if (micSel) {
-      micSel.innerHTML = `<option value="">Výchozí mikrofon</option>`;
-      mics.forEach((d,i) => { const o=document.createElement('option'); o.value=d.deviceId; o.textContent=d.label||('Mikrofon '+(i+1)); o.selected=d.deviceId===sm; micSel.appendChild(o); });
+      micSel.innerHTML = '<option value="">⭐ Výchozí (systémový)</option>';
+      mics.filter(d => d.deviceId !== 'default' && d.deviceId !== 'communications').forEach(d => {
+        const o = document.createElement('option');
+        o.value = d.deviceId;
+        o.textContent = labelMic(d);
+        o.selected = d.deviceId === sm;
+        micSel.appendChild(o);
+      });
+      if (mics.length === 0) micSel.innerHTML = '<option value="">❌ Žádný mikrofon nenalezen</option>';
     }
+
     if (outSel) {
-      outSel.innerHTML = `<option value="">Výchozí výstup</option>`;
-      outs.forEach((d,i) => { const o=document.createElement('option'); o.value=d.deviceId; o.textContent=d.label||('Výstup '+(i+1)); o.selected=d.deviceId===so; outSel.appendChild(o); });
+      outSel.innerHTML = '<option value="">⭐ Výchozí (systémový)</option>';
+      outs.filter(d => d.deviceId !== 'default' && d.deviceId !== 'communications').forEach(d => {
+        const o = document.createElement('option');
+        o.value = d.deviceId;
+        o.textContent = labelOut(d);
+        o.selected = d.deviceId === so;
+        outSel.appendChild(o);
+      });
     }
+
+    // Listen for device changes (plug/unplug headphones)
+    navigator.mediaDevices.ondevicechange = () => loadAudioDevices();
+
   } catch(e) { console.warn('[Audio devices]', e.message); }
 }
 async function restartVcStream() {

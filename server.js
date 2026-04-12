@@ -716,6 +716,16 @@ wss.on('connection', (ws, req) => {
       return;
     }
 
+    // Screen share relay — only to VC members in same channel
+    if ((msg.type === 'screen_frame' || msg.type === 'screen_start' || msg.type === 'screen_stop') && msg.chId) {
+      for (const [client, info] of clients) {
+        if (client !== ws && client.readyState === WebSocket.OPEN) {
+          try { client.send(str); } catch {}
+        }
+      }
+      return;
+    }
+
     // Audio relay — only to others in same voice channel (don't broadcast to everyone)
     if (msg.type === 'audio' && msg.chId) {
       for (const [client] of clients) {
