@@ -1464,6 +1464,13 @@ function setLang(lang) {
   toast(lang === 'en' ? '🇺🇸 Language set to English' : '🇨🇿 Jazyk nastaven na češtinu', 'ok');
 }
 
+function setInner(id, sel, tkey) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const child = el.querySelector(sel);
+  if (child) child.textContent = t(tkey);
+}
+
 function applyLang() {
   const set = (id, prop, key) => { const el = document.getElementById(id); if (el) el[prop] = t(key); };
   const setQ = (q, prop, key) => { const el = document.querySelector(q); if (el) el[prop] = t(key); };
@@ -1494,9 +1501,6 @@ function applyLang() {
     const cnt = document.getElementById('mbrcnt')?.textContent || '1';
     mbrhdr.innerHTML = t('membersCount') + ' — <span id="mbrcnt">' + cnt + '</span>';
   }
-
-  // Connbar
-  const connLink = document.querySelector('#connbar a')
 
   // Bottom nav labels
   [['mnav-chat','navChat'],['mnav-channels','navChannels'],['mnav-servers','navServers'],['mnav-profile','navProfile']].forEach(([id,key]) => {
@@ -5893,6 +5897,10 @@ function mentionKeydown(e, inp) {
 
 // ── BOOT ──
 (function boot() {
+  window.onerror = function(msg, src, line, col, err) {
+    console.warn('[NexusChat] Error:', msg, 'at line', line);
+    return false; // don't suppress but don't crash UI
+  };
   applyProfile();
   applyLang();
   VC.noiseGate = parseInt(ls('nx_noise_gate', 15)) / 1000;
