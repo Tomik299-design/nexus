@@ -904,7 +904,8 @@ textarea { -webkit-user-select: text; user-select: text; }
     <div id="typbar"></div>
     <div id="inpa">
       <div id="inpbox">
-        <button class="ib" onclick="toast('Brzy!','inf')">📎</button>
+        <button class="ib" onclick="document.getElementById('imgup').click()" title="Přiložit obrázek">📎</button>
+        <input type="file" id="imgup" accept="image/*" style="display:none" onchange="handleImageUpload(this)">
         <textarea id="msginp" placeholder="Zpráva..." rows="1" onkeydown="if(mentionKeydown(event,this))return;onKey(event)" oninput="autoR(this);onTyping();onMentionInput(this)" onblur="setTimeout(hideMention,200)" onfocus="checkMsgMode()" onpaste="handlePaste(event)"></textarea>
         <button class="ib" id="emobtn" onclick="toggleEmo()">😊</button>
         <button id="sndbtn" onclick="sendMsg()">➤</button>
