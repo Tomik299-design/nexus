@@ -3886,12 +3886,12 @@ function showChCtx(e, ch) {
 }
 
 // ── TOAST ──
-function toast(msg, t = 'inf') {
+function toast(msg, t = 'inf', duration = 3100) {
   const ico = { ok: '✅', er: '❌', inf: 'ℹ️' };
   const el = document.createElement('div'); el.className = 'tst ' + t;
   el.textContent = (ico[t] || '') + ' ' + msg;
   document.getElementById('tsts').appendChild(el);
-  setTimeout(() => el.remove(), 3100);
+  setTimeout(() => el.remove(), duration);
 }
 
 // ── MODAL ──
@@ -4706,7 +4706,23 @@ function setEmojiAv(emoji) {
   ctx.fillText(emoji, 64, 68);
   ME.avatar = canvas.toDataURL(); lss('nx_avatar', ME.avatar); applyProfile(); toast('Avatar nastaven ✓', 'ok'); profTab('avatar');
 }
-function removeAv() { ME.avatar = ''; lss('nx_avatar', ''); applyProfile(); toast(t('avatarRemoved'), 'inf'); profTab('avatar'); }
+function removeAv() {
+  ME.avatar = '';
+  lss('nx_avatar', '');
+  applyProfile();
+  // Sync to server
+  if (wsConn && wsConn.readyState === 1 && ME.id) {
+    try {
+      wsConn.send(JSON.stringify({
+        type: 'account_save', userId: ME.id,
+        servers: SERVERS, roles: MBROLES,
+        profile: { name: ME.name, color: ME.color, tag: ME.tag, avatar: '', font: ME.font, status: ME.status }
+      }));
+    } catch {}
+  }
+  toast(t('avatarRemoved'), 'inf');
+  profTab('avatar');
+}
 
 function profStyle() {
   const fStyle = 'font-family:\'' + ME.font + '\',sans-serif';
@@ -5231,10 +5247,17 @@ function logOut() {
 
 function confirmLogOut() {
   // Clear identity but keep servers data
+  // Clear server-side account before wiping local ID
+  if (wsConn && wsConn.readyState === 1 && ME.id) {
+    try { wsConn.send(JSON.stringify({ type: 'account_delete', userId: ME.id })); } catch {}
+  }
   lss('nx_name', '');
-  lss('nx_id', gid()); // new random ID
+  lss('nx_id', gid());
   lss('nx_color', '#7c6aff');
   lss('nx_avatar', '');
+  lss('nx_saved_name', '');
+  lss('nx_saved_id', '');
+  lss('nx_remember', false);
   ME.name = ''; ME.id = ls('nx_id', ''); ME.color = '#7c6aff'; ME.avatar = '';
   closeModal();
   applyProfile();

@@ -668,6 +668,20 @@ wss.on('connection', (ws, req) => {
       serverData[msg.srvId] = msg.srv;
     }
 
+    // Send channel history to requester
+    if (msg.type === 'get_history' && msg.ch) {
+      const hist = history[msg.ch] || [];
+      try { ws.send(JSON.stringify({ type: 'msg_history', ch: msg.ch, msgs: hist })); } catch {}
+      return;
+    }
+
+    // Delete account
+    if (msg.type === 'account_delete' && msg.userId) {
+      delete accounts[msg.userId];
+      saveAccounts();
+      return;
+    }
+
     // Audio relay — only to others in same voice channel (don't broadcast to everyone)
     if (msg.type === 'audio' && msg.chId) {
       for (const [client] of clients) {
