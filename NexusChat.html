@@ -3420,8 +3420,13 @@ async function joinVc(ch) {
   if (inVc) { if (vcChId === ch.id) { leaveVc(); return; } leaveVc(); }
   let stream;
   try {
+    const _micId = ls('nx_mic_device', '');
     stream = await navigator.mediaDevices.getUserMedia({
-      audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, sampleRate: 48000, channelCount: 1 },
+      audio: {
+        deviceId: _micId ? { exact: _micId } : undefined,
+        echoCancellation: true, noiseSuppression: true,
+        autoGainControl: true, sampleRate: 48000, channelCount: 1
+      },
       video: false
     });
   } catch(err) {
@@ -4890,6 +4895,8 @@ function profAudio() {
   const outVol = parseInt(ls('nx_out_vol', 100));
   const ngVal  = Math.round((VC.noiseGate || 0.015) * 1000);
   const iEN    = LANG === 'en';
+  const savedMicId = ls('nx_mic_device', '');
+  const savedOutId = ls('nx_out_device', '');
 
   const slider = (id, valId, min, max, val, onchange, label, sublabel) =>
     '<div style="margin-bottom:18px">'
@@ -4915,6 +4922,13 @@ function profAudio() {
     + '<div><h3 style="margin:0">' + (iEN ? 'Microphone' : 'Mikrofon') + '</h3>'
     + '<div style="font-size:11px;color:var(--t3)">' + (iEN ? 'Input from your mic' : 'Vstup z mikrofonu') + '</div></div>'
     + '</div>'
+    + '<div style="margin-bottom:14px">'
+    + '<div style="font-size:12px;font-weight:600;color:var(--t2);margin-bottom:6px">' + (iEN?'Input device':'Vstupní zařízení') + '</div>'
+    + '<select id="mic-device-sel" style="width:100%;background:var(--bg0);border:1px solid var(--bd);border-radius:8px;padding:8px 10px;color:var(--t1);font-size:12px;cursor:pointer;outline:none" onchange="saveMicDevice(this.value)">'
+    + '<option value="">' + (iEN?'Default microphone':'Výchozí mikrofon') + '</option>'
+    + '</select>'
+    + '<div style="font-size:10px;color:var(--t3);margin-top:4px">' + (iEN?'Select which mic to use for voice chat':'Vyber mikrofon pro hlasový chat') + '</div>'
+    + '</div>'
     + slider('mic-slider', 'mic-vol-val', 0, 200, micVol, 'saveMicVol(+this.value)',
         iEN ? 'Input volume' : 'Hlasitost vstupu',
         '<span>' + (iEN?'Muted':'Ztlumeno') + '</span><span>' + (iEN?'Normal':'Normální') + ' (100%)</span><span>' + (iEN?'Boost':'Zesílení') + ' (200%)</span>')
@@ -4934,6 +4948,13 @@ function profAudio() {
     + '<div style="width:36px;height:36px;border-radius:10px;background:rgba(124,106,255,.12);border:1px solid rgba(124,106,255,.2);display:flex;align-items:center;justify-content:center;font-size:18px">🎧</div>'
     + '<div><h3 style="margin:0">' + (iEN ? 'Output / Headphones' : 'Výstup / Sluchátka') + '</h3>'
     + '<div style="font-size:11px;color:var(--t3)">' + (iEN ? 'Volume of other people' : 'Hlasitost ostatních') + '</div></div>'
+    + '</div>'
+    + '<div style="margin-bottom:14px">'
+    + '<div style="font-size:12px;font-weight:600;color:var(--t2);margin-bottom:6px">' + (iEN?'Output device':'Výstupní zařízení') + '</div>'
+    + '<select id="out-device-sel" style="width:100%;background:var(--bg0);border:1px solid var(--bd);border-radius:8px;padding:8px 10px;color:var(--t1);font-size:12px;cursor:pointer;outline:none" onchange="saveOutDevice(this.value)">'
+    + '<option value="">' + (iEN?'Default output':'Výchozí výstup') + '</option>'
+    + '</select>'
+    + '<div style="font-size:10px;color:var(--t3);margin-top:4px">' + (iEN?'Select speakers/headphones':'Vyber reproduktory/sluchátka') + '</div>'
     + '</div>'
     + slider('out-slider', 'out-vol-val', 0, 200, outVol, 'saveOutVol(+this.value)',
         iEN ? 'Output volume' : 'Hlasitost výstupu',
@@ -4980,6 +5001,49 @@ function saveMicVol(val) {
   toast((LANG==='en' ? '🎤 Mic volume: ' : '🎤 Hlasitost mikrofonu: ') + val + '%', 'ok');
 }
 
+function saveMicDevice(deviceId) {
+  lss('nx_mic_device', deviceId);
+  if (inVc && VC.stream) { toast('🎤 Přepínám mikrofon...', 'inf'); setTimeout(restartVcStream, 100); }
+}
+function saveOutDevice(deviceId) {
+  lss('nx_out_device', deviceId);
+  for (const el of Object.values(VC.audioEls || {})) {
+    if (el && el.setSinkId) el.setSinkId(deviceId || '').catch(() => {});
+  }
+  toast('🎧 Výstup změněn', 'inf');
+}
+async function loadAudioDevices() {
+  try {
+    await navigator.mediaDevices.getUserMedia({ audio: true }).then(s => s.getTracks().forEach(t => t.stop())).catch(() => {});
+    const devs = await navigator.mediaDevices.enumerateDevices();
+    const mics = devs.filter(d => d.kind === 'audioinput');
+    const outs = devs.filter(d => d.kind === 'audiooutput');
+    const sm = ls('nx_mic_device',''), so = ls('nx_out_device','');
+    const micSel = document.getElementById('mic-device-sel');
+    const outSel = document.getElementById('out-device-sel');
+    if (micSel) {
+      micSel.innerHTML = `<option value="">Výchozí mikrofon</option>`;
+      mics.forEach((d,i) => { const o=document.createElement('option'); o.value=d.deviceId; o.textContent=d.label||('Mikrofon '+(i+1)); o.selected=d.deviceId===sm; micSel.appendChild(o); });
+    }
+    if (outSel) {
+      outSel.innerHTML = `<option value="">Výchozí výstup</option>`;
+      outs.forEach((d,i) => { const o=document.createElement('option'); o.value=d.deviceId; o.textContent=d.label||('Výstup '+(i+1)); o.selected=d.deviceId===so; outSel.appendChild(o); });
+    }
+  } catch(e) { console.warn('[Audio devices]', e.message); }
+}
+async function restartVcStream() {
+  if (!inVc) return;
+  try {
+    const micId = ls('nx_mic_device','');
+    const ns = await navigator.mediaDevices.getUserMedia({
+      audio: { deviceId: micId ? {exact:micId} : undefined, echoCancellation:true, noiseSuppression:true, autoGainControl:true }
+    });
+    if (VC.stream) VC.stream.getTracks().forEach(t => t.stop());
+    VC.stream = ns;
+    if (VC.ctx) { const src = VC.ctx.createMediaStreamSource(ns); if (VC.an) src.connect(VC.an); }
+    toast('🎤 Mikrofon přepnut', 'ok');
+  } catch(e) { toast('❌ '+e.message, 'er'); }
+}
 function saveOutVol(val) {
   lss('nx_out_vol', val);
   // Apply to all peer audio elements
