@@ -584,7 +584,10 @@ wss.on('connection', (ws, req) => {
       if (!accounts[msg.userId]) accounts[msg.userId] = {};
       if (msg.servers) accounts[msg.userId].servers = msg.servers;
       if (msg.roles)   accounts[msg.userId].roles   = msg.roles;
-      if (msg.profile) accounts[msg.userId].profile = msg.profile;
+      if (msg.profile) {
+        // Always overwrite profile including empty avatar (intentional deletion)
+        accounts[msg.userId].profile = msg.profile;
+      }
       accounts[msg.userId].ts = Date.now();
       saveAccounts();
       // Save to cloud (JSONBin) for cross-browser access
@@ -663,6 +666,18 @@ wss.on('connection', (ws, req) => {
       return;
     }
 
+    // Handle avatar deletion
+    if (msg.type === 'avatar_delete' && msg.userId) {
+      if (!accounts[msg.userId]) accounts[msg.userId] = {};
+      if (!accounts[msg.userId].profile) accounts[msg.userId].profile = {};
+      accounts[msg.userId].profile.avatar = ''; // clear avatar on server
+      accounts[msg.userId].profile.avatarDeleted = Date.now();
+      accounts[msg.userId].ts = Date.now();
+      saveAccounts();
+      console.log('[Server] Avatar deleted for user', msg.userId.slice(0,8));
+      return;
+    }
+
     // Store server structure updates for new clients
     if (msg.type === 'srv_update' && msg.srvId && msg.srv) {
       serverData[msg.srvId] = msg.srv;
@@ -672,6 +687,25 @@ wss.on('connection', (ws, req) => {
     if (msg.type === 'get_history' && msg.ch) {
       const hist = history[msg.ch] || [];
       try { ws.send(JSON.stringify({ type: 'msg_history', ch: msg.ch, msgs: hist })); } catch {}
+      return;
+    }
+
+    // Delete message from history + broadcast
+    if (msg.type === 'msg_delete' && msg.ch && msg.mid) {
+      if (history[msg.ch]) {
+        const before = history[msg.ch].length;
+        history[msg.ch] = history[msg.ch].filter(m => m.mid !== msg.mid);
+        if (history[msg.ch].length !== before) {
+          saveHistory();
+          // Broadcast to all clients
+          const delPacket = JSON.stringify({ type: 'msg_delete', ch: msg.ch, mid: msg.mid });
+          for (const [client] of clients) {
+            if (client !== ws && client.readyState === WebSocket.OPEN) {
+              try { client.send(delPacket); } catch {}
+            }
+          }
+        }
+      }
       return;
     }
 

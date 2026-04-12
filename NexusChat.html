@@ -1868,6 +1868,27 @@ function handleNet(d) {
     }
     return;
   }
+  if (d.type === 'msg_history') {
+    if (d.ch && Array.isArray(d.msgs)) {
+      MESSAGES[d.ch] = d.msgs;
+      saveMsgs();
+      if (d.ch === curCh) renderMsgs();
+    }
+    return;
+  }
+
+  if (d.type === 'msg_delete') {
+    if (!d.ch || !d.mid) return;
+    if (!MESSAGES[d.ch]) return;
+    const lenBefore = MESSAGES[d.ch].length;
+    MESSAGES[d.ch] = MESSAGES[d.ch].filter(m => m.mid !== d.mid);
+    if (MESSAGES[d.ch].length !== lenBefore) {
+      saveMsgs();
+      if (d.ch === curCh) renderMsgs(false);
+    }
+    return;
+  }
+
   if (d.type === 'chat') {
     if (!d.msg) return;
     if (!MESSAGES[d.ch]) MESSAGES[d.ch] = [];
@@ -2107,7 +2128,17 @@ function handleNet(d) {
     // Restore profile (avatar, color, font etc.)
     if (d.account.profile && d.account.profile.name === ME.name) {
       const p = d.account.profile;
-      if (p.avatar && !ME.avatar) { ME.avatar = p.avatar; lss('nx_avatar', p.avatar); changed = true; }
+      // Avatar: server is source of truth
+      // If server has avatar and we don't → restore it
+      // If server has empty avatar (deleted) → clear it too
+      if (p.avatar !== undefined) {
+        if (p.avatar !== ME.avatar) {
+          ME.avatar = p.avatar;
+          lss('nx_avatar', p.avatar);
+          lss('nx_avatar_deleted', p.avatar ? 0 : Date.now());
+          changed = true;
+        }
+      }
       if (p.color  && ME.color === '#7c6aff') { ME.color  = p.color;  lss('nx_color',  p.color);  }
       if (p.font   && !ME.font)  { ME.font   = p.font;   lss('nx_font',   p.font);   }
       if (p.status && !ME.status){ ME.status  = p.status; lss('nx_status', p.status); }
@@ -3828,7 +3859,12 @@ function delMsg(i) {
     toast(LANG==='en'?'Deleted':'Smazáno', 'inf'); return;
   }
   if (!MESSAGES[curCh]) return;
+  const msg = MESSAGES[curCh][i];
+  if (!msg) return;
+  // Remove locally
   MESSAGES[curCh].splice(i, 1); saveMsgs(); renderMsgs(false);
+  // Broadcast deletion to all clients + server
+  bcast({ type: 'msg_delete', ch: curCh, mid: msg.mid, srvId: curSrv });
   toast(LANG==='en'?'Deleted':'Smazáno', 'inf');
 }
 function replyTo(i) {
@@ -4772,14 +4808,14 @@ function setEmojiAv(emoji) {
 function removeAv() {
   ME.avatar = '';
   lss('nx_avatar', '');
+  lss('nx_avatar_deleted', Date.now()); // mark deletion time
   applyProfile();
-  // Sync to server
+  // Sync avatar deletion to server — use explicit avatar_delete type
   if (wsConn && wsConn.readyState === 1 && ME.id) {
     try {
       wsConn.send(JSON.stringify({
-        type: 'account_save', userId: ME.id,
-        servers: SERVERS, roles: MBROLES,
-        profile: { name: ME.name, color: ME.color, tag: ME.tag, avatar: '', font: ME.font, status: ME.status }
+        type: 'avatar_delete',
+        userId: ME.id
       }));
     } catch {}
   }
