@@ -105,24 +105,69 @@ button, input, textarea, select { font-family: var(--f); }
 /* ── CONN BAR ── */
 
 /* ── VOICE ROOM ── */
-#vcroom { flex: 1; display: none; flex-direction: column; align-items: center; justify-content: center; gap: 20px; padding: 28px; }
+#vcroom {
+  flex: 1; display: none; flex-direction: column; align-items: center;
+  justify-content: center; gap: 0; padding: 0; overflow: hidden;
+  background: linear-gradient(180deg, var(--bg0) 0%, var(--bg1) 100%);
+  position: relative;
+}
 #vcroom.open { display: flex; }
-.vc-bar { padding: 5px 14px; border-radius: 20px; background: var(--acc-d); border: 1px solid var(--acc); font-size: 11px; color: var(--acc); font-weight: 500; display: flex; align-items: center; gap: 6px; }
-.vc-bar .vp { width: 7px; height: 7px; border-radius: 50%; background: var(--acc); animation: pulse 1.4s ease infinite; }
-#vct { font-size: 15px; font-weight: 500; color: var(--t1); }
-#vcs { font-size: 12px; color: var(--t2); }
-#vcparts { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; max-width: 640px; }
-.vcp { display: flex; flex-direction: column; align-items: center; gap: 7px; padding: 14px 20px; border-radius: var(--rl); background: var(--bg3); border: 2px solid var(--bd); transition: border-color var(--tr), box-shadow var(--tr); min-width: 90px; }
-.vcp.spk { border-color: var(--acc); box-shadow: 0 0 0 3px rgba(79,255,176,.12); }
-.vcp.mut { opacity: .5; }
-.vcav { width: 52px; height: 52px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 500; color: var(--bg0); position: relative; }
+#vcroom::before {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(ellipse 70% 60% at 50% 40%, rgba(79,255,176,.04) 0%, transparent 70%);
+}
+.vc-topbar {
+  width: 100%; display: flex; align-items: center; justify-content: center;
+  padding: 16px 20px 8px; gap: 10px; position: relative; z-index: 1;
+}
+.vc-bar { padding: 5px 14px; border-radius: 20px; background: rgba(79,255,176,.1); border: 1px solid rgba(79,255,176,.3); font-size: 11px; color: var(--acc); font-weight: 600; display: flex; align-items: center; gap: 6px; letter-spacing: .3px; }
+.vc-bar .vp { width: 7px; height: 7px; border-radius: 50%; background: var(--acc); box-shadow: 0 0 6px var(--acc); animation: pulse 1.4s ease infinite; }
+#vct { font-size: 16px; font-weight: 700; color: var(--t1); text-align: center; padding: 0 20px; }
+#vcs { font-size: 12px; color: var(--t3); text-align: center; }
+#vcparts {
+  display: flex; flex-wrap: wrap; gap: 14px; justify-content: center;
+  max-width: 680px; padding: 24px 20px; flex: 1; align-content: center;
+  position: relative; z-index: 1;
+}
+.vcp {
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  padding: 18px 20px 14px; border-radius: 18px;
+  background: rgba(255,255,255,.04); border: 1.5px solid rgba(255,255,255,.08);
+  transition: all .25s ease; min-width: 96px; max-width: 120px;
+  backdrop-filter: blur(8px); position: relative;
+}
+.vcp:hover { background: rgba(255,255,255,.07); border-color: rgba(255,255,255,.14); }
+.vcp.spk {
+  border-color: var(--acc); background: rgba(79,255,176,.08);
+  box-shadow: 0 0 0 3px rgba(79,255,176,.12), 0 8px 24px rgba(0,0,0,.3);
+}
+.vcp.spk::after {
+  content: ''; position: absolute; inset: -3px; border-radius: 20px;
+  border: 2px solid var(--acc); opacity: .4; animation: spk-ring 1s ease infinite;
+}
+@keyframes spk-ring { 0%,100%{opacity:.4;transform:scale(1)} 50%{opacity:.1;transform:scale(1.02)} }
+.vcp.mut { opacity: .45; filter: grayscale(.5); }
+.vcav { width: 56px; height: 56px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: 800; overflow: hidden; border: 2px solid rgba(255,255,255,.1); box-shadow: 0 4px 12px rgba(0,0,0,.4); transition: all .2s; }
 .vcmi { position: absolute; bottom: -2px; right: -2px; width: 17px; height: 17px; border-radius: 50%; background: var(--bg3); border: 2px solid var(--bd); font-size: 9px; display: flex; align-items: center; justify-content: center; }
 .vcpn { font-size: 12px; font-weight: 400; color: var(--t2); }
-#vcctrls { display: flex; gap: 8px; align-items: center; }
-.vcb { width: 44px; height: 44px; border-radius: 50%; border: none; cursor: pointer; font-size: 17px; display: flex; align-items: center; justify-content: center; transition: all var(--tr); background: var(--bg3); color: var(--t1); }
-.vcb:hover { background: var(--bg4); }
+#vcctrls {
+  display: flex; gap: 10px; align-items: center; justify-content: center;
+  padding: 16px 24px 20px; position: relative; z-index: 1;
+  background: linear-gradient(0deg, rgba(0,0,0,.3) 0%, transparent 100%);
+  width: 100%;
+}
+.vcb {
+  width: 48px; height: 48px; border-radius: 50%; border: none; cursor: pointer;
+  font-size: 18px; display: flex; align-items: center; justify-content: center;
+  transition: all .2s ease; background: rgba(255,255,255,.08);
+  color: var(--t1); backdrop-filter: blur(4px);
+  border: 1px solid rgba(255,255,255,.1); position: relative;
+}
+.vcb:hover { background: rgba(255,255,255,.15); transform: scale(1.08); border-color: rgba(255,255,255,.2); }
+.vcb:active { transform: scale(.95); }
 .vcb.am { background: var(--red-d); color: var(--red); }
-.vcb.lv { background: var(--red); color: #fff; width: 50px; height: 50px; }
+.vcb.lv { background: rgba(255,83,112,.2); border-color: rgba(255,83,112,.4); color: #ff5370; }
+.vcb.lv:hover { background: rgba(255,83,112,.4); border-color: #ff5370; }
 .vcb.lv:hover { background: #ff6b83; transform: scale(1.05); }
 #vcerr { max-width: 360px; text-align: center; }
 .verr { background: var(--red-d); border: 1px solid var(--red); border-radius: var(--r); padding: 12px 14px; font-size: 12px; color: var(--red); line-height: 1.6; }
@@ -887,17 +932,35 @@ textarea { -webkit-user-select: text; user-select: text; }
 
     <!-- VOICE ROOM -->
     <div id="vcroom">
-      <div class="vc-bar"><div class="vp"></div><span id="vcstxt">Připojuji...</span></div>
+      <div class="vc-topbar">
+        <div class="vc-bar"><div class="vp"></div><span id="vcstxt">Připojuji...</span></div>
+      </div>
       <div id="vct">🔊 Lobby</div>
       <div id="vcs"></div>
+      <div id="vcerr" style="font-size:12px;color:var(--red);text-align:center;padding:0 20px"></div>
       <div id="vcparts"></div>
-      <div id="vcerr"></div>
       <div id="vcctrls">
-        <button class="vcb" id="vcmicbtn" onclick="toggleVcMic()">🎤</button>
-        <button class="vcb" id="vcdfbtn" onclick="toggleVcDeaf()">🎧</button>
-        <button class="vcb" id="vcscrbtn" onclick="toggleScreen()">🖥️</button>
-        <button class="vcb" id="vcchatbtn" onclick="toggleVcChat()" title="Chat v tomto kanálu">💬</button>
-        <button class="vcb lv" onclick="leaveVc()">📵</button>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
+          <button class="vcb" id="vcmicbtn" onclick="toggleVcMic()" title="Mikrofon">🎤</button>
+          <span style="font-size:9px;color:var(--t3);font-weight:600">MIC</span>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
+          <button class="vcb" id="vcdfbtn" onclick="toggleVcDeaf()" title="Sluchátka">🎧</button>
+          <span style="font-size:9px;color:var(--t3);font-weight:600">DEAF</span>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
+          <button class="vcb" id="vcchatbtn" onclick="toggleVcChat()" title="Chat kanálu">💬</button>
+          <span style="font-size:9px;color:var(--t3);font-weight:600">CHAT</span>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
+          <button class="vcb" id="vcscrbtn" onclick="toggleScreen()" title="Sdílet obrazovku">🖥️</button>
+          <span style="font-size:9px;color:var(--t3);font-weight:600">SCREEN</span>
+        </div>
+        <div style="width:1px;height:40px;background:rgba(255,255,255,.1);margin:0 4px"></div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
+          <button class="vcb lv" onclick="leaveVc()" title="Opustit hovor">📵</button>
+          <span style="font-size:9px;color:rgba(255,83,112,.7);font-weight:600">ODEJÍT</span>
+        </div>
       </div>
     </div>
     <div id="msgs" onscroll="onScroll()"></div>
@@ -4787,51 +4850,79 @@ function saveStatus() {
   toast(t('statusSaved'), 'ok'); closeProf();
 }
 function profAudio() {
-  var micVol = parseInt(ls('nx_mic_vol', 100));
-  var outVol = parseInt(ls('nx_out_vol', 100));
-  var iEN = LANG === 'en';
-  var html = '<div class="ptitle">' + (iEN ? 'Audio Settings' : 'Nastavení zvuku') + '</div>';
-  html += '<div class="psec"><h3>' + (iEN ? 'Microphone' : 'Mikrofon') + '</h3>';
-  html += '<div style="display:flex;align-items:center;gap:12px;padding:10px 0">';
-  html += '<span style="font-size:20px">🎤</span><div style="flex:1">';
-  html += '<div style="display:flex;justify-content:space-between;margin-bottom:6px">';
-  html += '<span style="font-size:13px;color:var(--t1)">' + (iEN ? 'Input volume' : 'Hlasitost vstupu') + '</span>';
-  html += '<span style="font-size:13px;color:var(--acc);font-weight:600" id="mic-vol-val">' + micVol + '%</span></div>';
-  html += '<input type="range" min="0" max="200" value="' + micVol + '" style="width:100%;accent-color:var(--acc)"';
-  html += ' oninput="updateVolLabel(this)" data-target="mic-vol-val"';
-  html += ' onchange="saveMicVol(+this.value)">';
-  html += '<div style="display:flex;justify-content:space-between;font-size:10px;color:var(--t3);margin-top:3px">';
-  html += '<span>0%</span><span>' + (iEN ? 'Normal' : 'Normální') + ' 100%</span><span>200%</span></div>';
-  html += '</div></div>';
-  html += '<button class="ssbtn p" style="margin-top:8px" onclick="testMic()">';
-  html += (iEN ? '🎤 Test microphone' : '🎤 Otestovat mikrofon') + '</button></div>';
-  html += '<div class="psec"><h3>' + (iEN ? 'Output / Headphones' : 'Výstup / Sluchátka') + '</h3>';
-  html += '<div style="display:flex;align-items:center;gap:12px;padding:10px 0">';
-  html += '<span style="font-size:20px">🎧</span><div style="flex:1">';
-  html += '<div style="display:flex;justify-content:space-between;margin-bottom:6px">';
-  html += '<span style="font-size:13px;color:var(--t1)">' + (iEN ? 'Output volume' : 'Hlasitost výstupu') + '</span>';
-  html += '<span style="font-size:13px;color:var(--acc);font-weight:600" id="out-vol-val">' + outVol + '%</span></div>';
-  html += '<input type="range" min="0" max="200" value="' + outVol + '" style="width:100%;accent-color:var(--acc)"';
-  html += ' oninput="updateVolLabel(this)" data-target="out-vol-val"';
-  html += ' onchange="saveOutVol(+this.value)">';
-  html += '<div style="display:flex;justify-content:space-between;font-size:10px;color:var(--t3);margin-top:3px">';
-  html += '<span>0%</span><span>' + (iEN ? 'Normal' : 'Normální') + ' 100%</span><span>200%</span></div>';
-  html += '</div></div></div>';
-  var ngVal = Math.round((VC.noiseGate||0.015)*1000);
-  html += '<div class="psec"><h3>' + (iEN?'Noise Gate':'Noise Gate (práh hlasu)') + '</h3>';
-  html += '<div style="font-size:12px;color:var(--t3);margin-bottom:8px">' + (iEN?'Filters breathing & background noise. Higher = less sensitive.':'Filtruje dýchání a hluk. Vyšší = méně citlivý.') + '</div>';
-  html += '<div style="display:flex;align-items:center;gap:10px"><span style="font-size:18px">🎙️</span><div style="flex:1">';
-  html += '<div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="font-size:13px;color:var(--t1)">' + (iEN?'Threshold':'Práh') + '</span>';
-  html += '<span style="font-size:13px;color:var(--acc);font-weight:600" id="ng-val">' + ngVal + '</span></div>';
-  html += '<input type="range" min="1" max="100" value="' + ngVal + '" style="width:100%;accent-color:var(--acc)" oninput="updateVolLabel(this)" data-target="ng-val" onchange="saveNoiseGate(+this.value)">';
-  html += '<div style="display:flex;justify-content:space-between;font-size:10px;color:var(--t3);margin-top:2px"><span>' + (iEN?'Very sensitive':'Velmi citlivý') + '</span><span>' + (iEN?'Less sensitive':'Méně citlivý') + '</span></div>';
-  html += '</div></div></div>';
-  html += '<div class="psec" id="mic-test-sec" style="display:none"><h3>' + (iEN ? 'Mic test' : 'Test mikrofonu') + '</h3>';
-  html += '<div class="ibox"><div id="mic-test-bar" style="height:8px;border-radius:4px;background:var(--acc);width:0%;transition:width 80ms ease"></div></div>';
-  html += '<div style="font-size:11px;color:var(--t3);margin-top:6px">' + (iEN ? 'Speak to test your mic.' : 'Mluv pro otestování mikrofonu.') + '</div>';
-  html += '<button class="ssbtn" style="margin-top:8px" onclick="stopMicTest()">' + (iEN ? 'Stop' : 'Zastavit') + '</button></div>';
-  return html;
+  const micVol = parseInt(ls('nx_mic_vol', 100));
+  const outVol = parseInt(ls('nx_out_vol', 100));
+  const ngVal  = Math.round((VC.noiseGate || 0.015) * 1000);
+  const iEN    = LANG === 'en';
+
+  const slider = (id, valId, min, max, val, onchange, label, sublabel) =>
+    '<div style="margin-bottom:18px">'
+    + '<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px">'
+    + '<span style="font-size:13px;font-weight:600;color:var(--t1)">' + label + '</span>'
+    + '<span style="font-size:13px;color:var(--acc);font-weight:700;min-width:44px;text-align:right" id="' + valId + '">' + val + '%</span>'
+    + '</div>'
+    + '<div style="position:relative;height:36px;display:flex;align-items:center">'
+    + '<input type="range" min="' + min + '" max="' + max + '" value="' + val + '"'
+    + ' style="width:100%;height:4px;accent-color:var(--acc);cursor:pointer"'
+    + ' oninput="updateVolLabel(this)" data-target="' + valId + '"'
+    + ' onchange="' + onchange + '">'
+    + '</div>'
+    + (sublabel ? '<div style="display:flex;justify-content:space-between;font-size:10px;color:var(--t3);margin-top:2px">' + sublabel + '</div>' : '')
+    + '</div>';
+
+  return '<div class="ptitle">' + (iEN ? 'Audio Settings' : 'Nastavení zvuku') + '</div>'
+
+    // ── Mic section ──
+    + '<div class="psec">'
+    + '<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">'
+    + '<div style="width:36px;height:36px;border-radius:10px;background:rgba(79,255,176,.12);border:1px solid rgba(79,255,176,.2);display:flex;align-items:center;justify-content:center;font-size:18px">🎤</div>'
+    + '<div><h3 style="margin:0">' + (iEN ? 'Microphone' : 'Mikrofon') + '</h3>'
+    + '<div style="font-size:11px;color:var(--t3)">' + (iEN ? 'Input from your mic' : 'Vstup z mikrofonu') + '</div></div>'
+    + '</div>'
+    + slider('mic-slider', 'mic-vol-val', 0, 200, micVol, 'saveMicVol(+this.value)',
+        iEN ? 'Input volume' : 'Hlasitost vstupu',
+        '<span>' + (iEN?'Muted':'Ztlumeno') + '</span><span>' + (iEN?'Normal':'Normální') + ' (100%)</span><span>' + (iEN?'Boost':'Zesílení') + ' (200%)</span>')
+    + '<button class="ssbtn p" style="width:100%;justify-content:center;margin-bottom:8px" onclick="testMic()">'
+    + '<span id="mic-test-ico">🎤</span> ' + (iEN ? 'Test microphone' : 'Otestovat mikrofon') + '</button>'
+    + '<div id="mic-test-sec" style="display:none">'
+    + '<div style="height:6px;background:var(--bg0);border-radius:4px;overflow:hidden;margin-bottom:4px">'
+    + '<div id="mic-test-bar" style="height:100%;background:linear-gradient(90deg,var(--acc),#7c6aff);border-radius:4px;width:0%;transition:width 80ms"></div></div>'
+    + '<div style="display:flex;justify-content:space-between;font-size:10px;color:var(--t3)">'
+    + '<span>' + (iEN?'Level':'Úroveň') + '</span><button class="ssbtn" style="padding:2px 8px;font-size:10px" onclick="stopMicTest()">' + (iEN?'Stop':'Zastavit') + '</button></div>'
+    + '</div>'
+    + '</div>'
+
+    // ── Output section ──
+    + '<div class="psec">'
+    + '<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">'
+    + '<div style="width:36px;height:36px;border-radius:10px;background:rgba(124,106,255,.12);border:1px solid rgba(124,106,255,.2);display:flex;align-items:center;justify-content:center;font-size:18px">🎧</div>'
+    + '<div><h3 style="margin:0">' + (iEN ? 'Output / Headphones' : 'Výstup / Sluchátka') + '</h3>'
+    + '<div style="font-size:11px;color:var(--t3)">' + (iEN ? 'Volume of other people' : 'Hlasitost ostatních') + '</div></div>'
+    + '</div>'
+    + slider('out-slider', 'out-vol-val', 0, 200, outVol, 'saveOutVol(+this.value)',
+        iEN ? 'Output volume' : 'Hlasitost výstupu',
+        '<span>0%</span><span>100%</span><span>200%</span>')
+    + '</div>'
+
+    // ── Noise Gate ──
+    + '<div class="psec">'
+    + '<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">'
+    + '<div style="width:36px;height:36px;border-radius:10px;background:rgba(255,203,107,.1);border:1px solid rgba(255,203,107,.2);display:flex;align-items:center;justify-content:center;font-size:18px">🎙️</div>'
+    + '<div><h3 style="margin:0">Noise Gate</h3>'
+    + '<div style="font-size:11px;color:var(--t3)">' + (iEN?'Cuts out background noise':'Filtruje hluk na pozadí') + '</div></div>'
+    + '</div>'
+    + '<div style="margin-bottom:18px">'
+    + '<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px">'
+    + '<span style="font-size:13px;font-weight:600;color:var(--t1)">' + (iEN?'Threshold':'Práh') + '</span>'
+    + '<span style="font-size:13px;color:var(--yel);font-weight:700" id="ng-val">' + ngVal + '</span>'
+    + '</div>'
+    + '<input type="range" min="1" max="100" value="' + ngVal + '" style="width:100%;height:4px;accent-color:var(--yel);cursor:pointer" oninput="updateVolLabel(this)" data-target="ng-val" onchange="saveNoiseGate(+this.value)">'
+    + '<div style="display:flex;justify-content:space-between;font-size:10px;color:var(--t3);margin-top:4px">'
+    + '<span>← ' + (iEN?'Sensitive':'Citlivý') + '</span><span>' + (iEN?'Less sensitive':'Méně citlivý') + ' →</span></div>'
+    + '</div>'
+    + '</div>';
 }
+
 
 
 let _micTestStream = null, _micTestInterval = null;
