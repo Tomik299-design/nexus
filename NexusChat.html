@@ -3474,16 +3474,24 @@ async function joinVc(ch) {
   const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus'
     : MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/ogg';
 
-  VC.recorder = new MediaRecorder(dest.stream, { mimeType, audioBitsPerSecond: 32000 });
+  VC.recorder = new MediaRecorder(dest.stream, {
+    mimeType,
+    audioBitsPerSecond: 16000  // sníženo z 32k pro méně dat
+  });
   VC.recorder.ondataavailable = async (e) => {
     if (!e.data || e.data.size < 50 || VC.micMuted || !VC.speaking) return;
+    if (!wsConn || wsConn.readyState !== 1) return;
     const buf = await e.data.arrayBuffer();
-    const b64 = btoa(String.fromCharCode(...new Uint8Array(buf)));
-    if (wsConn && wsConn.readyState === 1) {
-      wsConn.send(JSON.stringify({ type: 'audio', chId: vcChId, from: ME.id, data: b64, mime: mimeType }));
+    // Chunked base64 - méně paměti než spread operator
+    const bytes = new Uint8Array(buf);
+    let b64 = '';
+    const chunk = 8192;
+    for (let i = 0; i < bytes.length; i += chunk) {
+      b64 += btoa(String.fromCharCode.apply(null, bytes.subarray(i, i + chunk)));
     }
+    wsConn.send(JSON.stringify({ type: 'audio', chId: vcChId, from: ME.id, data: b64, mime: mimeType }));
   };
-  VC.recorder.start(80);
+  VC.recorder.start(200);  // zvýšeno z 80ms - méně paketů = méně CPU
 
   vcMembers[ME.id] = { id: ME.id, name: ME.name, color: ME.color, avatar: ME.avatar, chId: ch.id };
   bcast({ type: 'vc_join', chId: ch.id, m: { id: ME.id, name: ME.name, color: ME.color, avatar: ME.avatar, tag: ME.tag, servers: Object.keys(SERVERS) } });
@@ -3503,39 +3511,53 @@ async function joinVc(ch) {
 
 function handleAudio(d) {
   if (!inVc || d.chId !== vcChId || d.from === ME.id || VC.deafened) return;
+
+  // Jednoduché přehrávání bez MediaSource - méně CPU
   if (!VC.audioEls[d.from]) {
     const audio = document.createElement('audio');
-    audio.autoplay = true; audio.playsInline = true; audio.style.display = 'none';
+    audio.autoplay = true;
+    audio.playsInline = true;
+    audio.style.display = 'none';
+    // Apply output device
+    const outId = ls('nx_out_device', '');
+    if (outId && audio.setSinkId) audio.setSinkId(outId).catch(() => {});
     document.body.appendChild(audio);
-    const ms = new MediaSource();
-    audio.src = URL.createObjectURL(ms);
-    const peer = { el: audio, ms, sb: null, queue: [], busy: false, mime: d.mime };
-    VC.audioEls[d.from] = peer;
-    ms.addEventListener('sourceopen', () => {
-      try {
-        const sb = ms.addSourceBuffer(d.mime || 'audio/webm;codecs=opus');
-        peer.sb = sb;
-        sb.addEventListener('updateend', () => { peer.busy = false; flushAudioQueue(d.from); });
-        flushAudioQueue(d.from);
-      } catch(e) { peer.sb = 'blob'; }
-    });
-    const vol = parseInt(ls('nx_out_vol', 100));
-    audio.volume = Math.min(1, vol / 100);
-    audio.play().catch(() => document.addEventListener('click', () => audio.play(), { once: true }));
+    VC.audioEls[d.from] = { el: audio, queue: [], busy: false, mime: d.mime };
   }
+
   const peer = VC.audioEls[d.from];
-  const bytes = Uint8Array.from(atob(d.data), x => x.charCodeAt(0));
-  if (peer.sb === 'blob') {
-    const blob = new Blob([bytes], { type: d.mime || 'audio/webm' });
-    const url = URL.createObjectURL(blob);
-    const tmp = new Audio(url); tmp.volume = peer.el.volume;
-    tmp.play().catch(() => {}); setTimeout(() => URL.revokeObjectURL(url), 3000);
-    return;
+
+  // Dekóduj base64
+  const raw = atob(d.data);
+  const buf = new Uint8Array(raw.length);
+  for (let i = 0; i < raw.length; i++) buf[i] = raw.charCodeAt(i);
+  const blob = new Blob([buf], { type: d.mime || 'audio/webm' });
+  const url  = URL.createObjectURL(blob);
+
+  // Fronta — max 3 chunky (zahoď staré aby nebyl delay)
+  peer.queue.push(url);
+  if (peer.queue.length > 3) {
+    URL.revokeObjectURL(peer.queue.shift()); // zahoď nejstarší
   }
-  peer.queue.push(bytes.buffer);
-  flushAudioQueue(d.from);
-  const el = document.getElementById('vcp-' + d.from);
-  if (el) { el.classList.add('spk'); clearTimeout(el._st); el._st = setTimeout(() => el.classList.remove('spk'), 400); }
+
+  if (!peer.busy) playNext(d.from);
+}
+
+function playNext(fromId) {
+  const peer = VC.audioEls[fromId];
+  if (!peer || peer.queue.length === 0) { if (peer) peer.busy = false; return; }
+  peer.busy = true;
+  const url = peer.queue.shift();
+  peer.el.src = url;
+  peer.el.play().then(() => {
+    peer.el.onended = () => {
+      URL.revokeObjectURL(url);
+      playNext(fromId);
+    };
+  }).catch(() => {
+    URL.revokeObjectURL(url);
+    peer.busy = false;
+  });
 }
 
 function flushAudioQueue(pid) {
@@ -3606,8 +3628,9 @@ function startVAD() {
   function tick(ts) {
     if (!VC.an || !inVc) return;
     VC.vad = requestAnimationFrame(tick);
-    if (ts - last < 80) return; last = ts;
-    if (document.hidden) return;
+    if (ts - last < 150) return; last = ts;  // zvýšeno z 80ms
+    // Snížená frekvence když je okno skryté (hra na pozadí)
+    if (document.hidden && ts - last < 500) return;
     VC.an.getByteFrequencyData(data);
     let sum = 0; for (let i = 2; i < 60; i++) sum += data[i];
     const avg = sum / 58 / 255;
@@ -3795,7 +3818,8 @@ function startScreenShare(stream) {
   // Notify others that screen share started
   bcast({ type: 'screen_start', from: ME.id, chId: vcChId, name: ME.name });
 
-  // Send frames every 200ms (5fps) - enough for screen sharing
+  // Screen share: 3fps, nízká kvalita = méně dat a CPU
+  let _lastFrame = 0;
   _screenInterval = setInterval(() => {
     if (!VC.scrStream || !wsConn || wsConn.readyState !== 1) {
       clearInterval(_screenInterval); return;
@@ -3803,19 +3827,30 @@ function startScreenShare(stream) {
     const vt = stream.getVideoTracks()[0];
     if (!vt || vt.readyState === 'ended') { clearInterval(_screenInterval); return; }
 
-    // Scale down for bandwidth
+    // Omez na 3fps (méně CPU a internetu)
+    const now = Date.now();
+    if (now - _lastFrame < 333) return;
+    _lastFrame = now;
+
     const settings = vt.getSettings();
-    const w = Math.min(settings.width || 1280, 1280);
-    const h = Math.min(settings.height || 720, 720);
-    _screenCanvas.width = w;
-    _screenCanvas.height = h;
+    // Max 960x540 pro sdílení (méně dat)
+    const MAX_W = 960, MAX_H = 540;
+    let w = settings.width || 1280, h = settings.height || 720;
+    if (w > MAX_W || h > MAX_H) {
+      const ratio = Math.min(MAX_W/w, MAX_H/h);
+      w = Math.round(w*ratio); h = Math.round(h*ratio);
+    }
+    if (_screenCanvas.width !== w || _screenCanvas.height !== h) {
+      _screenCanvas.width = w; _screenCanvas.height = h;
+    }
     _screenCtx.drawImage(video, 0, 0, w, h);
-    const frame = _screenCanvas.toDataURL('image/jpeg', 0.5);
+    // Kvalita 0.35 = cca 50-100KB na snímek
+    const frame = _screenCanvas.toDataURL('image/jpeg', 0.35);
 
     try {
       wsConn.send(JSON.stringify({ type: 'screen_frame', from: ME.id, chId: vcChId, frame }));
     } catch {}
-  }, 200);
+  }, 100);
 }
 
 function showLocalScreenPreview(stream, videoEl) {
