@@ -3777,8 +3777,14 @@ async function toggleScreen() {
   try {
     // Let user choose window, tab or screen
     VC.scrStream = await navigator.mediaDevices.getDisplayMedia({
-      video: { cursor: 'always', displaySurface: 'window' },
-      audio: { echoCancellation: false, noiseSuppression: false }
+      video: {
+        cursor: 'always',
+        displaySurface: 'window',  // preferuj okno aplikace
+        width: { ideal: 1280, max: 1920 },
+        height: { ideal: 720, max: 1080 },
+        frameRate: { ideal: 5, max: 10 }
+      },
+      audio: false  // bez audio - méně dat
     });
     document.getElementById('vcscrbtn').classList.add('am');
     toast('Sdílení obrazovky aktivní 🖥️ — ostatní teď vidí tvoji obrazovku', 'ok', 5000);
