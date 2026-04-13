@@ -3783,10 +3783,14 @@ let _screenCtx = null;
 function startScreenShare(stream) {
   const video = document.createElement('video');
   video.srcObject = stream;
+  video.muted = true; // mute local preview
   video.play();
 
   _screenCanvas = document.createElement('canvas');
   _screenCtx = _screenCanvas.getContext('2d');
+
+  // Zobraz vlastní náhled sdílení (jako by ses díval sám na sebe)
+  showLocalScreenPreview(stream, video);
 
   // Notify others that screen share started
   bcast({ type: 'screen_start', from: ME.id, chId: vcChId, name: ME.name });
@@ -3814,6 +3818,54 @@ function startScreenShare(stream) {
   }, 200);
 }
 
+function showLocalScreenPreview(stream, videoEl) {
+  // Odstraň starý náhled pokud existuje
+  const old = document.getElementById('screen-share-overlay');
+  if (old) old.remove();
+
+  const overlay = document.createElement('div');
+  overlay.id = 'screen-share-overlay';
+  overlay.style.cssText = [
+    'position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:8000',
+    'display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px'
+  ].join(';');
+
+  // Topbar
+  const topbar = document.createElement('div');
+  topbar.style.cssText = 'display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.08);padding:8px 16px;border-radius:20px;backdrop-filter:blur(8px)';
+  topbar.innerHTML = ''
+    + '<div style="width:8px;height:8px;border-radius:50%;background:#ff5370;animation:pulse 1.2s ease infinite"></div>'
+    + '<span style="font-size:13px;color:#fff;font-weight:600">🖥️ Sdílíš obrazovku</span>'
+    + '<span style="font-size:11px;color:rgba(255,255,255,.4)">Ostatní tě vidí</span>';
+
+  // Tlačítko ukončit
+  const stopBtn = document.createElement('button');
+  stopBtn.textContent = '⏹ Ukončit sdílení';
+  stopBtn.style.cssText = 'background:rgba(255,83,112,.25);border:1px solid #ff5370;color:#ff5370;border-radius:10px;padding:7px 16px;cursor:pointer;font-size:13px;font-weight:600;font-family:inherit;margin-left:8px;transition:all .2s';
+  stopBtn.onmouseover = () => stopBtn.style.background = 'rgba(255,83,112,.4)';
+  stopBtn.onmouseout  = () => stopBtn.style.background = 'rgba(255,83,112,.25)';
+  stopBtn.onclick = () => toggleScreen();
+  topbar.appendChild(stopBtn);
+
+  // Video náhled
+  const videoWrap = document.createElement('div');
+  videoWrap.style.cssText = 'position:relative;max-width:92vw;max-height:82vh;border-radius:12px;overflow:hidden;box-shadow:0 24px 60px rgba(0,0,0,.8);border:2px solid rgba(255,83,112,.4)';
+
+  // Použij existující video element ze streamu
+  videoEl.style.cssText = 'display:block;max-width:92vw;max-height:82vh;border-radius:10px;background:#000';
+  videoWrap.appendChild(videoEl);
+
+  // Badge "Náhled"
+  const badge = document.createElement('div');
+  badge.style.cssText = 'position:absolute;top:10px;left:10px;background:rgba(0,0,0,.7);color:#fff;font-size:11px;padding:4px 10px;border-radius:8px;backdrop-filter:blur(4px)';
+  badge.textContent = '👁 Tvůj náhled';
+  videoWrap.appendChild(badge);
+
+  overlay.appendChild(topbar);
+  overlay.appendChild(videoWrap);
+  document.body.appendChild(overlay);
+}
+
 function hideScreenShare() {
   clearInterval(_screenInterval);
   _screenInterval = null;
@@ -3826,14 +3878,32 @@ function showScreenFrame(fromId, frame, fromName) {
   if (!overlay) {
     overlay = document.createElement('div');
     overlay.id = 'screen-share-overlay';
-    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:8000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px';
-    overlay.innerHTML = '<div style="display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.08);padding:8px 16px;border-radius:20px">'
-      + '<span style="font-size:13px;color:#fff;font-weight:600" id="scr-sharer-name">🖥️ ' + fromName + ' sdílí obrazovku</span>'
-      + '<button onclick="hideScreenShare()" style="background:rgba(255,83,112,.3);border:1px solid #ff5370;color:#ff5370;border-radius:8px;padding:4px 10px;cursor:pointer;font-size:12px">✕ Zavřít</button>'
-      + '</div>'
-      + '<img id="scr-frame-img" style="max-width:95vw;max-height:85vh;border-radius:10px;box-shadow:0 20px 60px rgba(0,0,0,.8)" src="">';
+    overlay.style.cssText = [
+      'position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:8000',
+      'display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px'
+    ].join(';');
+
+    const topbar = document.createElement('div');
+    topbar.style.cssText = 'display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.08);padding:8px 16px;border-radius:20px;backdrop-filter:blur(8px)';
+    topbar.innerHTML = ''
+      + '<span style="font-size:13px;color:#fff;font-weight:600">🖥️ <span id="scr-sharer-name">' + fromName + '</span> sdílí obrazovku</span>'
+      + '<button onclick="hideScreenShare()" style="background:rgba(79,255,176,.15);border:1px solid rgba(79,255,176,.4);color:#4fffb0;border-radius:8px;padding:5px 12px;cursor:pointer;font-size:12px;font-weight:600;font-family:inherit">✕ Zavřít</button>';
+
+    const imgWrap = document.createElement('div');
+    imgWrap.style.cssText = 'position:relative;border-radius:12px;overflow:hidden;box-shadow:0 24px 60px rgba(0,0,0,.8);border:1.5px solid rgba(255,255,255,.1)';
+    const img = document.createElement('img');
+    img.id = 'scr-frame-img';
+    img.style.cssText = 'display:block;max-width:92vw;max-height:82vh;border-radius:10px;background:#000';
+    imgWrap.appendChild(img);
+
+    overlay.appendChild(topbar);
+    overlay.appendChild(imgWrap);
     document.body.appendChild(overlay);
   }
+  // Update sharer name
+  const nameEl = document.getElementById('scr-sharer-name');
+  if (nameEl) nameEl.textContent = fromName;
+  // Update frame
   const img = document.getElementById('scr-frame-img');
   if (img) img.src = frame;
 }
@@ -5105,68 +5175,87 @@ async function loadAudioDevices() {
   const outSel = document.getElementById('out-device-sel');
   if (!micSel && !outSel) return;
 
+  // Ukaž loading stav
+  if (micSel) micSel.innerHTML = '<option>⏳ Načítám zařízení...</option>';
+  if (outSel) outSel.innerHTML = '<option>⏳ Načítám zařízení...</option>';
+
+  // Krok 1: Získej povolení (bez toho browser neukáže názvy)
+  let permOk = false;
   try {
-    // Musíme získat povolení aby browser ukázal názvy zařízení
-    const permStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    permStream.getTracks().forEach(t => t.stop());
+    const s = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+    s.getTracks().forEach(t => t.stop());
+    permOk = true;
   } catch(e) {
-    if (micSel) micSel.innerHTML = '<option value="">❌ Mikrofon odepřen — povol přístup</option>';
+    if (micSel) micSel.innerHTML = '<option value="">❌ Povol přístup k mikrofonu v prohlížeči</option>';
+    if (outSel) outSel.innerHTML = '<option value="">❌ Povol přístup k mikrofonu v prohlížeči</option>';
     return;
   }
 
+  // Krok 2: Načti všechna zařízení
   try {
     const devs = await navigator.mediaDevices.enumerateDevices();
-    const mics = devs.filter(d => d.kind === 'audioinput');
-    const outs = devs.filter(d => d.kind === 'audiooutput');
-    const sm = ls('nx_mic_device','');
-    const so = ls('nx_out_device','');
+    const mics = devs.filter(d => d.kind === 'audioinput'  && d.deviceId && d.deviceId !== 'default' && d.deviceId !== 'communications');
+    const outs = devs.filter(d => d.kind === 'audiooutput' && d.deviceId && d.deviceId !== 'default' && d.deviceId !== 'communications');
+    const sm = ls('nx_mic_device', '');
+    const so = ls('nx_out_device', '');
 
-    // Zvýrazni sluchátka s mikrofonem vs PC mikrofon
-    const labelMic = (d) => {
-      const l = d.label || '';
-      if (l.toLowerCase().includes('headset') || l.toLowerCase().includes('sluchátk') || l.toLowerCase().includes('headphone')) return '🎧 ' + l;
-      if (l.toLowerCase().includes('usb')) return '🔌 ' + l;
-      if (l.toLowerCase().includes('built') || l.toLowerCase().includes('vestavěn') || l.toLowerCase().includes('internal')) return '💻 ' + l;
-      if (l.toLowerCase().includes('default') || l.toLowerCase().includes('výchozí')) return '⭐ ' + l;
-      return '🎤 ' + (l || 'Mikrofon');
+    // Detekce typu zařízení podle názvu
+    const iconMic = (label) => {
+      const l = (label || '').toLowerCase();
+      if (l.includes('headset') || l.includes('headphone') || l.includes('sluchátk') || l.includes('beats') || l.includes('airpod') || l.includes('jabra') || l.includes('logitech h') || l.includes('plantronics')) return '🎧';
+      if (l.includes('usb') || l.includes('external') || l.includes('external')) return '🔌';
+      if (l.includes('built-in') || l.includes('vestavěn') || l.includes('internal') || l.includes('realtek') || l.includes('conexant')) return '💻';
+      if (l.includes('virtual') || l.includes('cable') || l.includes('voicemeeter')) return '🔀';
+      if (l.includes('blue') || l.includes('snowball') || l.includes('yeti') || l.includes('rode') || l.includes('shure')) return '🎙️';
+      return '🎤';
     };
-    const labelOut = (d) => {
-      const l = d.label || '';
-      if (l.toLowerCase().includes('headset') || l.toLowerCase().includes('sluchátk') || l.toLowerCase().includes('headphone')) return '🎧 ' + l;
-      if (l.toLowerCase().includes('usb')) return '🔌 ' + l;
-      if (l.toLowerCase().includes('speaker') || l.toLowerCase().includes('reproduktor')) return '🔊 ' + l;
-      if (l.toLowerCase().includes('built') || l.toLowerCase().includes('vestavěn')) return '💻 ' + l;
-      if (l.toLowerCase().includes('default') || l.toLowerCase().includes('výchozí')) return '⭐ ' + l;
-      return '🔊 ' + (l || 'Výstup');
+    const iconOut = (label) => {
+      const l = (label || '').toLowerCase();
+      if (l.includes('headset') || l.includes('headphone') || l.includes('sluchátk') || l.includes('beats') || l.includes('airpod')) return '🎧';
+      if (l.includes('speaker') || l.includes('reproduktor') || l.includes('stereo')) return '🔊';
+      if (l.includes('built-in') || l.includes('vestavěn') || l.includes('internal') || l.includes('realtek')) return '💻';
+      if (l.includes('hdmi') || l.includes('display')) return '🖥️';
+      if (l.includes('usb')) return '🔌';
+      if (l.includes('virtual') || l.includes('cable') || l.includes('voicemeeter')) return '🔀';
+      return '🔊';
     };
 
     if (micSel) {
-      micSel.innerHTML = '<option value="">⭐ Výchozí (systémový)</option>';
-      mics.filter(d => d.deviceId !== 'default' && d.deviceId !== 'communications').forEach(d => {
-        const o = document.createElement('option');
-        o.value = d.deviceId;
-        o.textContent = labelMic(d);
-        o.selected = d.deviceId === sm;
-        micSel.appendChild(o);
-      });
-      if (mics.length === 0) micSel.innerHTML = '<option value="">❌ Žádný mikrofon nenalezen</option>';
+      micSel.innerHTML = '<option value="">⭐ Výchozí (systémový mikrofon)</option>';
+      if (mics.length === 0) {
+        micSel.innerHTML = '<option value="">❌ Žádný mikrofon nenalezen</option>';
+      } else {
+        mics.forEach(d => {
+          const o = document.createElement('option');
+          o.value = d.deviceId;
+          o.textContent = iconMic(d.label) + ' ' + (d.label || 'Mikrofon');
+          o.selected = d.deviceId === sm;
+          micSel.appendChild(o);
+        });
+      }
     }
 
     if (outSel) {
-      outSel.innerHTML = '<option value="">⭐ Výchozí (systémový)</option>';
-      outs.filter(d => d.deviceId !== 'default' && d.deviceId !== 'communications').forEach(d => {
+      outSel.innerHTML = '<option value="">⭐ Výchozí (systémový výstup)</option>';
+      outs.forEach(d => {
         const o = document.createElement('option');
         o.value = d.deviceId;
-        o.textContent = labelOut(d);
+        o.textContent = iconOut(d.label) + ' ' + (d.label || 'Výstup');
         o.selected = d.deviceId === so;
         outSel.appendChild(o);
       });
     }
 
-    // Listen for device changes (plug/unplug headphones)
-    navigator.mediaDevices.ondevicechange = () => loadAudioDevices();
+    // Automaticky detekuj nově připojená/odpojená zařízení
+    navigator.mediaDevices.ondevicechange = () => {
+      loadAudioDevices();
+      toast('🎧 Změna audio zařízení detekována', 'inf');
+    };
 
-  } catch(e) { console.warn('[Audio devices]', e.message); }
+  } catch(e) {
+    console.warn('[Audio devices]', e);
+    if (micSel) micSel.innerHTML = '<option value="">⚠️ Chyba: ' + e.message + '</option>';
+  }
 }
 async function restartVcStream() {
   if (!inVc) return;
