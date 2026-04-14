@@ -387,6 +387,202 @@ const httpServer = http.createServer((req, res) => {
     return;
   }
 
+  // Admin dashboard
+  if (urlPath === '/admin' || urlPath === '/admin/') {
+    const ADMIN_KEY = process.env.ADMIN_KEY || 'nexus-admin-2026';
+    const authHeader = req.headers['x-admin-key'] || new URL('http://x' + req.url).searchParams.get('key');
+    if (authHeader !== ADMIN_KEY) {
+      res.writeHead(401, { 'Content-Type': 'text/html' });
+      res.end(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Admin</title>
+<style>*{margin:0;padding:0;box-sizing:border-box}body{background:#070809;font-family:system-ui;display:flex;align-items:center;justify-content:center;height:100vh;color:#e2e8f0}
+.card{background:#0d0f12;border:1px solid #1f2836;border-radius:16px;padding:32px;width:360px;text-align:center}
+h2{margin-bottom:16px;font-size:20px}input{width:100%;background:#070809;border:1px solid #1f2836;border-radius:8px;padding:10px;color:#e2e8f0;font-size:14px;margin-bottom:12px;outline:none}
+button{width:100%;background:#4fffb0;color:#000;border:none;border-radius:8px;padding:11px;font-size:14px;font-weight:700;cursor:pointer}</style></head>
+<body><div class="card"><h2>⚡ NexusChat Admin</h2>
+<input type="password" id="k" placeholder="Admin klíč" onkeydown="if(event.key==='Enter')go()">
+<button onclick="go()">Přihlásit se →</button></div>
+<script>function go(){const k=document.getElementById('k').value;window.location='/admin?key='+encodeURIComponent(k);}</script></body></html>`);
+      return;
+    }
+
+    const today = new Date().toISOString().slice(0,10);
+    const yesterday = new Date(Date.now()-86400000).toISOString().slice(0,10);
+    const msgsToday = stats.msgsByDay[today] || 0;
+    const msgsYest  = stats.msgsByDay[yesterday] || 0;
+    const usersToday = stats.usersByDay[today] ? stats.usersByDay[today].size : 0;
+    const usersYest  = stats.usersByDay[yesterday] ? stats.usersByDay[yesterday].size : 0;
+    const online = clients.size;
+    const msgGrowth = msgsYest > 0 ? Math.round((msgsToday - msgsYest) / msgsYest * 100) : 0;
+    const userGrowth = usersYest > 0 ? Math.round((usersToday - usersYest) / usersYest * 100) : 0;
+
+    // Build chart data (last 14 days)
+    const chartDays = [];
+    const chartMsgs = [];
+    const chartUsers = [];
+    for (let i = 13; i >= 0; i--) {
+      const d = new Date(Date.now() - i * 86400000).toISOString().slice(0,10);
+      chartDays.push(d.slice(5));
+      chartMsgs.push(stats.msgsByDay[d] || 0);
+      chartUsers.push(stats.usersByDay[d] ? stats.usersByDay[d].size : 0);
+    }
+
+    const totalMessages = Object.values(history).reduce((a, b) => a + b.length, 0);
+    const totalAccounts = Object.keys(accounts).length;
+
+    res.writeHead(200, { 'Content-Type': 'text/html; charset=UTF-8' });
+    res.end(`<!DOCTYPE html>
+<html lang="cs"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NexusChat Admin</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"><\/script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#070809;color:#e2e8f0;font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh}
+.nav{background:#0d0f12;border-bottom:1px solid #1f2836;padding:14px 28px;display:flex;align-items:center;gap:12px}
+.nav-logo{font-size:20px;font-weight:800;color:#4fffb0}
+.nav-sub{font-size:13px;color:#475569}
+.nav-badge{background:rgba(79,255,176,.12);border:1px solid rgba(79,255,176,.25);color:#4fffb0;font-size:11px;padding:3px 10px;border-radius:20px;font-weight:600}
+.page{padding:28px;max-width:1200px;margin:0 auto}
+.section-title{font-size:12px;font-weight:700;color:#475569;letter-spacing:1px;text-transform:uppercase;margin-bottom:14px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin-bottom:28px}
+.card{background:#0d0f12;border:1px solid #1f2836;border-radius:14px;padding:22px 24px;transition:border-color .2s}
+.card:hover{border-color:#2d3748}
+.card-icon{font-size:28px;margin-bottom:10px}
+.card-val{font-size:34px;font-weight:800;color:#f1f5f9;line-height:1;margin-bottom:4px}
+.card-label{font-size:13px;color:#64748b;margin-bottom:8px}
+.growth{font-size:12px;font-weight:700;padding:3px 8px;border-radius:6px}
+.growth.up{background:rgba(79,255,176,.1);color:#4fffb0}
+.growth.dn{background:rgba(255,83,112,.1);color:#ff5370}
+.growth.neu{background:rgba(100,116,139,.1);color:#64748b}
+.chart-card{background:#0d0f12;border:1px solid #1f2836;border-radius:14px;padding:22px 24px;margin-bottom:28px}
+.chart-title{font-size:14px;font-weight:700;color:#e2e8f0;margin-bottom:16px}
+canvas{max-height:220px}
+.table-card{background:#0d0f12;border:1px solid #1f2836;border-radius:14px;overflow:hidden;margin-bottom:28px}
+.table-head{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;padding:12px 20px;border-bottom:1px solid #1f2836;font-size:11px;color:#475569;font-weight:700;text-transform:uppercase;letter-spacing:.5px}
+.table-row{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;padding:12px 20px;border-bottom:1px solid #0a0c0f;font-size:13px;transition:background .15s}
+.table-row:hover{background:#111318}
+.table-row:last-child{border-bottom:none}
+.online-dot{width:7px;height:7px;border-radius:50%;background:#4fffb0;display:inline-block;box-shadow:0 0 6px #4fffb0;margin-right:6px}
+.refresh-btn{background:transparent;border:1px solid #1f2836;color:#94a3b8;border-radius:8px;padding:7px 16px;cursor:pointer;font-size:12px;font-family:inherit;transition:all .2s}
+.refresh-btn:hover{border-color:#4fffb0;color:#4fffb0}
+</style></head>
+<body>
+<div class="nav">
+  <span class="nav-logo">⚡ NexusChat</span>
+  <span class="nav-sub">Admin Dashboard</span>
+  <span class="nav-badge">🟢 Server běží</span>
+  <button class="refresh-btn" style="margin-left:auto" onclick="location.reload()">↻ Obnovit</button>
+</div>
+<div class="page">
+
+  <div class="section-title">📊 Přehled dnes</div>
+  <div class="grid">
+    <div class="card">
+      <div class="card-icon">👥</div>
+      <div class="card-val">${online}</div>
+      <div class="card-label">Aktivní uživatelé (online)</div>
+      <span class="growth neu">🟢 právě teď</span>
+    </div>
+    <div class="card">
+      <div class="card-icon">📊</div>
+      <div class="card-val">${usersToday}</div>
+      <div class="card-label">Unikátní uživatelé dnes</div>
+      <span class="growth ${userGrowth >= 0 ? 'up' : 'dn'}">${userGrowth >= 0 ? '↑' : '↓'} ${Math.abs(userGrowth)}% oproti včera</span>
+    </div>
+    <div class="card">
+      <div class="card-icon">💬</div>
+      <div class="card-val">${msgsToday}</div>
+      <div class="card-label">Zprávy dnes</div>
+      <span class="growth ${msgGrowth >= 0 ? 'up' : 'dn'}">${msgGrowth >= 0 ? '↑' : '↓'} ${Math.abs(msgGrowth)}% oproti včera</span>
+    </div>
+    <div class="card">
+      <div class="card-icon">🗄️</div>
+      <div class="card-val">${totalAccounts}</div>
+      <div class="card-label">Celkem účtů</div>
+      <span class="growth neu">📈 celkem</span>
+    </div>
+    <div class="card">
+      <div class="card-icon">📨</div>
+      <div class="card-val">${totalMessages}</div>
+      <div class="card-label">Zprávy v historii</div>
+      <span class="growth neu">uloženo na serveru</span>
+    </div>
+    <div class="card">
+      <div class="card-icon">🌐</div>
+      <div class="card-val">${Object.keys(serverData).length}</div>
+      <div class="card-label">Aktivní servery</div>
+      <span class="growth neu">v paměti serveru</span>
+    </div>
+  </div>
+
+  <div class="chart-card">
+    <div class="chart-title">💬 Zprávy posledních 14 dní</div>
+    <canvas id="msgChart"></canvas>
+  </div>
+
+  <div class="chart-card">
+    <div class="chart-title">👥 Unikátní uživatelé posledních 14 dní</div>
+    <canvas id="userChart"></canvas>
+  </div>
+
+  <div class="section-title">⏰ Denní přehled (posledních 14 dní)</div>
+  <div class="table-card">
+    <div class="table-head"><span>Datum</span><span>Uživatelé</span><span>Zprávy</span><span>Trend</span></div>
+    ${chartDays.slice().reverse().map((day, i) => {
+      const ri = chartDays.length - 1 - i;
+      const u = chartUsers[ri], m = chartMsgs[ri];
+      const pu = chartUsers[ri-1] || 0, pm = chartMsgs[ri-1] || 0;
+      const trend = m > pm ? '↑' : m < pm ? '↓' : '→';
+      const tcolor = m > pm ? '#4fffb0' : m < pm ? '#ff5370' : '#64748b';
+      return '<div class="table-row"><span>' + (i===0?'<span class="online-dot"></span>Dnes':'Před '+(i)+' dny') + '</span><span>'+u+'</span><span>'+m+'</span><span style="color:'+tcolor+'">'+trend+'</span></div>';
+    }).join('')}
+  </div>
+
+</div>
+<script>
+const chartOpts = (color) => ({
+  responsive: true, maintainAspectRatio: true,
+  plugins: { legend: { display: false }, tooltip: { backgroundColor: '#0d0f12', borderColor: '#1f2836', borderWidth: 1, titleColor: '#94a3b8', bodyColor: '#e2e8f0' } },
+  scales: {
+    x: { grid: { color: '#1f2836' }, ticks: { color: '#475569', font: { size: 11 } } },
+    y: { grid: { color: '#1f2836' }, ticks: { color: '#475569', font: { size: 11 } }, beginAtZero: true }
+  }
+});
+new Chart(document.getElementById('msgChart'), {
+  type: 'bar',
+  data: { labels: ${JSON.stringify(chartDays)}, datasets: [{ data: ${JSON.stringify(chartMsgs)}, backgroundColor: 'rgba(79,255,176,.6)', borderColor: '#4fffb0', borderWidth: 1, borderRadius: 4 }] },
+  options: chartOpts('#4fffb0')
+});
+new Chart(document.getElementById('userChart'), {
+  type: 'line',
+  data: { labels: ${JSON.stringify(chartDays)}, datasets: [{ data: ${JSON.stringify(chartUsers)}, borderColor: '#7c6aff', backgroundColor: 'rgba(124,106,255,.1)', borderWidth: 2, fill: true, tension: 0.4, pointBackgroundColor: '#7c6aff', pointRadius: 4 }] },
+  options: chartOpts('#7c6aff')
+});
+// Auto refresh every 30s
+setTimeout(() => location.reload(), 30000);
+<\/script>
+</body></html>`);
+    return;
+  }
+
+  if (urlPath === '/admin/api') {
+    const ADMIN_KEY = process.env.ADMIN_KEY || 'nexus-admin-2026';
+    const authHeader = req.headers['x-admin-key'];
+    if (authHeader !== ADMIN_KEY) { res.writeHead(401); res.end('{}'); return; }
+    const today = new Date().toISOString().slice(0,10);
+    const yesterday = new Date(Date.now()-86400000).toISOString().slice(0,10);
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({
+      online: clients.size,
+      usersToday: stats.usersByDay[today] ? stats.usersByDay[today].size : 0,
+      usersYesterday: stats.usersByDay[yesterday] ? stats.usersByDay[yesterday].size : 0,
+      msgsToday: stats.msgsByDay[today] || 0,
+      msgsYesterday: stats.msgsByDay[yesterday] || 0,
+      totalAccounts: Object.keys(accounts).length,
+      totalMessages: Object.values(history).reduce((a, b) => a + b.length, 0),
+    }));
+    return;
+  }
+
   if (urlPath === '/download') {
     const dlPath = path.join(__dirname, 'download.html');
     if (fs.existsSync(dlPath)) {
