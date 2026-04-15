@@ -1,35 +1,4 @@
-  // Screen share 60fps pomocí requestAnimationFrame
-  window._scrRunning = true; let _scrRunning = true;
-  let _scrLastSend = 0;
-  const _scrMinInterval = 1000 / 60; // 60fps = ~16.7ms
-
-  function scrFrame(ts) {
-    if (!_scrRunning || !VC.scrStream || !wsConn || wsConn.readyState !== 1) return;
-
-    const vt = stream.getVideoTracks()[0];
-    if (!vt || vt.readyState === 'ended') { _scrRunning = false; return; }
-
-    // Throttle odesílání na 60fps (requestAnimationFrame může být rychlejší)
-    if (ts - _scrLastSend >= _scrMinInterval) {
-      _scrLastSend = ts;
-
-      const settings = vt.getSettings();
-      const w = Math.min(settings.width  || 1920, 1920);
-      const h = Math.min(settings.height || 1080, 1080);
-
-      if (_screenCanvas.width !== w || _screenCanvas.height !== h) {
-        _screenCanvas.width = w; _screenCanvas.height = h;
-      }
-
-      _screenCtx.drawImage(video, 0, 0, w, h);
-      const frame = _screenCanvas.toDataURL('image/jpeg', 0.85); // vyšší kvalita
-
-      try { wsConn.send(JSON.stringify({ type: 'screen_frame', from: ME.id, chId: vcChId, frame })); } catch {}
-    }
-
-    _screenInterval = requestAnimationFrame(scrFrame);
-  }
-  _screenInterval = requestAnimationFrame(scrFrame);<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="cs">
 <head>
 <meta charset="UTF-8">
@@ -3842,50 +3811,42 @@ let _screenCtx = null;
 function startScreenShare(stream) {
   const video = document.createElement('video');
   video.srcObject = stream;
-  video.muted = true; // mute local preview
+  video.muted = true;
   video.play();
 
   _screenCanvas = document.createElement('canvas');
   _screenCtx = _screenCanvas.getContext('2d');
 
-  // Zobraz vlastní náhled sdílení (jako by ses díval sám na sebe)
   showLocalScreenPreview(stream, video);
-
-  // Notify others that screen share started
   bcast({ type: 'screen_start', from: ME.id, chId: vcChId, name: ME.name });
 
-  // Screen share: 15fps 1080p
-  let _lastFrame = 0;
-  _screenInterval = setInterval(() => {
-    if (!VC.scrStream || !wsConn || wsConn.readyState !== 1) {
-      clearInterval(_screenInterval); return;
-    }
+  // 60fps pomocí requestAnimationFrame
+  let _scrRunning = true;
+  let _lastSend = 0;
+  const _minInterval = 1000 / 60;
+
+  function scrFrame(ts) {
+    if (!_scrRunning || !VC.scrStream || !wsConn || wsConn.readyState !== 1) return;
     const vt = stream.getVideoTracks()[0];
-    if (!vt || vt.readyState === 'ended') { clearInterval(_screenInterval); return; }
-
-    const now = Date.now();
-    if (now - _lastFrame < 67) return; // 15fps = 67ms
-    _lastFrame = now;
-
-    const settings = vt.getSettings();
-    // Max 960x540 pro sdílení (méně dat)
-    const MAX_W = 1920, MAX_H = 1080;
-    let w = settings.width || 1920, h = settings.height || 1080;
-    if (w > MAX_W || h > MAX_H) {
-      const ratio = Math.min(MAX_W/w, MAX_H/h);
-      w = Math.round(w*ratio); h = Math.round(h*ratio);
+    if (!vt || vt.readyState === 'ended') { _scrRunning = false; return; }
+    if (ts - _lastSend >= _minInterval) {
+      _lastSend = ts;
+      const settings = vt.getSettings();
+      const w = Math.min(settings.width  || 1920, 1920);
+      const h = Math.min(settings.height || 1080, 1080);
+      if (_screenCanvas.width !== w || _screenCanvas.height !== h) {
+        _screenCanvas.width = w; _screenCanvas.height = h;
+      }
+      _screenCtx.drawImage(video, 0, 0, w, h);
+      const frame = _screenCanvas.toDataURL('image/jpeg', 0.85);
+      try { wsConn.send(JSON.stringify({ type: 'screen_frame', from: ME.id, chId: vcChId, frame })); } catch {}
     }
-    if (_screenCanvas.width !== w || _screenCanvas.height !== h) {
-      _screenCanvas.width = w; _screenCanvas.height = h;
-    }
-    _screenCtx.drawImage(video, 0, 0, w, h);
-    // Kvalita 0.75 = 1080p plynulé
-    const frame = _screenCanvas.toDataURL('image/jpeg', 0.75);
+    _screenInterval = requestAnimationFrame(scrFrame);
+  }
 
-    try {
-      wsConn.send(JSON.stringify({ type: 'screen_frame', from: ME.id, chId: vcChId, frame }));
-    } catch {}
-  }, 100);
+  // Store stop function
+  window._stopScrShare = () => { _scrRunning = false; };
+  _screenInterval = requestAnimationFrame(scrFrame);
 }
 
 function showLocalScreenPreview(stream, videoEl) {
@@ -3955,12 +3916,8 @@ function toggleScreenOverlay() {
 }
 
 function hideScreenShare() {
-  if (_screenInterval) {
-    cancelAnimationFrame(_screenInterval);
-    clearInterval(_screenInterval);
-    _screenInterval = null;
-  }
-  if (typeof _scrRunning !== 'undefined') window._scrRunning = false;
+  if (window._stopScrShare) { window._stopScrShare(); window._stopScrShare = null; }
+  if (_screenInterval) { cancelAnimationFrame(_screenInterval); _screenInterval = null; }
   const el = document.getElementById('screen-share-overlay');
   if (el) el.remove();
 }

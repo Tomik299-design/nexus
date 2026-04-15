@@ -651,7 +651,20 @@ function saveAccounts() { try { fs.writeFileSync(ACCOUNTS_FILE, JSON.stringify(a
 loadBans();
 const history      = {};
 const vcState      = {};
-const offlineState = {}; // id -> memberInfo — kdo se odpojil
+const offlineState = {};
+
+// ── Stats ──
+const stats = { msgsByDay: {}, usersByDay: {} };
+function todayKey() { return new Date().toISOString().slice(0,10); }
+function trackMsg() {
+  const k = todayKey();
+  stats.msgsByDay[k] = (stats.msgsByDay[k] || 0) + 1;
+}
+function trackUser(id) {
+  const k = todayKey();
+  if (!stats.usersByDay[k]) stats.usersByDay[k] = new Set();
+  stats.usersByDay[k].add(id);
+} // id -> memberInfo — kdo se odpojil
 const MAX_HIST     = 300;
 const serverData   = {}; // srvId -> server structure (pro sync)
 const HISTORY_FILE = '/tmp/nexus_history.json';
@@ -721,6 +734,7 @@ wss.on('connection', (ws, req) => {
         };
         accounts[msg.m.id].ts = Date.now();
         saveAccounts();
+        trackUser(msg.m.id);
       }
       // Remove from persistent offline when online
       if (msg.m.id && savedOffline[msg.m.id]) {
