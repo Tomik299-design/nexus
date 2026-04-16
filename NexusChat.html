@@ -2206,7 +2206,21 @@ function handleNet(d) {
         }
       }
     }
-  } else if (d.type === 'audio') {
+  } else   if (d.type === 'screen_frame') {
+    if (!inVc || d.chId !== vcChId || d.from === ME.id) return;
+    showScreenFrame(d.from, d.frame, vcMembers[d.from]?.name || 'Někdo');
+    return;
+  }
+  if (d.type === 'screen_start') {
+    if (!inVc || d.chId !== vcChId || d.from === ME.id) return;
+    toast('🖥️ ' + (d.name||'Někdo') + ' sdílí obrazovku', 'inf', 5000);
+    return;
+  }
+  if (d.type === 'screen_stop') {
+    if (d.from !== ME.id) { const _o = document.getElementById('screen-share-overlay'); if (_o) _o.remove(); }
+    return;
+  }
+  if (d.type === 'audio') {
     handleAudio(d);
   } else if (d.type === 'vc_speaking') {
     if (d.id && d.id !== ME.id) {
@@ -3609,15 +3623,11 @@ function renderVcParts() {
     const peer  = VC.audioEls[m.id];
     const vol   = peer ? Math.round(peer.el.volume * 100) : 100;
     const muted = peer?.el.muted || false;
-    html += '<div class="vcp" id="vcp-' + m.id + '">'
-      + '<div class="vcav" style="background:' + avBg + '">' + avCnt + '<div class="vcmi">🎤</div></div>'
+    html += '<div class="vcp" id="vcp-' + m.id + '" data-uid="' + m.id + '" data-uname="' + (m.name||'').replace(/"/g,'&quot;') + '" oncontextmenu="vcpRightClick(event,this.dataset.uid,this.dataset.uname)" style="cursor:context-menu">'
+      + '<div class="vcav" style="background:' + avBg + '">' + avCnt + '<div class="vcmi">' + (muted?'🔇':'🎤') + '</div></div>'
       + '<div class="vcpn">' + (m.name||'?') + '</div>'
-      + '<div style="display:flex;align-items:center;gap:5px;margin-top:6px;width:100%;justify-content:center">'
-      + '<span style="font-size:12px">🔊</span>'
-      + '<input type="range" min="0" max="100" value="' + vol + '" style="width:80px;accent-color:var(--acc);cursor:pointer" oninput="setPeerVolume(\'' + m.id + '\',+this.value)">'
-      + '<span style="font-size:10px;color:var(--t3);width:28px">' + vol + '%</span>'
-      + '<button onclick="toggleMutePeer(\'' + m.id + '\')" style="width:24px;height:24px;border:none;border-radius:5px;cursor:pointer;font-size:12px;' + (muted?'background:var(--red-d);color:var(--red)':'background:var(--bg4);color:var(--t2)') + '">' + (muted?'🔇':'🔊') + '</button>'
-      + '</div></div>';
+      + '<div style="font-size:10px;color:var(--t3);margin-top:4px">' + (muted ? '🔇 ztlumeno' : '🔊 ' + vol + '%') + '</div>'
+      + '</div>';
   }
   document.getElementById('vcparts').innerHTML = html;
 }
