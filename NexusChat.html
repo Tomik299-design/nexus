@@ -3473,7 +3473,8 @@ async function joinVc(ch) {
   renderChs();
   VC.stream = stream;
 
-  VC.ctx      = new (window.AudioContext || window.webkitAudioContext)();
+  VC.ctx      = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive' });
+  if (VC.ctx.state === 'suspended') VC.ctx.resume().catch(() => {});
   const src   = VC.ctx.createMediaStreamSource(stream);
   VC.gateGain = VC.ctx.createGain();
   VC.gateGain.gain.value = Math.min(2, parseInt(ls('nx_mic_vol', 100)) / 100);
@@ -3550,7 +3551,7 @@ function handleAudio(d) {
 
   // Fronta — max 3 chunky (zahoď staré aby nebyl delay)
   peer.queue.push(url);
-  if (peer.queue.length > 3) {
+  if (peer.queue.length > 2) {
     URL.revokeObjectURL(peer.queue.shift()); // zahoď nejstarší
   }
 
@@ -3562,15 +3563,21 @@ function playNext(fromId) {
   if (!peer || peer.queue.length === 0) { if (peer) peer.busy = false; return; }
   peer.busy = true;
   const url = peer.queue.shift();
+  // Apply output volume
+  const outVol = parseInt(ls('nx_out_vol', 100)) / 100;
+  if (peer.el.volume !== outVol) peer.el.volume = Math.min(2, outVol);
   peer.el.src = url;
   peer.el.play().then(() => {
     peer.el.onended = () => {
       URL.revokeObjectURL(url);
       playNext(fromId);
     };
-  }).catch(() => {
+  }).catch((e) => {
+    console.warn('[Audio] playNext error:', e.message);
     URL.revokeObjectURL(url);
     peer.busy = false;
+    // Retry next in queue
+    setTimeout(() => playNext(fromId), 50);
   });
 }
 

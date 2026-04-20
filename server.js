@@ -868,9 +868,14 @@ wss.on('connection', (ws, req) => {
 
     // Audio relay — send only to others in same voice channel
     if (msg.type === 'audio' && msg.chId) {
+      // Relay only to clients in the same voice channel
       for (const [client, info] of clients) {
         if (client !== ws && client.readyState === WebSocket.OPEN && info.id !== msg.from) {
-          try { client.send(str); } catch { clients.delete(client); }
+          // Check if this client is in the same VC channel
+          const clientVcCh = vcState[info.id]?.chId;
+          if (clientVcCh === msg.chId) {
+            try { client.send(str); } catch { clients.delete(client); }
+          }
         }
       }
       return;
