@@ -2192,6 +2192,68 @@ function handleNet(d) {
         }
       }
     }
+  } else if (d.type === 'srv_delete') {
+    // Owner deleted the server - remove from our local servers
+    if (d.srvId && SERVERS[d.srvId]) {
+      const wasOnThisServer = curSrv === d.srvId;
+      delete SERVERS[d.srvId];
+      // Clean up roles
+      for (const k of Object.keys(MBROLES)) {
+        if (k.startsWith(d.srvId + ':')) delete MBROLES[k];
+      }
+      saveSrvs(); saveMbRoles();
+      renderRail();
+      if (wasOnThisServer) {
+        const keys = Object.keys(SERVERS);
+        if (keys.length) {
+          switchSrv(keys[0]);
+        } else {
+          SERVERS = mkSrv(); saveSrvs();
+          curSrv = Object.keys(SERVERS)[0];
+          renderRail(); renderChs(); renderMsgs();
+        }
+        toast('⚠️ Server byl smazán vlastníkem', 'inf', 5000);
+      }
+    }
+  } else if (d.type === 'srv_delete') {
+    // Server was deleted by owner - remove it from all clients
+    const delId = d.srvId;
+    if (delId && SERVERS[delId]) {
+      const wasActive = curSrv === delId;
+      delete SERVERS[delId];
+      // Remove roles for this server
+      for (const k of Object.keys(MBROLES)) {
+        if (k.startsWith(delId + ':')) delete MBROLES[k];
+      }
+      saveSrvsLocal();
+      saveMbRoles();
+      renderRail();
+      if (wasActive) {
+        const keys = Object.keys(SERVERS);
+        if (keys.length) {
+          switchSrv(keys[0]);
+        } else {
+          SERVERS = mkSrv(); saveSrvs();
+          curSrv = Object.keys(SERVERS)[0];
+          renderRail(); renderChs(); renderMsgs();
+        }
+      }
+      toast('🗑️ Server byl smazán vlastníkem', 'inf');
+    }
+    return;
+
+  } else if (d.type === 'srv_leave') {
+    // A member left the server - update member list
+    if (d.srvId && d.userId && SERVERS[d.srvId]) {
+      const srv2 = SERVERS[d.srvId];
+      if (srv2.members) {
+        srv2.members = srv2.members.filter(m => m.id !== d.userId);
+        saveSrvsLocal();
+      }
+      if (d.srvId === curSrv) renderMbrs();
+    }
+    return;
+
   } else if (d.type === 'srv_update') {
     // Someone updated server structure — apply if I'm on that server
     if (d.srvId && d.srv && SERVERS[d.srvId]) {
@@ -4887,8 +4949,13 @@ function confirmLeaveSrv() {
     if (k.startsWith(prefix)) delete MBROLES[k];
   }
   saveSrvs(); saveMbRoles();
-  // Broadcast leave
+  // Sync to cloud - server is removed from account
+  if (wsConn && wsConn.readyState === 1 && ME.id) {
+    try { wsConn.send(JSON.stringify({ type: 'account_save', userId: ME.id, servers: SERVERS, roles: MBROLES, profile: { name: ME.name, color: ME.color, tag: ME.tag, avatar: ME.avatar, font: ME.font, status: ME.status } })); } catch {}
+  }
+  // Broadcast leave to server members
   bcast({ type: 'leave', id: ME.id, m: myInfo() });
+  bcast({ type: 'srv_leave', srvId: curSrv, userId: ME.id });
   closeModal(); closeSS();
   // Switch to another server or create default
   const keys = Object.keys(SERVERS);
@@ -4904,13 +4971,42 @@ function confirmLeaveSrv() {
 
 function deleteSrv() {
   if (myRole().id !== 'owner') { toast('Jen Owner může smazat server', 'er'); return; }
-  const srv = SERVERS[curSrv];
-  if (!confirm('Opravdu smazat server "' + srv.name + '"? Tato akce je nevratná!')) return;
-  delete SERVERS[curSrv]; saveSrvs(); closeSS();
+  const srvObj = SERVERS[curSrv];
+  if (!srvObj) return;
+  if (!confirm('Opravdu smazat server "' + srvObj.name + '"? Tato akce je nevratná!')) return;
+  const deletedSrvId = curSrv;
+
+  // 1. Broadcast BEFORE local delete so WS still has srvId context
+  bcast({ type: 'srv_delete', srvId: deletedSrvId, ownerId: ME.id });
+
+  // 2. Delete locally
+  delete SERVERS[deletedSrvId];
+  delete MESSAGES[deletedSrvId];
+  for (const k of Object.keys(MBROLES)) {
+    if (k.startsWith(deletedSrvId + ':')) delete MBROLES[k];
+  }
+
+  // 3. Sync cleaned account to cloud
+  if (wsConn && wsConn.readyState === 1 && ME.id) {
+    try {
+      wsConn.send(JSON.stringify({
+        type: 'account_save', userId: ME.id,
+        servers: SERVERS, roles: MBROLES,
+        profile: { name: ME.name, color: ME.color, tag: ME.tag, avatar: ME.avatar, font: ME.font, status: ME.status }
+      }));
+    } catch {}
+  }
+
+  saveSrvs(); saveMbRoles(); closeSS();
   const keys = Object.keys(SERVERS);
-  if (keys.length) switchSrv(keys[0]);
-  else { SERVERS = mkSrv(); saveSrvs(); curSrv = Object.keys(SERVERS)[0]; renderRail(); renderChs(); renderMsgs(); }
-  toast('Server smazán', 'inf');
+  if (keys.length) {
+    switchSrv(keys[0]);
+  } else {
+    SERVERS = mkSrv(); saveSrvs();
+    curSrv = Object.keys(SERVERS)[0];
+    renderRail(); renderChs(); renderMsgs();
+  }
+  toast('Server smazán 🗑️', 'inf');
 }
 
 // ── PROFILE ──
@@ -6126,6 +6222,10 @@ function toggleNotifPanel() {
     + '<button class="mbtn ' + (notifSound ? 'mbtn-p' : 'mbtn-g') + '" onclick="toggleNotifSound();closeModal()">'
     + (notifSound ? '🔔 Zapnuto' : '🔕 Vypnuto') + '</button></div>'
     + '</div>'
+    + '<div style="background:var(--bg0);border-radius:8px;padding:8px 12px;margin-top:10px;font-size:11px;color:var(--t3);display:flex;justify-content:space-between;align-items:center">'
+    + '<span>⚡ NexusChat · build <code style="color:var(--acc)">' + (window._NC_BUILD||'?') + '</code></span>'
+    + '<span>' + (window._NC_DATE||'') + '</span>'
+    + '</div>'
     + '<div class="mbtns"><button class="mbtn mbtn-g" onclick="closeModal()">Zavřít</button></div>');
 }
 
@@ -6419,8 +6519,13 @@ function mentionKeydown(e, inp) {
 (function boot() {
   window.onerror = function(msg, src, line, col, err) {
     console.warn('[NexusChat] Error:', msg, 'at line', line);
-    return false; // don't suppress but don't crash UI
+    return false;
   };
+  // Build fingerprint
+  window._NC_BUILD = 'B73042D5';
+  window._NC_DATE  = '2026-04-21';
+  console.log('%c⚡ NexusChat%c build ' + window._NC_BUILD + ' · ' + window._NC_DATE,
+    'color:#4fffb0;font-weight:bold;font-size:14px','color:#64748b;font-size:11px');
   applyProfile();
   applyLang();
   VC.noiseGate = parseInt(ls('nx_noise_gate', 15)) / 1000;
