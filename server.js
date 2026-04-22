@@ -709,7 +709,7 @@ nav{display:flex;align-items:center;gap:16px;padding:12px 24px;background:var(--
         <div class="stat"><div class="stat-val stat-acc">${Object.keys(accounts).length}</div><div class="stat-lbl">Total accounts</div></div>
         <div class="stat"><div class="stat-val stat-pur">${clients.size}</div><div class="stat-lbl">Online now</div></div>
         <div class="stat"><div class="stat-val stat-yel">${stats.usersByDay[today]?.size||0}</div><div class="stat-lbl">Active today</div></div>
-        <div class="stat"><div class="stat-val stat-red">${Object.keys(bannedMbrs||{}).length}</div><div class="stat-lbl">Banned</div></div>
+        <div class="stat"><div class="stat-val stat-red">${Object.keys(bannedUsers||{}).length}</div><div class="stat-lbl">Banned</div></div>
       </div>
 
       <div class="sec-title">USER ACCOUNTS</div>
@@ -774,7 +774,7 @@ nav{display:flex;align-items:center;gap:16px;padding:12px 24px;background:var(--
       <div class="sec-title">BANNED USERS</div>
       <div class="tbl-wrap">
         <div class="tbl-head" style="grid-template-columns:1fr 1fr 100px"><span>USER ID</span><span>REASON</span><span>ACTIONS</span></div>
-        ${Object.entries(bannedMbrs||{}).map(([id,info])=>`
+        ${Object.entries(bannedUsers||{}).map(([id,info])=>`
         <div class="tbl-row" style="grid-template-columns:1fr 1fr 100px">
           <div class="mono">${id.slice(0,24)}...</div>
           <div style="color:var(--t2)">${info.reason||'No reason'}</div>
@@ -934,8 +934,8 @@ setTimeout(()=>location.reload(), 30000);
       res.end(JSON.stringify({ account: accounts[id] || null }));
     } else if (action === 'ban') {
       const reason = params.get('reason') || 'Banned by admin';
-      if (!bannedMbrs) global.bannedMbrs = {};
-      bannedMbrs[id] = { reason, ts: Date.now() };
+      if (!bannedUsers) global.bannedUsers = {};
+      bannedUsers[id] = { reason, ts: Date.now() };
       saveBans && saveBans();
       // Kick if online
       for (const [ws2, info] of clients) {
@@ -954,7 +954,7 @@ setTimeout(()=>location.reload(), 30000);
       res.writeHead(200, {'Content-Type':'application/json'});
       res.end(JSON.stringify({ ok: true }));
     } else if (action === 'unban') {
-      if (bannedMbrs) delete bannedMbrs[id];
+      if (bannedUsers) delete bannedUsers[id];
       saveBans && saveBans();
       res.writeHead(200, {'Content-Type':'application/json'});
       res.end(JSON.stringify({ ok: true }));
