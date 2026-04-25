@@ -564,416 +564,393 @@ setTimeout(() => location.reload(), 30000);
     return;
   }
 
-  // ── DEV PANEL ──────────────────────────────
+  // ── DEV PANEL ────────────────────────────────────────────────────
   if (urlPath === '/dev' || urlPath === '/dev/') {
     const DEV_KEY = process.env.DEV_KEY || 'nexus-dev-2026';
-    const key = new URL('http://x' + req.url).searchParams.get('key');
+    const key = new URL('http://x' + req.url).searchParams.get('key') || req.headers['x-dev-key'] || '';
     if (key !== DEV_KEY) {
       res.writeHead(200, {'Content-Type':'text/html;charset=UTF-8'});
-      res.end(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>NexusChat Dev</title>
-<style>*{margin:0;padding:0;box-sizing:border-box}body{background:#050507;font-family:'Courier New',monospace;display:flex;align-items:center;justify-content:center;height:100vh;color:#00ff88}
-.box{width:340px;padding:32px;border:1px solid #00ff8844;border-radius:4px;background:#0a0a0f}
-h2{font-size:16px;letter-spacing:4px;margin-bottom:24px;color:#00ff88}
-input{width:100%;background:#050507;border:1px solid #1a1a2e;border-radius:2px;padding:10px;color:#00ff88;font-family:'Courier New';font-size:13px;margin-bottom:12px;outline:none}
-input:focus{border-color:#00ff8866}
-button{width:100%;background:#00ff8811;border:1px solid #00ff8844;color:#00ff88;padding:10px;font-family:'Courier New';font-size:13px;cursor:pointer;letter-spacing:2px}
-button:hover{background:#00ff8822}</style></head>
-<body><div class="box"><h2>// DEV_ACCESS</h2>
-<input type="password" id="k" placeholder="dev key..." onkeydown="if(event.key==='Enter')auth()">
-<button onclick="auth()">CONNECT →</button></div>
-<script>function auth(){location.href='/dev?key='+document.getElementById('k').value}</script></body></html>`);
+      res.end('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Dev</title>'
+        + '<style>*{margin:0;padding:0;box-sizing:border-box}body{background:#050507;font-family:monospace;display:flex;align-items:center;justify-content:center;height:100vh;color:#00ff88}'
+        + '.b{width:300px;padding:24px;border:1px solid #00ff8833;border-radius:4px}'
+        + 'h2{margin-bottom:16px;font-size:13px;letter-spacing:3px}'
+        + 'input{width:100%;background:#0a0a0f;border:1px solid #1a1a2e;padding:8px;color:#00ff88;font-family:monospace;outline:none;margin-bottom:8px;border-radius:2px}'
+        + 'button{width:100%;background:transparent;border:1px solid #00ff8844;color:#00ff88;padding:8px;font-family:monospace;cursor:pointer}'
+        + '</style></head><body>'
+        + '<div class="b"><h2>// DEV_ACCESS</h2>'
+        + '<input type="password" id="k" placeholder="dev key..." onkeydown="if(event.key===\'Enter\')g()">'
+        + '<button onclick="g()">ENTER</button></div>'
+        + '<script>function g(){location.href=\'/dev?key=\'+document.getElementById(\'k\').value}<\/script>'
+        + '</body></html>');
       return;
     }
 
-    // Build accounts data for display
-    const accList = Object.entries(accounts).map(([id, acc]) => ({
-      id,
-      name: acc.profile?.name || '?',
-      color: acc.profile?.color || '#888',
-      avatar: acc.profile?.avatar ? true : false,
-      status: acc.profile?.status || 'unknown',
-      servers: Object.keys(acc.servers || {}).length,
-      lastSeen: acc.ts ? new Date(acc.ts).toISOString().slice(0,16).replace('T',' ') : 'never',
-      binId: acc._binId || null,
-    })).sort((a,b) => (b.lastSeen > a.lastSeen ? 1 : -1));
+    // Build data
+    const onlineMap = {};
+    for (const [, info] of clients) { if (info.id) onlineMap[info.id] = info; }
 
-    const onlineIds = new Set([...clients.values()].map(i => i.id));
+    const allAccs = Object.entries(accounts).map(function(e) {
+      var id = e[0], acc = e[1], p = acc.profile || {};
+      return {
+        id: id,
+        name: p.name || '?',
+        color: p.color || '#888',
+        status: p.status || '-',
+        servers: Object.keys(acc.servers || {}).length,
+        lastSeen: acc.ts ? new Date(acc.ts).toISOString().slice(0,16).replace('T',' ') : 'never',
+        online: !!onlineMap[id]
+      };
+    }).sort(function(a,b){ return b.lastSeen > a.lastSeen ? 1 : -1; });
+
+    const allOnline = Object.values(onlineMap).map(function(i) {
+      return { id: i.id || '', name: i.name || '?', ip: i.ip || '?' };
+    });
+
+    const allSrvs = Object.entries(serverData).map(function(e) {
+      var id = e[0], s = e[1];
+      return {
+        id: id, name: s.name || '?',
+        cats: (s.cats||[]).length,
+        chs: (s.cats||[]).reduce(function(a,c){return a+(c.chs||[]).length;},0)
+      };
+    });
+
+    const allBans = Object.entries(bannedUsers || {}).map(function(e) {
+      var id = e[0], info = e[1];
+      return { id: id, reason: info.reason || '-', ts: info.ts ? new Date(info.ts).toISOString().slice(0,10) : '-' };
+    });
+
     const today = new Date().toISOString().slice(0,10);
-    const yesterday = new Date(Date.now()-86400000).toISOString().slice(0,10);
+    const statsObj = {
+      accounts: allAccs.length,
+      online: clients.size,
+      today: (stats.usersByDay[today] || {size:0}).size,
+      bans: allBans.length,
+      msgs: stats.msgsByDay[today] || 0,
+      servers: allSrvs.length
+    };
+
+    // Serialize data safely
+    const dataJson = JSON.stringify({
+      accounts: allAccs,
+      online: allOnline,
+      servers: allSrvs,
+      bans: allBans,
+      stats: statsObj,
+      key: DEV_KEY
+    });
+
+    const html = '<!DOCTYPE html><html><head><meta charset="UTF-8">'
+      + '<meta name="viewport" content="width=device-width,initial-scale=1">'
+      + '<title>NexusChat Dev</title>'
+      + '<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">'
+      + '<style>'
+      + ':root{--bg:#050507;--bg1:#0a0a0f;--bg2:#0f0f1a;--bg3:#141420;--acc:#00ff88;--p:#7c6aff;--r:#ff4466;--y:#ffcc00;--t1:#e2e8f0;--t2:#94a3b8;--t3:#475569;--bd:#1a1a2e}'
+      + '*{margin:0;padding:0;box-sizing:border-box}'
+      + 'html,body{background:var(--bg);color:var(--t1);font-family:"JetBrains Mono",monospace;font-size:13px;min-height:100vh}'
+      + 'nav{display:flex;align-items:center;gap:10px;padding:10px 18px;background:var(--bg1);border-bottom:1px solid var(--bd);position:sticky;top:0;z-index:50}'
+      + '.nl{font-size:16px;font-weight:700;color:var(--acc)}'
+      + '.nt{font-size:10px;color:var(--t3);letter-spacing:2px}'
+      + '.ns{display:flex;align-items:center;gap:6px;margin-left:auto;font-size:11px;color:var(--acc)}'
+      + '.dot{width:7px;height:7px;border-radius:50%;background:var(--acc);box-shadow:0 0 6px var(--acc);animation:bl 2s infinite}'
+      + '@keyframes bl{0%,100%{opacity:1}50%{opacity:.3}}'
+      + '.nb{background:transparent;border:1px solid var(--bd);color:var(--t3);padding:4px 10px;border-radius:2px;cursor:pointer;font-family:"JetBrains Mono";font-size:10px}'
+      + '.nb:hover{border-color:var(--acc);color:var(--acc)}'
+      + '.lay{display:flex;min-height:calc(100vh - 41px)}'
+      + '.sb{width:170px;flex-shrink:0;background:var(--bg1);border-right:1px solid var(--bd);padding:10px 0}'
+      + '.si{padding:9px 16px;cursor:pointer;font-size:10px;letter-spacing:1.5px;color:var(--t3);transition:all .15s;display:flex;align-items:center;gap:6px;text-transform:uppercase;border-left:2px solid transparent}'
+      + '.si:hover{color:var(--t1);background:rgba(255,255,255,.03)}'
+      + '.si.act{color:var(--acc);border-left-color:var(--acc);background:rgba(0,255,136,.05)}'
+      + '.ct{background:var(--p);color:#fff;font-size:9px;padding:1px 5px;border-radius:2px;margin-left:auto}'
+      + '.mn{flex:1;padding:18px;overflow-y:auto}'
+      + '.pnl{display:none}.pnl.act{display:block}'
+      + '.sts{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:18px}'
+      + '.sc{background:var(--bg2);border:1px solid var(--bd);border-radius:4px;padding:12px}'
+      + '.sv{font-size:24px;font-weight:700;margin-bottom:2px}'
+      + '.sl{font-size:9px;color:var(--t3);letter-spacing:1px;text-transform:uppercase}'
+      + '.tbl{background:var(--bg2);border:1px solid var(--bd);border-radius:4px;overflow:hidden;margin-bottom:14px}'
+      + '.th{padding:8px 12px;background:var(--bg3);font-size:9px;color:var(--t3);letter-spacing:1px;text-transform:uppercase;border-bottom:1px solid var(--bd);display:grid;gap:8px}'
+      + '.tr{padding:9px 12px;border-bottom:1px solid #0a0a0f;display:grid;gap:8px;align-items:center}'
+      + '.tr:hover{background:rgba(0,255,136,.03)}'
+      + '.tr:last-child{border-bottom:none}'
+      + '.av{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0}'
+      + '.on{background:rgba(0,255,136,.15);color:var(--acc);border:1px solid rgba(0,255,136,.3);font-size:9px;padding:2px 6px;border-radius:2px}'
+      + '.of{background:rgba(71,85,105,.1);color:var(--t3);border:1px solid var(--bd);font-size:9px;padding:2px 6px;border-radius:2px}'
+      + '.ab{background:transparent;border:1px solid var(--bd);color:var(--t2);padding:2px 7px;border-radius:2px;cursor:pointer;font-family:"JetBrains Mono";font-size:9px;transition:all .15s;white-space:nowrap}'
+      + '.ab:hover{border-color:var(--acc);color:var(--acc)}'
+      + '.ab.r:hover{border-color:var(--r);color:var(--r)}'
+      + '.ab.g:hover{border-color:var(--acc);color:var(--acc)}'
+      + '.sec{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--t3);margin-bottom:10px;display:flex;align-items:center;gap:8px}'
+      + '.sec::after{content:"";flex:1;height:1px;background:var(--bd)}'
+      + '.sinp{width:100%;background:var(--bg2);border:1px solid var(--bd);border-radius:3px;padding:7px 10px;color:var(--t1);font-family:"JetBrains Mono";font-size:12px;outline:none;margin-bottom:10px}'
+      + '.sinp:focus{border-color:var(--acc)}'
+      + '.em{padding:18px;text-align:center;color:var(--t3);font-size:11px}'
+      + '.mb{display:none;position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:999;align-items:center;justify-content:center}'
+      + '.mb.open{display:flex}'
+      + '.mc{background:var(--bg1);border:1px solid var(--bd);border-radius:6px;padding:20px;width:min(420px,92vw);max-height:80vh;overflow-y:auto}'
+      + '.mh{font-size:10px;letter-spacing:2px;color:var(--acc);margin-bottom:12px;text-transform:uppercase}'
+      + '.mr{margin-bottom:8px;font-size:12px}'
+      + '.ml{color:var(--t3);font-size:9px;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px}'
+      + '.mf{display:flex;gap:8px;justify-content:flex-end;margin-top:12px}'
+      + '.agrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}'
+      + '.ac{background:var(--bg2);border:1px solid var(--bd);border-radius:4px;padding:16px}'
+      + '.at{font-size:9px;letter-spacing:1.5px;color:var(--acc);text-transform:uppercase;margin-bottom:10px}'
+      + '.lb{background:#020204;border:1px solid var(--bd);border-radius:3px;padding:10px;font-size:11px;line-height:1.8;max-height:280px;overflow-y:auto;color:var(--t3)}'
+      + '.la{color:var(--acc)}.le{color:var(--r)}.li{color:var(--p)}.ly{color:var(--y)}'
+      + 'textarea.sinp{resize:vertical;min-height:80px}'
+      + '</style></head><body>'
+
+      + '<nav><span class="nl">⚡ NexusChat</span><span class="nt">// DEV</span>'
+      + '<div class="ns"><div class="dot"></div><span id="n-st">...</span></div>'
+      + '<button class="nb" onclick="location.reload()">↻ REFRESH</button></nav>'
+
+      + '<div class="lay"><div class="sb">'
+      + '<div class="si act" data-t="accounts" onclick="sw(this)">ACCOUNTS <span class="ct" id="ct-a">0</span></div>'
+      + '<div class="si" data-t="servers" onclick="sw(this)">SERVERS <span class="ct" id="ct-s">0</span></div>'
+      + '<div class="si" data-t="online" onclick="sw(this)">ONLINE <span class="ct" id="ct-o">0</span></div>'
+      + '<div class="si" data-t="bans" onclick="sw(this)">BANS <span class="ct" id="ct-b">0</span></div>'
+      + '<div style="height:1px;background:var(--bd);margin:8px 10px"></div>'
+      + '<div class="si" data-t="actions" onclick="sw(this)">ACTIONS</div>'
+      + '</div>'
+
+      + '<div class="mn">'
+      + '<div class="pnl act" id="pnl-accounts"><div class="sts" id="sts"></div>'
+      + '<div class="sec">ALL ACCOUNTS</div>'
+      + '<input class="sinp" placeholder="search name or id..." oninput="flt(\'tb-a\',this.value)">'
+      + '<div class="tbl" id="tb-a">'
+      + '<div class="th" style="grid-template-columns:24px 1fr 130px 50px 65px 80px"><span></span><span>NAME/ID</span><span>LAST SEEN</span><span>SRVS</span><span>STATUS</span><span>ACTIONS</span></div>'
+      + '<div id="rows-a"></div></div></div>'
+
+      + '<div class="pnl" id="pnl-servers"><div class="sec">SERVERS IN MEMORY</div>'
+      + '<div class="tbl">'
+      + '<div class="th" style="grid-template-columns:1fr 110px 50px 50px 90px"><span>NAME</span><span>ID</span><span>CATS</span><span>CHS</span><span>ACTIONS</span></div>'
+      + '<div id="rows-s"></div></div></div>'
+
+      + '<div class="pnl" id="pnl-online"><div class="sec">CONNECTED NOW</div>'
+      + '<div class="tbl">'
+      + '<div class="th" style="grid-template-columns:1fr 170px 110px 70px"><span>NAME</span><span>ID</span><span>IP</span><span>ACTIONS</span></div>'
+      + '<div id="rows-o"></div></div></div>'
+
+      + '<div class="pnl" id="pnl-bans"><div class="sec">BANNED USERS</div>'
+      + '<div class="tbl">'
+      + '<div class="th" style="grid-template-columns:160px 1fr 80px 70px"><span>ID</span><span>REASON</span><span>DATE</span><span>ACTION</span></div>'
+      + '<div id="rows-b"></div></div></div>'
+
+      + '<div class="pnl" id="pnl-actions"><div class="sec">ACTIONS</div>'
+      + '<div class="agrid">'
+      + '<div class="ac"><div class="at">📢 Broadcast to all</div>'
+      + '<textarea class="sinp" id="bc-msg" placeholder="Message to all users..."></textarea>'
+      + '<button class="ab g" style="width:100%;padding:6px" onclick="act(\'broadcast\',{msg:document.getElementById(\'bc-msg\').value})">SEND TO ALL</button></div>'
+      + '<div class="ac"><div class="at">📊 Status</div><div class="lb" id="stat-log"></div></div>'
+      + '</div></div>'
+
+      + '</div></div>'
+
+      + '<div class="mb" id="mdl"><div class="mc">'
+      + '<div class="mh" id="mdl-t">DETAIL</div>'
+      + '<div id="mdl-b"></div>'
+      + '<div class="mf"><button class="ab" onclick="document.getElementById(\'mdl\').classList.remove(\'open\')">CLOSE</button></div>'
+      + '</div></div>'
+
+      + '<script>'
+      + 'var D=' + dataJson + ';'
+      + 'var K=D.key,BASE=location.origin;'
+
+      + 'document.getElementById("n-st").textContent=D.stats.online+" online";'
+      + 'document.getElementById("ct-a").textContent=D.accounts.length;'
+      + 'document.getElementById("ct-s").textContent=D.servers.length;'
+      + 'document.getElementById("ct-o").textContent=D.online.length;'
+      + 'document.getElementById("ct-b").textContent=D.bans.length;'
+
+      // Stats
+      + 'var sc=document.getElementById("sts");'
+      + 'sc.innerHTML=['
+      + '["var(--acc)",D.stats.accounts,"Total accounts"],'
+      + '["var(--p)",D.stats.online,"Online now"],'
+      + '["var(--y)",D.stats.today,"Active today"],'
+      + '["var(--r)",D.stats.bans,"Banned"],'
+      + '["var(--t1)",D.stats.msgs,"Msgs today"],'
+      + '["var(--acc)",D.stats.servers,"Servers"]'
+      + '].map(function(x){return\'<div class="sc"><div class="sv" style="color:\'+x[0]+\'">\'+x[1]+\'</div><div class="sl">\'+x[2]+\'</div></div>\';}).join("");'
+
+      // Accounts rows
+      + 'var ra=document.getElementById("rows-a");'
+      + 'if(!D.accounts.length){ra.innerHTML=\'<div class="em">No accounts yet</div>\';}else{'
+      + 'ra.innerHTML=D.accounts.map(function(a){'
+      + 'var col=a.color||"#888";'
+      + 'var initial=(a.name&&a.name[0]||"?").toUpperCase();'
+      + 'var av=\'<div class="av" style="background:\'+col+\';color:#000">\'+initial+\'</div>\';'
+      + 'var badge=a.online?\'<span class="on">● LIVE</span>\':\'<span class="of">○ off</span>\';'
+      + 'var sid=a.id.replace(/\'/g,"\\\\\'");'
+      + 'var sname=(a.name||"").replace(/\'/g,"\\\\\'");'
+      + 'return \'<div class="tr" style="grid-template-columns:24px 1fr 130px 50px 65px 80px" data-s="\'+((a.name||"")+a.id).toLowerCase()+\'">\''
+      + '+av'
+      + '+\'<div><div style="color:var(--t1);font-weight:600">\'+a.name+\'</div><div style="font-size:10px;color:var(--t3)">\'+a.id.slice(0,22)+\'...</div></div>\''
+      + '+\'<div style="color:var(--t3);font-size:11px">\'+a.lastSeen+\'</div>\''
+      + '+\'<div style="color:var(--p)">\'+a.servers+\'</div>\''
+      + '+badge'
+      + '+\'<div style="display:flex;gap:3px"><button class="ab" onclick="vAcc(\\\'\'+sid+\'\\\')" >VIEW</button>\''
+      + '+\'<button class="ab r" onclick="doBan(\\\'\'+sid+\'\\\',\\\'\'+sname+\'\\\')" >BAN</button></div>\''
+      + '+\'</div>\';'
+      + '}).join("");}'
+
+      // Servers rows
+      + 'var rs=document.getElementById("rows-s");'
+      + 'if(!D.servers.length){rs.innerHTML=\'<div class="em">No servers in memory</div>\';}else{'
+      + 'rs.innerHTML=D.servers.map(function(s){'
+      + 'var sid=s.id.replace(/\'/g,"\\\\\'");'
+      + 'var sname=(s.name||"").replace(/\'/g,"\\\\\'");'
+      + 'return\'<div class="tr" style="grid-template-columns:1fr 110px 50px 50px 90px">\''
+      + '+\'<div style="color:var(--t1);font-weight:600">\'+s.name+\'</div>\''
+      + '+\'<div style="color:var(--t3);font-size:10px">\'+s.id.slice(0,14)+\'...</div>\''
+      + '+\'<div style="color:var(--p)">\'+s.cats+\'</div>\''
+      + '+\'<div style="color:var(--p)">\'+s.chs+\'</div>\''
+      + '+\'<div style="display:flex;gap:3px">\''
+      + '+\'<button class="ab g" onclick="cpInv(\\\'\'+sid+\'\\\',\\\'\'+sname+\'\\\')" >INVITE</button>\''
+      + '+\'<button class="ab" onclick="window.open(\\\'\'+ BASE +\'/invite?id=\'+sid+\'&s=\'+encodeURIComponent(s.name)+\'\\\')" >OPEN</button>\''
+      + '+\'</div></div>\';'
+      + '}).join("");}'
+
+      // Online rows
+      + 'var ro=document.getElementById("rows-o");'
+      + 'if(!D.online.length){ro.innerHTML=\'<div class="em">No users online</div>\';}else{'
+      + 'ro.innerHTML=D.online.map(function(u){'
+      + 'var uid=u.id.replace(/\'/g,"\\\\\'");'
+      + 'return\'<div class="tr" style="grid-template-columns:1fr 170px 110px 70px">\''
+      + '+\'<div style="color:var(--acc);font-weight:600">● \'+u.name+\'</div>\''
+      + '+\'<div style="color:var(--t3);font-size:10px">\'+u.id.slice(0,22)+\'...</div>\''
+      + '+\'<div style="color:var(--t3);font-size:10px">\'+u.ip+\'</div>\''
+      + '+\'<button class="ab r" onclick="act(\\\'kick\\\',{id:\\\'\'+uid+\'\\\'})">KICK</button>\''
+      + '+\'</div>\';'
+      + '}).join("");}'
+
+      // Bans rows
+      + 'var rb=document.getElementById("rows-b");'
+      + 'if(!D.bans.length){rb.innerHTML=\'<div class="em">No bans</div>\';}else{'
+      + 'rb.innerHTML=D.bans.map(function(b){'
+      + 'var bid=b.id.replace(/\'/g,"\\\\\'");'
+      + 'return\'<div class="tr" style="grid-template-columns:160px 1fr 80px 70px">\''
+      + '+\'<div style="color:var(--t3);font-size:10px">\'+b.id.slice(0,22)+\'...</div>\''
+      + '+\'<div style="color:var(--t2)">\'+b.reason+\'</div>\''
+      + '+\'<div style="color:var(--t3);font-size:10px">\'+b.ts+\'</div>\''
+      + '+\'<button class="ab g" onclick="act(\\\'unban\\\',{id:\\\'\'+bid+\'\\\'})">UNBAN</button>\''
+      + '+\'</div>\';'
+      + '}).join("");}'
+
+      // Status log
+      + 'document.getElementById("stat-log").innerHTML='
+      + '"<span class=\\"la\\">✓ online</span>\\n"'
+      + '+"<span class=\\"li\\"> accounts: "+D.stats.accounts+"</span>\\n"'
+      + '+"<span class=\\"li\\"> online: "+D.stats.online+"</span>\\n"'
+      + '+"<span class=\\"li\\"> servers: "+D.stats.servers+"</span>\\n"'
+      + '+"<span class=\\"ly\\"> msgs today: "+D.stats.msgs+"</span>\\n"'
+      + '+"<span class=\\"la\\"> active today: "+D.stats.today+"</span>\\n"'
+      + '+"<span class=\\"le\\"> bans: "+D.stats.bans+"</span>";'
+
+      // Functions
+      + 'function sw(el){'
+      + 'document.querySelectorAll(".si").forEach(function(s){s.classList.remove("act");});'
+      + 'document.querySelectorAll(".pnl").forEach(function(p){p.classList.remove("act");});'
+      + 'el.classList.add("act");'
+      + 'document.getElementById("pnl-"+el.dataset.t).classList.add("act");}'
+
+      + 'function flt(id,q){'
+      + 'document.querySelectorAll("#"+id+" .tr").forEach(function(r){'
+      + 'r.style.display=(!q||(r.dataset.s||"").includes(q.toLowerCase()))?"":"none";});}'
+
+      + 'function vAcc(id){'
+      + 'var a=D.accounts.find(function(x){return x.id===id;});'
+      + 'if(!a)return;'
+      + 'var sid=a.id.replace(/\'/g,"\\\\\'");'
+      + 'var sname=(a.name||"").replace(/\'/g,"\\\\\'");'
+      + 'document.getElementById("mdl-t").textContent="ACCOUNT // "+a.name;'
+      + 'document.getElementById("mdl-b").innerHTML='
+      + '"<div class=\\"mr\\"><div class=\\"ml\\">ID</div><div style=\\"color:var(--acc);font-size:11px;word-break:break-all\\">"+a.id+"</div></div>"'
+      + '+"<div class=\\"mr\\"><div class=\\"ml\\">Name</div>"+a.name+"</div>"'
+      + '+"<div class=\\"mr\\"><div class=\\"ml\\">Color</div><span style=\\"color:"+a.color+"\\">"+a.color+"</span></div>"'
+      + '+"<div class=\\"mr\\"><div class=\\"ml\\">Servers</div>"+a.servers+"</div>"'
+      + '+"<div class=\\"mr\\"><div class=\\"ml\\">Last seen</div>"+a.lastSeen+"</div>"'
+      + '+"<div class=\\"mr\\"><div class=\\"ml\\">Status</div>"+(a.online?"<span class=\\"on\\">● ONLINE</span>":"<span class=\\"of\\">○ offline</span>")+"</div>"'
+      + '+"<div style=\\"display:flex;gap:8px;margin-top:12px\\">"'
+      + '+"<button class=\\"ab r\\" onclick=\\"doBan(\'"+sid+"\',\'"+sname+"\')\\" >BAN USER</button>"'
+      + '+"<button class=\\"ab r\\" onclick=\\"act(\'kick\',{id:\'"+sid+"\'})\\">KICK</button>"'
+      + '+"</div>";'
+      + 'document.getElementById("mdl").classList.add("open");}'
+
+      + 'function doBan(id,name){'
+      + 'var reason=prompt("Ban \\""+name+"\\" — reason:","Banned by admin");'
+      + 'if(reason===null)return;'
+      + 'act("ban",{id:id,reason:reason});}'
+
+      + 'function cpInv(id,name){'
+      + 'var url=BASE+"/invite?id="+id+"&s="+encodeURIComponent(name);'
+      + 'if(navigator.clipboard){navigator.clipboard.writeText(url).then(function(){alert("Copied!\\n"+url);});}else{prompt("Copy URL:",url);}}'
+
+      + 'function act(action,params){'
+      + 'var qs=Object.entries(params).map(function(e){return e[0]+"="+encodeURIComponent(e[1]);}).join("&");'
+      + 'var url=BASE+"/dev/api?key="+K+"&action="+action+"&"+qs;'
+      + 'fetch(url).then(function(r){return r.json();}).then(function(d){'
+      + 'if(d.ok){alert(d.msg||action+" done");location.reload();}else{alert("Error: "+(d.error||"?"));}}).catch(function(e){alert("Failed: "+e.message);}); }'
+
+      + 'setTimeout(function(){location.reload();},60000);'
+      + '<\/script></body></html>';
 
     res.writeHead(200, {'Content-Type':'text/html;charset=UTF-8'});
-    res.end(`<!DOCTYPE html>
-<html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>NexusChat DevPanel</title>
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Syne:wght@600;800&display=swap" rel="stylesheet">
-<style>
-:root{--bg:#050507;--bg1:#0a0a0f;--bg2:#0f0f1a;--bg3:#141420;--acc:#00ff88;--acc2:#7c6aff;--red:#ff4466;--yel:#ffcc00;--t1:#e2e8f0;--t2:#94a3b8;--t3:#475569;--bd:#1a1a2e}
-*{margin:0;padding:0;box-sizing:border-box}
-html{background:var(--bg);color:var(--t1);font-family:'JetBrains Mono',monospace;min-height:100vh;font-size:13px}
-body{display:flex;flex-direction:column;min-height:100vh}
-
-/* Nav */
-nav{display:flex;align-items:center;gap:16px;padding:12px 24px;background:var(--bg1);border-bottom:1px solid var(--bd);position:sticky;top:0;z-index:100}
-.nav-logo{font-family:'Syne',sans-serif;font-size:18px;font-weight:800;color:var(--acc);letter-spacing:-0.5px}
-.nav-tag{font-size:10px;color:var(--t3);letter-spacing:2px;text-transform:uppercase}
-.nav-status{display:flex;align-items:center;gap:6px;margin-left:auto;font-size:11px;color:var(--acc)}
-.dot{width:7px;height:7px;border-radius:50%;background:var(--acc);box-shadow:0 0 8px var(--acc);animation:pulse 2s infinite}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
-.nav-btn{background:transparent;border:1px solid var(--bd);color:var(--t3);padding:5px 12px;border-radius:3px;cursor:pointer;font-family:'JetBrains Mono';font-size:11px;letter-spacing:1px;transition:all .2s}
-.nav-btn:hover{border-color:var(--acc);color:var(--acc)}
-
-/* Layout */
-.page{display:grid;grid-template-columns:200px 1fr;flex:1}
-.sidebar{background:var(--bg1);border-right:1px solid var(--bd);padding:16px 0}
-.sitem{padding:10px 20px;cursor:pointer;font-size:11px;letter-spacing:1px;color:var(--t3);transition:all .15s;display:flex;align-items:center;gap:8px;text-transform:uppercase}
-.sitem:hover,.sitem.act{color:var(--acc);background:rgba(0,255,136,.05)}
-.sitem.act{border-left:2px solid var(--acc)}
-.sitem-dot{width:5px;height:5px;border-radius:50%;background:currentColor;flex-shrink:0}
-
-.content{padding:24px;overflow-y:auto}
-.panel{display:none}.panel.act{display:block}
-
-/* Stats row */
-.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:24px}
-.stat{background:var(--bg2);border:1px solid var(--bd);border-radius:6px;padding:16px;transition:border-color .2s}
-.stat:hover{border-color:rgba(0,255,136,.3)}
-.stat-val{font-size:28px;font-weight:700;color:var(--t1);margin-bottom:2px;font-family:'Syne',sans-serif}
-.stat-lbl{font-size:10px;color:var(--t3);letter-spacing:1px;text-transform:uppercase}
-.stat-acc{color:var(--acc)}
-.stat-pur{color:var(--acc2)}
-.stat-red{color:var(--red)}
-.stat-yel{color:var(--yel)}
-
-/* Table */
-.tbl-wrap{background:var(--bg2);border:1px solid var(--bd);border-radius:6px;overflow:hidden;margin-bottom:20px}
-.tbl-head{display:grid;padding:10px 16px;background:var(--bg3);font-size:10px;letter-spacing:1px;color:var(--t3);text-transform:uppercase;border-bottom:1px solid var(--bd)}
-.tbl-row{display:grid;padding:10px 16px;border-bottom:1px solid rgba(26,26,46,.8);transition:background .15s;align-items:center}
-.tbl-row:hover{background:rgba(0,255,136,.03)}
-.tbl-row:last-child{border-bottom:none}
-.badge{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:3px;font-size:10px;font-weight:600;letter-spacing:.5px}
-.badge-on{background:rgba(0,255,136,.12);color:var(--acc);border:1px solid rgba(0,255,136,.2)}
-.badge-off{background:rgba(71,85,105,.12);color:var(--t3);border:1px solid var(--bd)}
-.avatar-dot{width:28px;height:28px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0}
-.mono{font-family:'JetBrains Mono';font-size:11px;color:var(--t2)}
-.sec-title{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--t3);margin-bottom:12px;display:flex;align-items:center;gap:8px}
-.sec-title::after{content:'';flex:1;height:1px;background:var(--bd)}
-
-/* Action buttons */
-.act-btn{background:transparent;border:1px solid var(--bd);color:var(--t2);padding:3px 10px;border-radius:3px;cursor:pointer;font-family:'JetBrains Mono';font-size:10px;transition:all .15s}
-.act-btn:hover{border-color:var(--acc);color:var(--acc)}
-.act-btn.danger:hover{border-color:var(--red);color:var(--red)}
-
-/* Search */
-.search-bar{display:flex;gap:10px;margin-bottom:16px}
-.search-inp{flex:1;background:var(--bg2);border:1px solid var(--bd);border-radius:4px;padding:8px 12px;color:var(--t1);font-family:'JetBrains Mono';font-size:12px;outline:none}
-.search-inp:focus{border-color:var(--acc)}
-
-/* Logs */
-.log-box{background:#020204;border:1px solid var(--bd);border-radius:4px;padding:12px;font-size:11px;line-height:1.7;max-height:400px;overflow-y:auto;color:#64748b}
-.log-ok{color:var(--acc)}.log-er{color:var(--red)}.log-inf{color:var(--acc2)}
-
-/* Modal */
-.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:200;align-items:center;justify-content:center}
-.modal-bg.open{display:flex}
-.modal{background:var(--bg1);border:1px solid var(--bd);border-radius:8px;padding:24px;width:min(480px,90vw);max-height:80vh;overflow-y:auto}
-.modal h3{font-size:14px;letter-spacing:2px;text-transform:uppercase;margin-bottom:16px;color:var(--acc)}
-.form-row{margin-bottom:12px}
-.form-lbl{font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--t3);margin-bottom:5px}
-.form-inp{width:100%;background:var(--bg);border:1px solid var(--bd);border-radius:3px;padding:8px 10px;color:var(--t1);font-family:'JetBrains Mono';font-size:12px;outline:none}
-.form-inp:focus{border-color:var(--acc)}
-.modal-btns{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
-</style></head>
-<body>
-<nav>
-  <span class="nav-logo">⚡ NexusChat</span>
-  <span class="nav-tag">// DEV_PANEL</span>
-  <div class="nav-status"><div class="dot"></div>SERVER ONLINE · ${clients.size} connected</div>
-  <button class="nav-btn" onclick="location.reload()">↻ REFRESH</button>
-  <button class="nav-btn" onclick="location.href='/admin?key=${process.env.ADMIN_KEY||'nexus-admin-2026'}'">STATS →</button>
-</nav>
-
-<div class="page">
-  <div class="sidebar">
-    <div class="sitem act" onclick="show('accounts')"><div class="sitem-dot"></div>ACCOUNTS</div>
-    <div class="sitem" onclick="show('servers')"><div class="sitem-dot"></div>SERVERS</div>
-    <div class="sitem" onclick="show('online')"><div class="sitem-dot"></div>ONLINE NOW</div>
-    <div class="sitem" onclick="show('bans')"><div class="sitem-dot"></div>BANS</div>
-    <div class="sitem" onclick="show('actions')"><div class="sitem-dot"></div>ACTIONS</div>
-  </div>
-
-  <div class="content">
-
-    <!-- ACCOUNTS -->
-    <div class="panel act" id="panel-accounts">
-      <div class="stats">
-        <div class="stat"><div class="stat-val stat-acc">${Object.keys(accounts).length}</div><div class="stat-lbl">Total accounts</div></div>
-        <div class="stat"><div class="stat-val stat-pur">${clients.size}</div><div class="stat-lbl">Online now</div></div>
-        <div class="stat"><div class="stat-val stat-yel">${stats.usersByDay[today]?.size||0}</div><div class="stat-lbl">Active today</div></div>
-        <div class="stat"><div class="stat-val stat-red">${Object.keys(bannedUsers||{}).length}</div><div class="stat-lbl">Banned</div></div>
-      </div>
-
-      <div class="sec-title">USER ACCOUNTS</div>
-      <div class="search-bar">
-        <input class="search-inp" id="acc-search" placeholder="search by name or id..." oninput="filterAccounts(this.value)">
-      </div>
-      <div class="tbl-wrap" id="acc-table">
-        <div class="tbl-head" style="grid-template-columns:28px 1fr 140px 80px 80px 100px 100px">
-          <span></span><span>NAME / ID</span><span>LAST SEEN</span><span>SERVERS</span><span>STATUS</span><span>ONLINE</span><span>ACTIONS</span>
-        </div>
-        ${accList.map(a => `
-        <div class="tbl-row" style="grid-template-columns:28px 1fr 140px 80px 80px 100px 100px" data-name="${(a.name||'').toLowerCase()}" data-id="${a.id}">
-          <div class="avatar-dot" style="background:${a.color||'#7c6aff'};color:#000">${(a.name||'?')[0].toUpperCase()}</div>
-          <div>
-            <div style="color:var(--t1);font-weight:600">${a.name||'Unknown'}</div>
-            <div class="mono">${a.id.slice(0,20)}...</div>
-          </div>
-          <div class="mono">${a.lastSeen}</div>
-          <div style="color:var(--acc2)">${a.servers}</div>
-          <div class="mono" style="color:var(--t3)">${a.status}</div>
-          <div><span class="badge ${onlineIds.has(a.id)?'badge-on':'badge-off'}">${onlineIds.has(a.id)?'● ONLINE':'○ OFFLINE'}</span></div>
-          <div style="display:flex;gap:4px">
-            <button class="act-btn" onclick="viewAccount('${a.id}')">VIEW</button>
-            <button class="act-btn danger" onclick="banUser('${a.id}','${(a.name||'').replace(/'/g,'\'')}')" title="Ban user">BAN</button>
-          </div>
-        </div>`).join('')}
-      </div>
-    </div>
-
-    <!-- SERVERS -->
-    <div class="panel" id="panel-servers">
-      <div class="sec-title">ACTIVE SERVERS (in memory)</div>
-      <div class="tbl-wrap">
-        <div class="tbl-head" style="grid-template-columns:1fr 120px 80px 100px"><span>SERVER NAME</span><span>ID</span><span>CHANNELS</span><span>ACTIONS</span></div>
-        ${Object.entries(serverData).map(([id,s])=>`
-        <div class="tbl-row" style="grid-template-columns:1fr 120px 80px 100px">
-          <div style="color:var(--t1);font-weight:600">${s.name||'?'}</div>
-          <div class="mono">${id.slice(0,12)}...</div>
-          <div style="color:var(--acc2)">${(s.cats||[]).reduce((a,c)=>a+(c.chs||[]).length,0)}</div>
-          <div><button class="act-btn" onclick="joinServer('${id}','${(s.name||'').replace(/'/g,'\'')}')" title="Join without invite">JOIN</button></div>
-        </div>`).join('') || '<div style="padding:20px;color:var(--t3);text-align:center">No server data in memory</div>'}
-      </div>
-    </div>
-
-    <!-- ONLINE -->
-    <div class="panel" id="panel-online">
-      <div class="sec-title">CONNECTED CLIENTS (${clients.size})</div>
-      <div class="tbl-wrap">
-        <div class="tbl-head" style="grid-template-columns:1fr 120px 100px 80px"><span>USER</span><span>ID</span><span>IP</span><span>ACTIONS</span></div>
-        ${[...clients.values()].map(info=>`
-        <div class="tbl-row" style="grid-template-columns:1fr 120px 100px 80px">
-          <div style="color:var(--acc);font-weight:600">● ${info.name||'?'}</div>
-          <div class="mono">${(info.id||'?').slice(0,16)}...</div>
-          <div class="mono">${info.ip||'?'}</div>
-          <div><button class="act-btn danger" onclick="kickUser('${info.id}','${(info.name||'').replace(/'/g,'\'')}')" >KICK</button></div>
-        </div>`).join('') || '<div style="padding:20px;color:var(--t3);text-align:center">No users online</div>'}
-      </div>
-    </div>
-
-    <!-- BANS -->
-    <div class="panel" id="panel-bans">
-      <div class="sec-title">BANNED USERS</div>
-      <div class="tbl-wrap">
-        <div class="tbl-head" style="grid-template-columns:1fr 1fr 100px"><span>USER ID</span><span>REASON</span><span>ACTIONS</span></div>
-        ${Object.entries(bannedUsers||{}).map(([id,info])=>`
-        <div class="tbl-row" style="grid-template-columns:1fr 1fr 100px">
-          <div class="mono">${id.slice(0,24)}...</div>
-          <div style="color:var(--t2)">${info.reason||'No reason'}</div>
-          <div><button class="act-btn" onclick="unban('${id}')">UNBAN</button></div>
-        </div>`).join('') || '<div style="padding:20px;color:var(--t3);text-align:center">No bans</div>'}
-      </div>
-    </div>
-
-    <!-- ACTIONS -->
-    <div class="panel" id="panel-actions">
-      <div class="sec-title">SERVER ACTIONS</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-        <div style="background:var(--bg2);border:1px solid var(--bd);border-radius:6px;padding:20px">
-          <div style="font-size:10px;letter-spacing:1px;color:var(--acc);margin-bottom:8px;text-transform:uppercase">Broadcast Message</div>
-          <textarea id="broadcast-msg" style="width:100%;background:var(--bg);border:1px solid var(--bd);border-radius:3px;padding:8px;color:var(--t1);font-family:'JetBrains Mono';font-size:11px;resize:vertical;min-height:80px;outline:none" placeholder="Message to send to all online users..."></textarea>
-          <button class="act-btn" style="margin-top:8px;width:100%" onclick="broadcastMsg()">SEND TO ALL</button>
-        </div>
-        <div style="background:var(--bg2);border:1px solid var(--bd);border-radius:6px;padding:20px">
-          <div style="font-size:10px;letter-spacing:1px;color:var(--acc);margin-bottom:8px;text-transform:uppercase">Server Info</div>
-          <div class="log-box">
-<span class="log-ok">✓ Server online</span>
-<span class="log-inf"> Connected: ${clients.size}</span>
-<span class="log-inf"> Accounts: ${Object.keys(accounts).length}</span>
-<span class="log-inf"> Servers: ${Object.keys(serverData).length}</span>
-<span class="log-inf"> History channels: ${Object.keys(history).length}</span>
-<span class="log-ok"> Msgs today: ${stats.msgsByDay[today]||0}</span>
-<span class="log-ok"> Build: ${new Date().toISOString()}</span>
-          </div>
-        </div>
-      </div>
-    </div>
-
-  </div>
-</div>
-
-<!-- Account detail modal -->
-<div class="modal-bg" id="acc-modal">
-  <div class="modal">
-    <h3>// ACCOUNT_DETAIL</h3>
-    <div id="acc-modal-content"></div>
-    <div class="modal-btns">
-      <button class="act-btn" onclick="closeModal()">CLOSE</button>
-    </div>
-  </div>
-</div>
-
-<!-- Join server modal -->
-<div class="modal-bg" id="join-modal">
-  <div class="modal">
-    <h3>// JOIN_SERVER</h3>
-    <p style="color:var(--t2);font-size:12px;margin-bottom:16px">Get invite link for this server to join without invitation.</p>
-    <div id="join-content"></div>
-    <div class="modal-btns">
-      <button class="act-btn" onclick="document.getElementById('join-modal').classList.remove('open')">CLOSE</button>
-    </div>
-  </div>
-</div>
-
-<script>
-const DEV_KEY = '${process.env.DEV_KEY||'nexus-dev-2026'}';
-const SERVER_URL = location.origin;
-
-function show(tab) {
-  document.querySelectorAll('.panel').forEach(p => p.classList.remove('act'));
-  document.querySelectorAll('.sitem').forEach(s => s.classList.remove('act'));
-  document.getElementById('panel-' + tab).classList.add('act');
-  event.currentTarget.classList.add('act');
-}
-
-function filterAccounts(q) {
-  const rows = document.querySelectorAll('#acc-table .tbl-row');
-  rows.forEach(r => {
-    const match = !q || r.dataset.name.includes(q.toLowerCase()) || r.dataset.id.includes(q.toLowerCase());
-    r.style.display = match ? '' : 'none';
-  });
-}
-
-function viewAccount(id) {
-  fetch(SERVER_URL + '/dev/api?key=' + DEV_KEY + '&action=account&id=' + id)
-    .then(r=>r.json()).then(d=>{
-      const m = document.getElementById('acc-modal-content');
-      const acc = d.account || {};
-      const p = acc.profile || {};
-      m.innerHTML = '<div style="font-size:11px;line-height:1.9">'
-        + '<div><span style="color:var(--t3)">ID: </span><span style="color:var(--acc)">' + id + '</span></div>'
-        + '<div><span style="color:var(--t3)">Name: </span>' + (p.name||'?') + '</div>'
-        + '<div><span style="color:var(--t3)">Color: </span><span style="color:' + (p.color||'#888') + '">' + (p.color||'?') + '</span></div>'
-        + '<div><span style="color:var(--t3)">Status: </span>' + (p.status||'?') + '</div>'
-        + '<div><span style="color:var(--t3)">Servers: </span>' + Object.keys(acc.servers||{}).length + '</div>'
-        + '<div><span style="color:var(--t3)">Last seen: </span>' + (acc.ts ? new Date(acc.ts).toLocaleString() : 'never') + '</div>'
-        + '<div><span style="color:var(--t3)">Has avatar: </span>' + (p.avatar ? 'yes' : 'no') + '</div>'
-        + '</div>';
-      document.getElementById('acc-modal').classList.add('open');
-    }).catch(()=>alert('Error'));
-}
-
-function closeModal() {
-  document.getElementById('acc-modal').classList.remove('open');
-}
-
-function banUser(id, name) {
-  if (!confirm('Ban user ' + name + '?')) return;
-  const reason = prompt('Reason:') || 'Banned by admin';
-  fetch(SERVER_URL + '/dev/api?key=' + DEV_KEY + '&action=ban&id=' + id + '&reason=' + encodeURIComponent(reason))
-    .then(r=>r.json()).then(d=>{ if(d.ok){alert('Banned ✓');location.reload();}else alert('Error'); });
-}
-
-function kickUser(id, name) {
-  if (!confirm('Kick ' + name + '?')) return;
-  fetch(SERVER_URL + '/dev/api?key=' + DEV_KEY + '&action=kick&id=' + id)
-    .then(r=>r.json()).then(d=>{ if(d.ok){alert('Kicked ✓');location.reload();}else alert('Error'); });
-}
-
-function unban(id) {
-  if (!confirm('Unban?')) return;
-  fetch(SERVER_URL + '/dev/api?key=' + DEV_KEY + '&action=unban&id=' + id)
-    .then(r=>r.json()).then(d=>{ if(d.ok){alert('Unbanned ✓');location.reload();}else alert('Error'); });
-}
-
-function joinServer(id, name) {
-  const url = SERVER_URL + '/invite?id=' + id + '&s=' + encodeURIComponent(name);
-  const m = document.getElementById('join-content');
-  m.innerHTML = '<div style="color:var(--t2);font-size:11px;margin-bottom:8px">Server: <strong style="color:var(--t1)">' + name + '</strong></div>'
-    + '<div style="background:var(--bg);border:1px solid var(--bd);border-radius:3px;padding:8px;font-size:11px;color:var(--acc);word-break:break-all;cursor:pointer" onclick="navigator.clipboard.writeText(this.textContent)">' + url + '</div>'
-    + '<div style="font-size:10px;color:var(--t3);margin-top:6px">Click URL to copy · Opens web invite</div>'
-    + '<div style="margin-top:10px;display:flex;gap:8px">'
-    + '<button class="act-btn" onclick="window.open(\'' + url + '\',\'_blank\')">OPEN INVITE →</button>'
-    + '<button class="act-btn" onclick="navigator.clipboard.writeText(\'' + url + '\');this.textContent=\'COPIED!\'" >COPY URL</button>'
-    + '</div>';
-  document.getElementById('join-modal').classList.add('open');
-}
-
-function broadcastMsg() {
-  const msg = document.getElementById('broadcast-msg').value.trim();
-  if (!msg) return;
-  fetch(SERVER_URL + '/dev/api?key=' + DEV_KEY + '&action=broadcast&msg=' + encodeURIComponent(msg))
-    .then(r=>r.json()).then(d=>{ alert(d.ok ? 'Sent to ' + d.count + ' users' : 'Error'); });
-}
-
-// Auto refresh every 30s
-setTimeout(()=>location.reload(), 30000);
-</script>
-</body></html>`);
+    res.end(html);
     return;
   }
 
-  // Dev API
+  // ── DEV API ────────────────────────────────────────────────────────
   if (urlPath === '/dev/api') {
     const DEV_KEY = process.env.DEV_KEY || 'nexus-dev-2026';
-    const params = new URL('http://x' + req.url).searchParams;
-    if (params.get('key') !== DEV_KEY) { res.writeHead(401); res.end('{}'); return; }
-    const action = params.get('action');
-    const id     = params.get('id');
+    const params  = new URL('http://x' + req.url).searchParams;
+    if (params.get('key') !== DEV_KEY) {
+      res.writeHead(401, {'Content-Type':'application/json'});
+      res.end('{"ok":false,"error":"unauthorized"}');
+      return;
+    }
+    const action = params.get('action') || '';
+    const id     = params.get('id')     || '';
+    const j = function(obj) { res.writeHead(200,{'Content-Type':'application/json'}); res.end(JSON.stringify(obj)); };
 
-    if (action === 'account') {
-      res.writeHead(200, {'Content-Type':'application/json'});
-      res.end(JSON.stringify({ account: accounts[id] || null }));
-    } else if (action === 'ban') {
+    if (action === 'ban') {
       const reason = params.get('reason') || 'Banned by admin';
-      if (!bannedUsers) global.bannedUsers = {};
-      bannedUsers[id] = { reason, ts: Date.now() };
-      saveBans && saveBans();
-      // Kick if online
+      bannedUsers[id] = { reason: reason, ts: Date.now() };
+      saveBans();
       for (const [ws2, info] of clients) {
-        if (info.id === id) {
-          try { ws2.send(JSON.stringify({ type: 'you_are_banned', reason })); ws2.close(); } catch {}
-        }
+        if (info.id === id) { try { ws2.send(JSON.stringify({type:'you_are_banned',reason:reason})); ws2.close(); } catch {} }
       }
-      res.writeHead(200, {'Content-Type':'application/json'});
-      res.end(JSON.stringify({ ok: true }));
+      j({ok:true, msg:'Banned '+id.slice(0,10)});
+
     } else if (action === 'kick') {
+      let kicked = false;
       for (const [ws2, info] of clients) {
-        if (info.id === id) {
-          try { ws2.send(JSON.stringify({ type: 'you_are_kicked', reason: 'Kicked by admin' })); ws2.close(); } catch {}
-        }
+        if (info.id === id) { try { ws2.send(JSON.stringify({type:'you_are_kicked',reason:'Kicked by admin'})); ws2.close(); kicked=true; } catch {} }
       }
-      res.writeHead(200, {'Content-Type':'application/json'});
-      res.end(JSON.stringify({ ok: true }));
+      j({ok:true, msg: kicked ? 'Kicked' : 'Not online'});
+
     } else if (action === 'unban') {
-      if (bannedUsers) delete bannedUsers[id];
-      saveBans && saveBans();
-      res.writeHead(200, {'Content-Type':'application/json'});
-      res.end(JSON.stringify({ ok: true }));
+      delete bannedUsers[id];
+      saveBans();
+      j({ok:true, msg:'Unbanned'});
+
     } else if (action === 'broadcast') {
       const msg = params.get('msg') || '';
       let count = 0;
       for (const [ws2] of clients) {
         try {
-          ws2.send(JSON.stringify({ type: 'chat', ch: '__broadcast__', srvId: '__system__',
-            msg: { mid: Math.random().toString(36).slice(2), author: '⚡ NexusChat System',
-              authorId: '__system__', color: '#4fffb0', text: '📢 ' + msg, ts: Date.now(), reactions: [] }
+          ws2.send(JSON.stringify({
+            type:'chat', ch:'__broadcast__', srvId:'__sys__',
+            msg:{mid:Math.random().toString(36).slice(2), author:'📢 System',
+              authorId:'__sys__', color:'#4fffb0', text:msg, ts:Date.now(), reactions:[]}
           }));
           count++;
         } catch {}
       }
-      res.writeHead(200, {'Content-Type':'application/json'});
-      res.end(JSON.stringify({ ok: true, count }));
+      j({ok:true, msg:'Sent to '+count+' users'});
+
     } else {
-      res.writeHead(400); res.end('{}');
+      j({ok:false, error:'unknown action'});
     }
     return;
   }
