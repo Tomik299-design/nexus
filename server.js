@@ -1029,7 +1029,15 @@ function loadBans() {
     if (fs.existsSync(BANS_FILE))    bannedUsers  = JSON.parse(fs.readFileSync(BANS_FILE, 'utf8'));
     if (fs.existsSync(OFFLINE_FILE)) savedOffline = JSON.parse(fs.readFileSync(OFFLINE_FILE, 'utf8'));
     if (fs.existsSync(MEMBERS_FILE)) savedMembers = JSON.parse(fs.readFileSync(MEMBERS_FILE, 'utf8'));
-    if (fs.existsSync(ACCOUNTS_FILE)) { accounts = JSON.parse(fs.readFileSync(ACCOUNTS_FILE, 'utf8')); console.log('[Accounts] Loaded', Object.keys(accounts).length, 'accounts'); }
+    if (fs.existsSync(ACCOUNTS_FILE)) {
+      accounts = JSON.parse(fs.readFileSync(ACCOUNTS_FILE, 'utf8'));
+      console.log('[Accounts] Loaded', Object.keys(accounts).length, 'accounts from disk');
+    }
+    // Load from JSONBin bulk store if ACCOUNTS_BIN_ID is set
+    loadBulkAccounts(function() {
+      console.log('[Accounts] Total after bulk load:', Object.keys(accounts).length);
+    });
+    // Note: /tmp/ is wiped on Render restart - set ACCOUNTS_BIN_ID env var for persistence
     console.log('[Data] Bans:', Object.keys(bannedUsers).length, '| Offline:', Object.keys(savedOffline).length, '| Members:', Object.keys(savedMembers).length);
   } catch(e) { console.warn('[Data] Load error:', e.message); }
 }
@@ -1191,6 +1199,7 @@ wss.on('connection', (ws, req) => {
       }
       accounts[msg.userId].ts = Date.now();
       saveAccounts();
+      bulkSaveAccounts(); // periodic bulk backup
       // Save to cloud (JSONBin) for cross-browser access
       const cloudData = {
         userId: msg.userId,
