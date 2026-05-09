@@ -25,6 +25,21 @@ function verifyPass(password, salt, hash) {
 function genToken(len) {
   return crypto.randomBytes(len || 32).toString('hex');
 }
+// loadBulkAccounts — načte účty z JSONBin (pokud je nastaveno ACCOUNTS_BIN_ID)
+function loadBulkAccounts(cb) {
+  const binId = process.env.ACCOUNTS_BIN_ID;
+  if (!binId) { if (cb) cb(); return; }
+  jsonbinRequest('GET', binId, null, (err, result) => {
+    if (!err && result && result.record && typeof result.record === 'object') {
+      Object.assign(accounts, result.record);
+      console.log('[Cloud] Loaded', Object.keys(result.record).length, 'accounts from JSONBin');
+    } else if (err) {
+      console.warn('[Cloud] loadBulkAccounts error:', err.message);
+    }
+    if (cb) cb();
+  });
+}
+
 function loadAuth() {
   try {
     if (fs.existsSync(AUTH_FILE))  authData     = JSON.parse(fs.readFileSync(AUTH_FILE, 'utf8'));
