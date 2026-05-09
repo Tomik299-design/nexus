@@ -5499,8 +5499,9 @@ function profLang() {
 }
 
 function profAccount() {
-  var idVal = ME.id || '';
+  var idVal   = ME.id || '';
   var nameVal = ME.name || '(nepřihlášen)';
+  var savedEmail = ls('nx_saved_email', '');
   var avContent = ME.avatar ? '<img src="' + ME.avatar + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%">' : (nameVal[0] || '?');
   return '<div class="ptitle">' + t('accountTitle') + '</div>'
     + '<div class="psec"><h3>Přihlášený účet</h3>'
@@ -5524,10 +5525,73 @@ function profAccount() {
     + '</div>'
     + '<button class="ssbtn" style="width:100%;justify-content:center;background:var(--bg3)" onclick="exportAccount()">📦 Exportovat zálohu účtu</button>'
     + '</div></div>'
+
+    // ── Email + heslo ──
+    + '<div class="psec"><h3>🔐 Email a heslo</h3>'
+    + (savedEmail
+      ? '<div style="background:rgba(79,255,176,.07);border:1px solid rgba(79,255,176,.2);border-radius:10px;padding:10px 12px;margin-bottom:10px;display:flex;align-items:center;gap:8px">'
+        + '<span style="font-size:18px">✅</span>'
+        + '<div><div style="font-size:12px;font-weight:600;color:var(--acc)">Účet zabezpečen</div>'
+        + '<div style="font-size:11px;color:var(--t3)">' + savedEmail + '</div></div>'
+        + '</div>'
+      : '<div style="background:rgba(255,84,102,.07);border:1px solid rgba(255,84,102,.25);border-radius:10px;padding:10px 12px;margin-bottom:10px;display:flex;align-items:center;gap:8px">'
+        + '<span style="font-size:18px">⚠️</span>'
+        + '<div><div style="font-size:12px;font-weight:600;color:var(--red)">Účet není zabezpečen</div>'
+        + '<div style="font-size:11px;color:var(--t3)">Bez hesla přijdeš o účet při smazání dat prohlížeče.</div></div>'
+        + '</div>'
+    )
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">'
+    + '<button class="ssbtn p" style="justify-content:center" onclick="closeProf();showSetPasswordModal()">'
+    + (savedEmail ? '🔑 Změnit heslo' : '🔐 Nastavit heslo') + '</button>'
+    + '<button class="ssbtn" style="justify-content:center" onclick="closeProf();showChangeEmailModal()">📧 ' + (savedEmail ? 'Změnit email' : 'Přidat email') + '</button>'
+    + '</div></div>'
+
     + '<div class="psec"><h3>Data</h3>'
-    + '<div class="ibox" style="margin-bottom:8px">Přihlásíš se svým <strong>ID</strong> a <strong>přezdívkou</strong> z jakéhokoliv prohlížeče.</div>'
+    + '<div class="ibox" style="margin-bottom:8px">Přihlásíš se svým <strong>emailem a heslem</strong> nebo <strong>ID + přezdívkou</strong> z jakéhokoliv prohlížeče.</div>'
     + '<button class="ssbtn d" style="width:100%" onclick="resetAll()">⚠️ Smazat veškerá lokální data</button>'
     + '</div>';
+}
+
+function showChangeEmailModal() {
+  const savedEmail = ls('nx_saved_email', '');
+  openModal(
+    '<div style="text-align:center;padding:4px 0 14px">'
+    + '<div style="font-size:28px;margin-bottom:6px">📧</div>'
+    + '<h2 style="margin-bottom:6px">' + (savedEmail ? 'Změnit email' : 'Přidat email') + '</h2>'
+    + (savedEmail ? '<p style="font-size:12px;color:var(--t2)">Aktuální: <strong>' + savedEmail + '</strong></p>' : '<p style="font-size:12px;color:var(--t2)">Propoj účet s emailovou adresou.</p>')
+    + '</div>'
+    + '<div class="mf"><label>Nový email</label>'
+    + '<input id="che-email" class="ssinp" type="email" placeholder="tvuj@email.cz" style="width:100%" maxlength="128"></div>'
+    + '<div class="mf"><label>Heslo (pro ověření)</label>'
+    + '<input id="che-pass" class="ssinp" type="password" placeholder="Tvoje heslo" style="width:100%"></div>'
+    + '<div id="che-err" style="color:var(--red);font-size:12px;min-height:16px;margin-bottom:8px"></div>'
+    + '<div class="mbtns">'
+    + '<button class="mbtn mbtn-g" onclick="closeModal()">Zrušit</button>'
+    + '<button class="mbtn mbtn-p" onclick="doChangeEmail()">Uložit email</button>'
+    + '</div>'
+  );
+  setTimeout(() => document.getElementById('che-email')?.focus(), 80);
+}
+
+function doChangeEmail() {
+  const email  = (document.getElementById('che-email')?.value || '').trim();
+  const pass   = (document.getElementById('che-pass')?.value  || '');
+  const errEl  = document.getElementById('che-err');
+  const setErr = msg => { if (errEl) errEl.textContent = msg; };
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { setErr('Zadej platný email'); return; }
+  if (!pass || pass.length < 6) { setErr('Zadej heslo (min. 6 znaků)'); return; }
+  setErr('Ukládám...');
+  // Re-use set-password endpoint — it updates/creates the auth entry
+  fetch('/auth/set-password', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userId: ME.id, email, password: pass, username: ME.name })
+  }).then(r => r.json()).then(d => {
+    if (!d.ok) { setErr('❌ ' + (d.error || 'Chyba')); return; }
+    lss('nx_saved_email', email);
+    closeModal();
+    toast('✅ Email uložen!', 'ok');
+    profTab('account'); // refresh tab
+  }).catch(() => setErr('❌ Síťová chyba'));
 }
 function resetAll() {
   if (!confirm('Opravdu smazat veškerá data? Toto nelze vrátit.')) return;
@@ -5920,6 +5984,7 @@ function doSetPassword() {
     closeModal();
     toast('✅ Heslo nastaveno! Teď se můžeš přihlásit emailem.', 'ok');
     _migrationBannerShown = true;
+    profTab && profTab('account'); // refresh tab pokud je otevřený
   }).catch(() => setErr('❌ Síťová chyba'));
 }
 
