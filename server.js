@@ -1071,6 +1071,40 @@ setTimeout(() => location.reload(), 30000);
     return;
   }
 
+  if (urlPath === '/auth/set-password' && req.method === 'POST') {
+    let body = '';
+    req.on('data', d => { body += d; if (body.length > 8192) req.destroy(); });
+    req.on('end', () => {
+      let parsed; try { parsed = JSON.parse(body); } catch { res.writeHead(400,'',{'Content-Type':'application/json'}); res.end('{"ok":false,"error":"invalid json"}'); return; }
+      const userId   = (parsed.userId   || '');
+      const email    = (parsed.email    || '').toLowerCase().trim();
+      const password = (parsed.password || '');
+      if (!userId) { res.writeHead(400,'',{'Content-Type':'application/json'}); res.end('{"ok":false,"error":"Chybí userId"}'); return; }
+      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { res.writeHead(400,'',{'Content-Type':'application/json'}); res.end('{"ok":false,"error":"Neplatný email"}'); return; }
+      if (!password || password.length < 6) { res.writeHead(400,'',{'Content-Type':'application/json'}); res.end('{"ok":false,"error":"Heslo musí mít alespoň 6 znaků"}'); return; }
+      // Check email not already taken by different account
+      if (authData[email] && authData[email].userId !== userId) { res.writeHead(409,'',{'Content-Type':'application/json'}); res.end('{"ok":false,"error":"Tento email je již registrován na jiný účet"}'); return; }
+      // Find username from accounts (legacy account store)
+      const username = accounts[userId]?.profile?.name || parsed.username || 'Uživatel';
+      const salt     = genToken(16);
+      const passHash = hashPass(password, salt);
+      authData[email] = { userId, passHash, salt, username, createdAt: Date.now() };
+      saveAuth();
+      res.writeHead(200,'',{'Content-Type':'application/json'});
+      res.end(JSON.stringify({ ok: true, userId, username, email }));
+    });
+    return;
+  }
+
+  if (urlPath === '/auth/has-email' && req.method === 'GET') {
+    const params = new URL('http://x' + req.url).searchParams;
+    const userId = (params.get('userId') || '');
+    const has = Object.values(authData).some(a => a.userId === userId);
+    res.writeHead(200,'',{'Content-Type':'application/json'});
+    res.end(JSON.stringify({ ok: true, hasEmail: has }));
+    return;
+  }
+
   // ── AUTH ROUTES ───────────────────────────────────────────────────
   if (urlPath === '/auth/register' && req.method === 'POST') {
     let body = '';

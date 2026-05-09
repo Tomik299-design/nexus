@@ -5835,6 +5835,92 @@ function doLoginLegacy() {
   toast('🔄 Přihlašování — načítám účet...', 'inf');
   if (wsConn) { try { wsConn.close(); } catch {} wsConn = null; }
   setTimeout(() => { if (wsUrl) connectWS(wsUrl); renderAll(); }, 400);
+  // Show migration banner after login — they used legacy ID
+  setTimeout(() => showMigrationBanner(), 2000);
+}
+
+// ── MIGRACE STARÉHO ÚČTU ──────────────────────────────────────────
+let _migrationBannerShown = false;
+function showMigrationBanner() {
+  if (_migrationBannerShown) return;
+  if (ls('nx_saved_email', '')) return; // už má email
+  _migrationBannerShown = true;
+  // Zkontroluj server jestli účet už má email
+  fetch('/auth/has-email?userId=' + encodeURIComponent(ME.id))
+    .then(r => r.json()).then(d => {
+      if (d.hasEmail) return; // server ví o emailu, vše ok
+      // Zobraz banner
+      const banner = document.createElement('div');
+      banner.id = 'migration-banner';
+      banner.style.cssText = 'position:fixed;bottom:0;left:0;right:0;background:linear-gradient(135deg,#1a1a2e,#16213e);border-top:2px solid #4fffb0;padding:14px 20px;z-index:9998;display:flex;align-items:center;gap:14px;flex-wrap:wrap;animation:slideUp .3s ease';
+      banner.innerHTML =
+        '<style>@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}</style>'
+        + '<div style="flex:1;min-width:200px">'
+        + '<div style="font-size:14px;font-weight:700;color:#e2e8f0;margin-bottom:3px">🔐 Zabezpeč svůj účet</div>'
+        + '<div style="font-size:12px;color:#94a3b8">Nastav si email a heslo — jinak přijdeš o účet při smazání dat prohlížeče.</div>'
+        + '</div>'
+        + '<div style="display:flex;gap:8px;flex-shrink:0">'
+        + '<button onclick="showSetPasswordModal()" style="background:#4fffb0;color:#000;border:none;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer">Nastavit heslo →</button>'
+        + '<button onclick="document.getElementById(\'migration-banner\').remove();_migrationBannerShown=false;lss(\'nx_migration_dismissed\',Date.now())" style="background:transparent;color:#64748b;border:1px solid #1f2836;border-radius:8px;padding:8px 12px;font-size:12px;cursor:pointer">Později</button>'
+        + '</div>';
+      // Nezobrazuj pokud dismissed v posledních 24h
+      const dismissed = parseInt(ls('nx_migration_dismissed', '0') || '0');
+      if (Date.now() - dismissed < 86400000) return;
+      document.body.appendChild(banner);
+    }).catch(() => {
+      // Při chybě sítě zobraz banner stejně
+    });
+}
+
+function showSetPasswordModal() {
+  document.getElementById('migration-banner')?.remove();
+  openModal(
+    '<div style="text-align:center;padding:4px 0 14px">'
+    + '<div style="font-size:32px;margin-bottom:8px">🔐</div>'
+    + '<h2 style="margin-bottom:6px">Nastav si heslo</h2>'
+    + '<p style="font-size:12px;color:var(--t2);line-height:1.6">Propoj svůj stávající účet s emailem a heslem.<br>Přihlášení přes ID zůstane funkční, dokud heslo nenastavíš.</p>'
+    + '</div>'
+    + '<div class="mf"><label>Email</label>'
+    + '<input id="mig-email" class="ssinp" type="email" placeholder="tvuj@email.cz" style="width:100%" maxlength="128"></div>'
+    + '<div class="mf"><label>Nové heslo</label>'
+    + '<div style="position:relative">'
+    + '<input id="mig-pass" class="ssinp" type="password" placeholder="Min. 6 znaků" style="width:100%;padding-right:38px" oninput="checkStrength(this.value)">'
+    + '<span onclick="togglePass(\'mig-pass\',this)" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);cursor:pointer;font-size:14px;color:var(--t3)">👁</span>'
+    + '</div>'
+    + '<div id="strength-bar" style="height:3px;border-radius:2px;margin-top:4px;background:var(--bd)"><div id="strength-fill" style="height:100%;border-radius:2px;width:0%;transition:all .3s"></div></div>'
+    + '<div id="strength-lbl" style="font-size:10px;color:var(--t3);margin-top:2px"></div>'
+    + '</div>'
+    + '<div class="mf"><label>Zopakuj heslo</label>'
+    + '<input id="mig-pass2" class="ssinp" type="password" placeholder="Stejné heslo" style="width:100%"></div>'
+    + '<div id="mig-err" style="color:var(--red);font-size:12px;min-height:16px;margin-bottom:8px"></div>'
+    + '<div class="mbtns">'
+    + '<button class="mbtn mbtn-g" onclick="closeModal()">Zrušit</button>'
+    + '<button class="mbtn mbtn-p" onclick="doSetPassword()">✅ Nastavit heslo</button>'
+    + '</div>'
+  );
+  setTimeout(() => document.getElementById('mig-email')?.focus(), 80);
+}
+
+function doSetPassword() {
+  const email  = (document.getElementById('mig-email')?.value  || '').trim();
+  const pass   = (document.getElementById('mig-pass')?.value   || '');
+  const pass2  = (document.getElementById('mig-pass2')?.value  || '');
+  const errEl  = document.getElementById('mig-err');
+  const setErr = msg => { if (errEl) errEl.textContent = msg; };
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { setErr('Zadej platný email'); return; }
+  if (!pass || pass.length < 6) { setErr('Heslo musí mít alespoň 6 znaků'); return; }
+  if (pass !== pass2) { setErr('Hesla se neshodují'); return; }
+  setErr('Ukládám...');
+  fetch('/auth/set-password', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userId: ME.id, email, password: pass, username: ME.name })
+  }).then(r => r.json()).then(d => {
+    if (!d.ok) { setErr('❌ ' + (d.error || 'Chyba')); return; }
+    lss('nx_saved_email', email);
+    closeModal();
+    toast('✅ Heslo nastaveno! Teď se můžeš přihlásit emailem.', 'ok');
+    _migrationBannerShown = true;
+  }).catch(() => setErr('❌ Síťová chyba'));
 }
 
 function copyMyId() { navigator.clipboard && navigator.clipboard.writeText(ME.id); toast('ID zkopírováno 📋', 'ok'); }
@@ -6734,6 +6820,11 @@ function mentionKeydown(e, inp) {
       applyProfile();
       // Request account data from server
       setTimeout(() => { if (wsConn && wsConn.readyState === 1) bcast({ type: 'account_req', userId: ME.id, name: ME.name }); }, 1500);
+      // Check if this legacy account has email set — if not, show migration banner
+      const _savedEmail = ls('nx_saved_email', '');
+      if (!_savedEmail) {
+        setTimeout(() => showMigrationBanner(), 2500);
+      }
     } else {
       setTimeout(openFirstRun, 500);
     }
