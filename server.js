@@ -8,6 +8,58 @@ const https     = require('https');
 const fs        = require('fs');
 const path      = require('path');
 const os        = require('os');
+const crypto    = require('crypto');
+
+// ── Email+Password Auth ──────────────────────────────────────────────
+const AUTH_FILE   = '/tmp/nexus_auth.json';
+const TOKEN_FILE  = '/tmp/nexus_tokens.json';
+let authData      = {};  // { email: { userId, passHash, salt, username, createdAt } }
+let resetTokens   = {};  // { token: { email, expires } }
+
+function hashPass(password, salt) {
+  return crypto.pbkdf2Sync(password, salt, 100000, 64, 'sha512').toString('hex');
+}
+function verifyPass(password, salt, hash) {
+  return crypto.timingSafeEqual(Buffer.from(hashPass(password, salt), 'hex'), Buffer.from(hash, 'hex'));
+}
+function genToken(len) {
+  return crypto.randomBytes(len || 32).toString('hex');
+}
+function loadAuth() {
+  try {
+    if (fs.existsSync(AUTH_FILE))  authData     = JSON.parse(fs.readFileSync(AUTH_FILE, 'utf8'));
+    if (fs.existsSync(TOKEN_FILE)) resetTokens  = JSON.parse(fs.readFileSync(TOKEN_FILE, 'utf8'));
+    console.log('[Auth] Loaded', Object.keys(authData).length, 'email accounts');
+  } catch(e) { console.warn('[Auth] Load error:', e.message); }
+}
+function saveAuth()   { try { fs.writeFileSync(AUTH_FILE,  JSON.stringify(authData));    } catch(e) {} }
+function saveTokens() { try { fs.writeFileSync(TOKEN_FILE, JSON.stringify(resetTokens)); } catch(e) {} }
+
+function sendResetEmail(toEmail, token, cb) {
+  const SMTP_HOST = process.env.SMTP_HOST;
+  const SMTP_USER = process.env.SMTP_USER;
+  const SMTP_PASS = process.env.SMTP_PASS;
+  const APP_URL   = process.env.APP_URL || 'https://nexus-g7k4.onrender.com';
+  if (!SMTP_HOST || !SMTP_USER || !SMTP_PASS) {
+    return cb(new Error('SMTP not configured'));
+  }
+  const resetUrl = APP_URL + '/reset?token=' + token;
+  const body = 'Resetuj heslo zde:\n' + resetUrl + '\n\nPlatnost: 1 hodina.\nPokud jsi o reset nežádal/a, ignoruj tento email.';
+  const msg  = 'From: NexusChat <' + SMTP_USER + '>\r\nTo: ' + toEmail + '\r\nSubject: Reset hesla — NexusChat\r\nContent-Type: text/plain; charset=utf-8\r\n\r\n' + body;
+  const net  = require('net');
+  // Use nodemailer if available, else simple SMTP
+  let nodemailer;
+  try { nodemailer = require('nodemailer'); } catch(e) { nodemailer = null; }
+  if (nodemailer) {
+    const transporter = nodemailer.createTransport({
+      host: SMTP_HOST, port: 587, secure: false,
+      auth: { user: SMTP_USER, pass: SMTP_PASS }
+    });
+    transporter.sendMail({ from: SMTP_USER, to: toEmail, subject: 'Reset hesla — NexusChat', text: body }, cb);
+  } else {
+    cb(new Error('nodemailer not installed — run: npm install nodemailer'));
+  }
+}
 
 // ── JSONBin.io cloud storage ──
 // Zdarma na jsonbin.io — účet není nutný pro základní použití
@@ -1004,6 +1056,144 @@ setTimeout(() => location.reload(), 30000);
     return;
   }
 
+  // ── AUTH ROUTES ───────────────────────────────────────────────────
+  if (urlPath === '/auth/register' && req.method === 'POST') {
+    let body = '';
+    req.on('data', d => { body += d; if (body.length > 8192) req.destroy(); });
+    req.on('end', () => {
+      let parsed; try { parsed = JSON.parse(body); } catch { res.writeHead(400,'',{'Content-Type':'application/json'}); res.end('{"ok":false,"error":"invalid json"}'); return; }
+      const email    = (parsed.email    || '').toLowerCase().trim();
+      const username = (parsed.username || '').trim();
+      const password = (parsed.password || '');
+      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { res.writeHead(400,'',{'Content-Type':'application/json'}); res.end('{"ok":false,"error":"Neplatný email"}'); return; }
+      if (!username || username.length < 2 || username.length > 32) { res.writeHead(400,'',{'Content-Type':'application/json'}); res.end('{"ok":false,"error":"Přezdívka musí mít 2–32 znaků"}'); return; }
+      if (!password || password.length < 6) { res.writeHead(400,'',{'Content-Type':'application/json'}); res.end('{"ok":false,"error":"Heslo musí mít alespoň 6 znaků"}'); return; }
+      if (authData[email]) { res.writeHead(409,'',{'Content-Type':'application/json'}); res.end('{"ok":false,"error":"Email je již registrován"}'); return; }
+      // Check username uniqueness
+      const nameTaken = Object.values(authData).some(a => a.username.toLowerCase() === username.toLowerCase());
+      if (nameTaken) { res.writeHead(409,'',{'Content-Type':'application/json'}); res.end('{"ok":false,"error":"Přezdívka je obsazená"}'); return; }
+      const salt     = genToken(16);
+      const passHash = hashPass(password, salt);
+      const userId   = 'nx_' + genToken(16);
+      authData[email] = { userId, passHash, salt, username, createdAt: Date.now() };
+      saveAuth();
+      res.writeHead(200,'',{'Content-Type':'application/json'});
+      res.end(JSON.stringify({ ok: true, userId, username, email }));
+    });
+    return;
+  }
+
+  if (urlPath === '/auth/login' && req.method === 'POST') {
+    let body = '';
+    req.on('data', d => { body += d; if (body.length > 8192) req.destroy(); });
+    req.on('end', () => {
+      let parsed; try { parsed = JSON.parse(body); } catch { res.writeHead(400,'',{'Content-Type':'application/json'}); res.end('{"ok":false,"error":"invalid json"}'); return; }
+      const email    = (parsed.email    || '').toLowerCase().trim();
+      const password = (parsed.password || '');
+      const acct = authData[email];
+      if (!acct) { res.writeHead(401,'',{'Content-Type':'application/json'}); res.end('{"ok":false,"error":"Nesprávný email nebo heslo"}'); return; }
+      let valid = false;
+      try { valid = verifyPass(password, acct.salt, acct.passHash); } catch {}
+      if (!valid) { res.writeHead(401,'',{'Content-Type':'application/json'}); res.end('{"ok":false,"error":"Nesprávný email nebo heslo"}'); return; }
+      res.writeHead(200,'',{'Content-Type':'application/json'});
+      res.end(JSON.stringify({ ok: true, userId: acct.userId, username: acct.username, email }));
+    });
+    return;
+  }
+
+  if (urlPath === '/auth/reset-request' && req.method === 'POST') {
+    let body = '';
+    req.on('data', d => { body += d; if (body.length > 8192) req.destroy(); });
+    req.on('end', () => {
+      let parsed; try { parsed = JSON.parse(body); } catch { res.writeHead(400,'',{'Content-Type':'application/json'}); res.end('{"ok":false,"error":"invalid json"}'); return; }
+      const email = (parsed.email || '').toLowerCase().trim();
+      // Always return ok to prevent email enumeration
+      if (!authData[email]) { res.writeHead(200,'',{'Content-Type':'application/json'}); res.end('{"ok":true}'); return; }
+      const token = genToken(32);
+      resetTokens[token] = { email, expires: Date.now() + 3600000 };
+      saveTokens();
+      sendResetEmail(email, token, (err) => {
+        if (err) console.warn('[Auth] Email error:', err.message);
+      });
+      res.writeHead(200,'',{'Content-Type':'application/json'});
+      res.end('{"ok":true}');
+    });
+    return;
+  }
+
+  if (urlPath === '/auth/reset' && req.method === 'POST') {
+    let body = '';
+    req.on('data', d => { body += d; if (body.length > 8192) req.destroy(); });
+    req.on('end', () => {
+      let parsed; try { parsed = JSON.parse(body); } catch { res.writeHead(400,'',{'Content-Type':'application/json'}); res.end('{"ok":false,"error":"invalid json"}'); return; }
+      const token    = (parsed.token    || '');
+      const password = (parsed.password || '');
+      const entry = resetTokens[token];
+      if (!entry || entry.expires < Date.now()) { res.writeHead(400,'',{'Content-Type':'application/json'}); res.end('{"ok":false,"error":"Platnost odkazu vypršela"}'); return; }
+      if (!password || password.length < 6) { res.writeHead(400,'',{'Content-Type':'application/json'}); res.end('{"ok":false,"error":"Heslo musí mít alespoň 6 znaků"}'); return; }
+      const acct = authData[entry.email];
+      if (!acct) { res.writeHead(400,'',{'Content-Type':'application/json'}); res.end('{"ok":false,"error":"Účet nenalezen"}'); return; }
+      const salt     = genToken(16);
+      acct.salt      = salt;
+      acct.passHash  = hashPass(password, salt);
+      delete resetTokens[token];
+      saveAuth(); saveTokens();
+      res.writeHead(200,'',{'Content-Type':'application/json'});
+      res.end('{"ok":true}');
+    });
+    return;
+  }
+
+  if (urlPath === '/auth/check-name' && req.method === 'GET') {
+    const params = new URL('http://x' + req.url).searchParams;
+    const name = (params.get('name') || '').trim();
+    const taken = Object.values(authData).some(a => a.username.toLowerCase() === name.toLowerCase());
+    res.writeHead(200,'',{'Content-Type':'application/json'});
+    res.end(JSON.stringify({ ok: true, taken }));
+    return;
+  }
+
+  // Reset password page
+  if (urlPath === '/reset') {
+    const params = new URL('http://x' + req.url).searchParams;
+    const token  = params.get('token') || '';
+    const entry  = resetTokens[token];
+    const valid  = entry && entry.expires > Date.now();
+    const html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Reset hesla — NexusChat</title>'
+      + '<style>*{margin:0;padding:0;box-sizing:border-box}body{background:#070809;font-family:system-ui;display:flex;align-items:center;justify-content:center;min-height:100vh;color:#e2e8f0;padding:20px}'
+      + '.card{background:#0d0f12;border:1px solid #1f2836;border-radius:16px;padding:32px;width:360px;max-width:100%}'
+      + 'h2{margin-bottom:6px;font-size:20px}p{color:#64748b;font-size:13px;margin-bottom:20px}'
+      + 'label{font-size:12px;color:#94a3b8;display:block;margin-bottom:4px}'
+      + 'input{width:100%;background:#070809;border:1px solid #1f2836;border-radius:8px;padding:10px 12px;color:#e2e8f0;font-size:14px;margin-bottom:14px;outline:none}'
+      + 'input:focus{border-color:#4fffb0}'
+      + 'button{width:100%;background:#4fffb0;color:#000;border:none;border-radius:8px;padding:11px;font-size:14px;font-weight:700;cursor:pointer;margin-top:4px}'
+      + 'button:hover{background:#3de89e}.err{color:#ff4466;font-size:13px;margin-bottom:10px;display:none}.ok{color:#4fffb0;font-size:13px;margin-bottom:10px;display:none}'
+      + '</style></head><body><div class="card">'
+      + (valid
+        ? '<h2>🔑 Nové heslo</h2><p>Zvol si nové heslo pro tvůj NexusChat účet.</p>'
+          + '<div class="err" id="err"></div><div class="ok" id="ok"></div>'
+          + '<label>Nové heslo</label><input type="password" id="p1" placeholder="Min. 6 znaků" minlength="6">'
+          + '<label>Zopakuj heslo</label><input type="password" id="p2" placeholder="Stejné heslo">'
+          + '<button onclick="doReset()">Nastavit heslo →</button>'
+          + '<script>function doReset(){'
+          + 'var p1=document.getElementById("p1").value,p2=document.getElementById("p2").value,e=document.getElementById("err"),ok=document.getElementById("ok");'
+          + 'e.style.display="none";ok.style.display="none";'
+          + 'if(p1.length<6){e.textContent="Heslo musí mít alespoň 6 znaků";e.style.display="block";return;}'
+          + 'if(p1!==p2){e.textContent="Hesla se neshodují";e.style.display="block";return;}'
+          + 'fetch("/auth/reset",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({token:"' + token + '",password:p1})})'
+          + '.then(function(r){return r.json();})'
+          + '.then(function(d){if(d.ok){ok.textContent="Heslo bylo změněno! Přihlas se v NexusChat.";ok.style.display="block";document.querySelector("button").disabled=true;}'
+          + 'else{e.textContent=d.error||"Chyba";e.style.display="block";}})'
+          + '.catch(function(){e.textContent="Síťová chyba";e.style.display="block";});}'
+          + '<\/script>'
+        : '<h2>⚠️ Neplatný odkaz</h2><p>Tento odkaz pro reset hesla je neplatný nebo vypršela jeho platnost.</p><p style="margin-top:10px">Požádej o nový reset v aplikaci NexusChat.</p>'
+      )
+      + '</div></body></html>';
+    res.writeHead(200,'',{'Content-Type':'text/html;charset=UTF-8'});
+    res.end(html);
+    return;
+  }
+
   res.writeHead(404); res.end('404');
 });
 
@@ -1048,6 +1238,7 @@ function saveMembers()  { try { fs.writeFileSync(MEMBERS_FILE,  JSON.stringify(s
 function saveAccounts() { try { fs.writeFileSync(ACCOUNTS_FILE, JSON.stringify(accounts));     } catch(e) {} }
 
 loadBans();
+loadAuth();
 const history      = {};
 const vcState      = {};
 const offlineState = {};

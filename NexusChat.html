@@ -5571,12 +5571,37 @@ function openFirstRun() {
 }
 
 function showLoginForm() {
-  // Auto-fill if saved
+  const savedEmail = ls('nx_saved_email', '');
+  document.getElementById('auth-form-wrap').innerHTML =
+    '<div style="border-top:1px solid var(--bd);padding-top:12px;margin-top:4px">'
+    + '<h3 style="font-size:13px;color:var(--t2);margin-bottom:10px">🔑 Přihlášení</h3>'
+    + '<div class="mf"><label>Email</label>'
+    + '<input id="login-email" class="ssinp" type="email" placeholder="tvuj@email.cz" style="width:100%" maxlength="128" value="' + savedEmail + '"></div>'
+    + '<div class="mf"><label>Heslo</label>'
+    + '<div style="position:relative">'
+    + '<input id="login-pass" class="ssinp" type="password" placeholder="Tvoje heslo" style="width:100%;padding-right:38px">'
+    + '<span onclick="togglePass(\'login-pass\',this)" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);cursor:pointer;font-size:14px;color:var(--t3)">👁</span>'
+    + '</div></div>'
+    + '<div id="login-err" style="color:var(--red);font-size:12px;min-height:16px;margin:-4px 0 8px"></div>'
+    + '<div class="mbtns"><button class="mbtn mbtn-p" style="width:100%;padding:11px" onclick="doLogin()">🔑 Přihlásit se</button></div>'
+    + '<div style="text-align:center;margin-top:8px;font-size:11px;color:var(--t3)">'
+    + '<a onclick="showForgotForm()" style="color:var(--acc);cursor:pointer">Zapomenuté heslo?</a>'
+    + ' &nbsp;·&nbsp; Nemáš účet? <a onclick="showRegisterForm()" style="color:var(--acc);cursor:pointer">Registruj se</a></div>'
+    + '<div style="border-top:1px solid var(--bd);margin-top:12px;padding-top:10px">'
+    + '<div style="font-size:10px;color:var(--t3);text-align:center;margin-bottom:8px">Starý systém (přezdívka + ID)</div>'
+    + '<button class="ssbtn" style="width:100%;justify-content:center" onclick="showLegacyLoginForm()">🔑 Přihlásit se přes ID</button>'
+    + '<button class="ssbtn" style="width:100%;justify-content:center;margin-top:6px" onclick="importAccount()">📥 Importovat zálohu</button>'
+    + '</div>'
+    + '</div>';
+  setTimeout(() => document.getElementById(savedEmail ? 'login-pass' : 'login-email')?.focus(), 50);
+}
+
+function showLegacyLoginForm() {
   const savedName = ls('nx_saved_name', '');
   const savedId   = ls('nx_saved_id', '');
   document.getElementById('auth-form-wrap').innerHTML =
     '<div style="border-top:1px solid var(--bd);padding-top:12px;margin-top:4px">'
-    + '<h3 style="font-size:13px;color:var(--t2);margin-bottom:10px">🔑 Přihlášení</h3>'
+    + '<h3 style="font-size:13px;color:var(--t2);margin-bottom:10px">🔑 Přihlášení přes ID</h3>'
     + '<div class="mf"><label>Přezdívka</label>'
     + '<input id="login-name" class="ssinp" placeholder="Tvoje přezdívka" style="width:100%" maxlength="32" value="' + savedName + '"></div>'
     + '<div class="mf"><label>Tvoje ID</label>'
@@ -5586,15 +5611,44 @@ function showLoginForm() {
     + '<input type="checkbox" id="login-remember" checked style="width:15px;height:15px;accent-color:var(--acc);cursor:pointer">'
     + '<div><div style="color:var(--t1);font-size:12px;font-weight:600">Zapamatovat přezdívku a ID</div>'
     + '<div style="color:var(--t3);font-size:10px;margin-top:1px">Příště se přihlásíš automaticky</div></div></label>'
-    + '<div class="mbtns"><button class="mbtn mbtn-p" style="width:100%;padding:11px" onclick="doLogin()">🔑 Přihlásit se</button></div>'
-    + '<div style="text-align:center;margin-top:10px;font-size:11px;color:var(--t3)">Nemáš účet? <a onclick="showRegisterForm()" style="color:var(--acc);cursor:pointer">Vytvoř nový</a></div>'
-    + '<div style="border-top:1px solid var(--bd);margin-top:12px;padding-top:10px;text-align:center">'
-    + '<div style="font-size:11px;color:var(--t3);margin-bottom:8px">Máš zálohu účtu?</div>'
-    + '<button class="ssbtn" style="width:100%;justify-content:center" onclick="importAccount()">📥 Importovat zálohu</button>'
-    + '</div>'
+    + '<div class="mbtns"><button class="mbtn mbtn-p" style="width:100%;padding:11px" onclick="doLoginLegacy()">🔑 Přihlásit se</button></div>'
+    + '<div style="text-align:center;margin-top:10px;font-size:11px;color:var(--t3)"><a onclick="showLoginForm()" style="color:var(--acc);cursor:pointer">← Zpět</a></div>'
     + '</div>';
-  const inp = document.getElementById(savedName ? 'login-id' : 'login-name');
-  setTimeout(() => inp?.focus(), 50);
+  setTimeout(() => document.getElementById(savedName ? 'login-id' : 'login-name')?.focus(), 50);
+}
+
+function showForgotForm() {
+  document.getElementById('auth-form-wrap').innerHTML =
+    '<div style="border-top:1px solid var(--bd);padding-top:12px;margin-top:4px">'
+    + '<h3 style="font-size:13px;color:var(--t2);margin-bottom:10px">🔐 Reset hesla</h3>'
+    + '<p style="font-size:12px;color:var(--t3);margin-bottom:12px">Zadej svůj email a pošleme ti odkaz pro reset hesla.</p>'
+    + '<div class="mf"><label>Email</label>'
+    + '<input id="forgot-email" class="ssinp" type="email" placeholder="tvuj@email.cz" style="width:100%" maxlength="128"></div>'
+    + '<div id="forgot-msg" style="font-size:12px;min-height:16px;margin:-4px 0 8px"></div>'
+    + '<div class="mbtns"><button class="mbtn mbtn-p" style="width:100%;padding:11px" onclick="doForgot()">📧 Odeslat reset email</button></div>'
+    + '<div style="text-align:center;margin-top:10px;font-size:11px;color:var(--t3)"><a onclick="showLoginForm()" style="color:var(--acc);cursor:pointer">← Zpět na přihlášení</a></div>'
+    + '</div>';
+  setTimeout(() => document.getElementById('forgot-email')?.focus(), 50);
+}
+
+function togglePass(inputId, btn) {
+  const inp = document.getElementById(inputId);
+  if (!inp) return;
+  if (inp.type === 'password') { inp.type = 'text'; btn.textContent = '🙈'; }
+  else { inp.type = 'password'; btn.textContent = '👁'; }
+}
+
+function doForgot() {
+  const email = (document.getElementById('forgot-email')?.value || '').trim();
+  const msgEl = document.getElementById('forgot-msg');
+  if (!email) { if (msgEl) { msgEl.textContent = 'Zadej email'; msgEl.style.color = 'var(--red)'; } return; }
+  if (msgEl) { msgEl.textContent = 'Odesílám...'; msgEl.style.color = 'var(--t3)'; }
+  fetch('/auth/reset-request', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email }) })
+    .then(r => r.json()).then(d => {
+      if (msgEl) { msgEl.textContent = '✅ Pokud email existuje, přišel ti odkaz pro reset.'; msgEl.style.color = 'var(--acc)'; }
+    }).catch(() => {
+      if (msgEl) { msgEl.textContent = '❌ Síťová chyba'; msgEl.style.color = 'var(--red)'; }
+    });
 }
 
 function showRegisterForm() {
@@ -5604,6 +5658,16 @@ function showRegisterForm() {
     + '<div class="mf"><label>Přezdívka</label>'
     + '<input id="reg-name" class="ssinp" placeholder="Jak se jmenuješ?" style="width:100%" maxlength="32" oninput="regPrev()">'
     + '<div id="reg-name-err" style="font-size:11px;min-height:14px;margin-top:3px"></div></div>'
+    + '<div class="mf"><label>Email</label>'
+    + '<input id="reg-email" class="ssinp" type="email" placeholder="tvuj@email.cz" style="width:100%" maxlength="128"></div>'
+    + '<div class="mf"><label>Heslo</label>'
+    + '<div style="position:relative">'
+    + '<input id="reg-pass" class="ssinp" type="password" placeholder="Min. 6 znaků" style="width:100%;padding-right:38px" oninput="checkStrength(this.value)">'
+    + '<span onclick="togglePass(\'reg-pass\',this)" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);cursor:pointer;font-size:14px;color:var(--t3)">👁</span>'
+    + '</div>'
+    + '<div id="strength-bar" style="height:3px;border-radius:2px;margin-top:4px;background:var(--bd);transition:all .2s"><div id="strength-fill" style="height:100%;border-radius:2px;width:0%;transition:all .3s"></div></div>'
+    + '<div id="strength-lbl" style="font-size:10px;color:var(--t3);margin-top:2px"></div>'
+    + '</div>'
     + '<div class="mf"><label>Barva</label>'
     + '<div class="cpal" id="reg-cpal">'
     + PROF_COLORS.map(col => '<div class="csw' + (col === ME.color ? ' sel' : '') + '" style="background:' + col + '" onclick="regPickCol(\''+ col + '\')" data-c="' + col + '"></div>').join('')
@@ -5618,6 +5682,25 @@ function showRegisterForm() {
     + '<div style="text-align:center;margin-top:8px;font-size:11px;color:var(--t3)">Máš účet? <a onclick="showLoginForm()" style="color:var(--acc);cursor:pointer">Přihlas se</a></div>'
     + '</div>';
   setTimeout(() => document.getElementById('reg-name')?.focus(), 50);
+}
+
+function checkStrength(val) {
+  const fill = document.getElementById('strength-fill');
+  const lbl  = document.getElementById('strength-lbl');
+  if (!fill || !lbl) return;
+  let score = 0;
+  if (val.length >= 6)  score++;
+  if (val.length >= 10) score++;
+  if (/[A-Z]/.test(val)) score++;
+  if (/[0-9]/.test(val)) score++;
+  if (/[^A-Za-z0-9]/.test(val)) score++;
+  const pct = Math.min(100, score * 20);
+  const colors = ['#ff4466','#ff8c42','#ffcc00','#7c6aff','#4fffb0'];
+  const labels = ['','Slabé','Střední','Dobré','Silné','Výborné'];
+  fill.style.width = pct + '%';
+  fill.style.background = colors[Math.max(0,score-1)] || '#ff4466';
+  lbl.textContent = score > 0 ? (labels[score] || '') : '';
+  lbl.style.color = fill.style.background;
 }
 
 function regPickCol(col) {
@@ -5651,17 +5734,32 @@ function regPrev() {
 }
 
 function doRegister() {
-  const n = (document.getElementById('reg-name')?.value || '').trim();
-  const errEl = document.getElementById('reg-err');
-  if (!n) { if (errEl) errEl.textContent = 'Zadej přezdívku'; return; }
-  if (isNameTaken(n)) { if (errEl) errEl.textContent = '❌ Přezdívka "' + n + '" je obsazená'; return; }
-  ME.name = n; lss('nx_name', n); lss('nx_color', ME.color);
-  lss('nx_id', ME.id); lss('nx_remember', true);
-  lss('nx_saved_name', n); lss('nx_saved_id', ME.id); // autofill
-  applyProfile(); closeModal();
-  // Show ID to user — they must save it!
-  showIdReveal();
-  renderAll();
+  const n       = (document.getElementById('reg-name')?.value  || '').trim();
+  const email   = (document.getElementById('reg-email')?.value || '').trim();
+  const pass    = (document.getElementById('reg-pass')?.value  || '');
+  const errEl   = document.getElementById('reg-err');
+  const setErr  = msg => { if (errEl) errEl.textContent = msg; };
+  if (!n) { setErr('Zadej přezdívku'); return; }
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { setErr('Zadej platný email'); return; }
+  if (!pass || pass.length < 6) { setErr('Heslo musí mít alespoň 6 znaků'); return; }
+  setErr('Registruji...');
+  fetch('/auth/register', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, username: n, password: pass })
+  }).then(r => r.json()).then(d => {
+    if (!d.ok) { setErr('❌ ' + (d.error || 'Chyba')); return; }
+    // Login success — set up identity
+    ME.id   = d.userId;
+    ME.name = d.username;
+    lss('nx_id',    ME.id);   lss('nx_name',  ME.name);
+    lss('nx_color', ME.color);
+    lss('nx_remember', true);
+    lss('nx_saved_name', ME.name); lss('nx_saved_id', ME.id);
+    lss('nx_saved_email', email);
+    applyProfile(); closeModal();
+    showIdReveal();
+    renderAll();
+  }).catch(() => setErr('❌ Síťová chyba — zkus to znovu'));
 }
 
 function showIdReveal() {
@@ -5687,41 +5785,56 @@ function showIdReveal() {
 }
 
 function doLogin() {
+  const email   = (document.getElementById('login-email')?.value || '').trim();
+  const pass    = (document.getElementById('login-pass')?.value  || '');
+  const errEl   = document.getElementById('login-err');
+  const setErr  = msg => { if (errEl) errEl.textContent = msg; };
+  if (!email) { setErr('Zadej email'); return; }
+  if (!pass)  { setErr('Zadej heslo'); return; }
+  setErr('Přihlašuji...');
+  fetch('/auth/login', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password: pass })
+  }).then(r => r.json()).then(d => {
+    if (!d.ok) { setErr('❌ ' + (d.error || 'Chyba')); return; }
+    const oldId = ME.id;
+    ME.id   = d.userId;
+    ME.name = d.username;
+    lss('nx_id',    ME.id);   lss('nx_name',  ME.name);
+    lss('nx_color', ME.color);
+    lss('nx_remember', true);
+    lss('nx_saved_name', ME.name); lss('nx_saved_id', ME.id);
+    lss('nx_saved_email', email);
+    for (const [srvId, srv] of Object.entries(SERVERS)) {
+      if (srv.ownerId === oldId) srv.ownerId = ME.id;
+    }
+    saveSrvs(); applyProfile(); closeModal();
+    toast('✅ Přihlášen jako ' + ME.name, 'ok');
+    if (wsConn) { try { wsConn.close(); } catch {} wsConn = null; }
+    setTimeout(() => { if (wsUrl) connectWS(wsUrl); renderAll(); }, 400);
+  }).catch(() => setErr('❌ Síťová chyba — zkus to znovu'));
+}
+
+function doLoginLegacy() {
   const name = (document.getElementById('login-name')?.value || '').trim();
-  const id   = (document.getElementById('login-id')?.value || '').trim();
+  const id   = (document.getElementById('login-id')?.value   || '').trim();
   const errEl = document.getElementById('login-err');
   if (!name) { if (errEl) errEl.textContent = 'Zadej přezdívku'; return; }
   if (!id)   { if (errEl) errEl.textContent = 'Zadej své ID'; return; }
-  // Restore identity
   const oldId = ME.id;
   ME.id   = id;
   ME.name = name;
   const remember = document.getElementById('login-remember')?.checked !== false;
-  lss('nx_id',   id);
-  lss('nx_name', name);
-  lss('nx_remember', remember);
-  // Save for autofill (separate from session)
-  if (remember) {
-    lss('nx_saved_name', name);
-    lss('nx_saved_id',   id);
-  } else {
-    lss('nx_saved_name', '');
-    lss('nx_saved_id',   '');
-  }
-  // Fix server ownership
+  lss('nx_id',   id); lss('nx_name', name); lss('nx_remember', remember);
+  if (remember) { lss('nx_saved_name', name); lss('nx_saved_id', id); }
+  else { lss('nx_saved_name', ''); lss('nx_saved_id', ''); }
   for (const [srvId, srv] of Object.entries(SERVERS)) {
     if (srv.ownerId === oldId) srv.ownerId = id;
   }
-  saveSrvs();
-  applyProfile();
-  closeModal();
+  saveSrvs(); applyProfile(); closeModal();
   toast('🔄 Přihlašování — načítám účet...', 'inf');
-  // Reconnect WS — onopen will send account_req automatically
   if (wsConn) { try { wsConn.close(); } catch {} wsConn = null; }
-  setTimeout(() => {
-    if (wsUrl) connectWS(wsUrl);
-    renderAll();
-  }, 400);
+  setTimeout(() => { if (wsUrl) connectWS(wsUrl); renderAll(); }, 400);
 }
 
 function copyMyId() { navigator.clipboard && navigator.clipboard.writeText(ME.id); toast('ID zkopírováno 📋', 'ok'); }
