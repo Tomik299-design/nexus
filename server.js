@@ -656,16 +656,36 @@ setTimeout(() => location.reload(), 30000);
     const onlineMap = {};
     for (const [, info] of clients) { if (info.id) onlineMap[info.id] = info; }
 
-    const allAccs = Object.entries(accounts).map(function(e) {
-      var id = e[0], acc = e[1], p = acc.profile || {};
+    // Build email lookup: userId -> { email, hasPassword }
+    const emailByUserId = {};
+    for (const [email, a] of Object.entries(authData)) {
+      emailByUserId[a.userId] = { email, hasPassword: !!(a.passHash) };
+    }
+
+    // Merge accounts (legacy) with authData — include ALL known users
+    const allIds = new Set([...Object.keys(accounts), ...Object.values(authData).map(a => a.userId)]);
+
+    const allAccs = Array.from(allIds).map(function(id) {
+      var acc = accounts[id] || {};
+      var p   = acc.profile || {};
+      var auth = emailByUserId[id] || {};
+      // Try to get name from authData if not in accounts
+      var nameFromAuth = '';
+      if (!p.name) {
+        for (const a of Object.values(authData)) {
+          if (a.userId === id) { nameFromAuth = a.username || ''; break; }
+        }
+      }
       return {
-        id: id,
-        name: p.name || '?',
-        color: p.color || '#888',
-        status: p.status || '-',
-        servers: Object.keys(acc.servers || {}).length,
-        lastSeen: acc.ts ? new Date(acc.ts).toISOString().slice(0,16).replace('T',' ') : 'never',
-        online: !!onlineMap[id]
+        id:          id,
+        name:        p.name || nameFromAuth || '?',
+        color:       p.color || '#888',
+        status:      p.status || '-',
+        servers:     Object.keys(acc.servers || {}).length,
+        lastSeen:    acc.ts ? new Date(acc.ts).toISOString().slice(0,16).replace('T',' ') : 'never',
+        online:      !!onlineMap[id],
+        email:       auth.email || '',
+        hasPassword: auth.hasPassword || false
       };
     }).sort(function(a,b){ return b.lastSeen > a.lastSeen ? 1 : -1; });
 
@@ -782,10 +802,10 @@ setTimeout(() => location.reload(), 30000);
 
       + '<div class="mn">'
       + '<div class="pnl act" id="pnl-accounts"><div class="sts" id="sts"></div>'
-      + '<div class="sec">ALL ACCOUNTS</div>'
-      + '<input class="sinp" placeholder="search name or id..." oninput="flt(\'tb-a\',this.value)">'
+      + '<div class="sec">VŠECHNY ÚČTY</div>'
+      + '<input class="sinp" placeholder="hledat jméno, id nebo email..." oninput="flt(\'tb-a\',this.value)">'
       + '<div class="tbl" id="tb-a">'
-      + '<div class="th" style="grid-template-columns:24px 1fr 130px 50px 65px 80px"><span></span><span>NAME/ID</span><span>LAST SEEN</span><span>SRVS</span><span>STATUS</span><span>ACTIONS</span></div>'
+      + '<div class="th" style="grid-template-columns:24px 1fr 150px 85px 40px 60px 80px"><span></span><span>JMÉNO/ID</span><span>EMAIL</span><span>HESLO</span><span>SRV</span><span>STAV</span><span>AKCE</span></div>'
       + '<div id="rows-a"></div></div></div>'
 
       + '<div class="pnl" id="pnl-servers"><div class="sec">SERVERS IN MEMORY</div>'
@@ -842,18 +862,23 @@ setTimeout(() => location.reload(), 30000);
 
       // Accounts rows
       + 'var ra=document.getElementById("rows-a");'
-      + 'if(!D.accounts.length){ra.innerHTML=\'<div class="em">No accounts yet</div>\';}else{'
+      + 'if(!D.accounts.length){ra.innerHTML=\'<div class="em">Žádné účty</div>\';}else{'
       + 'ra.innerHTML=D.accounts.map(function(a){'
       + 'var col=a.color||"#888";'
       + 'var initial=(a.name&&a.name[0]||"?").toUpperCase();'
       + 'var av=\'<div class="av" style="background:\'+col+\';color:#000">\'+initial+\'</div>\';'
       + 'var badge=a.online?\'<span class="on">● LIVE</span>\':\'<span class="of">○ off</span>\';'
+      + 'var emailCell=a.email?\'<div style="color:var(--acc);font-size:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="\'+a.email+\'">\'+a.email+\'</div>\':\'<span style="color:var(--t3);font-size:10px">—</span>\';'
+      + 'var passCell=a.hasPassword?\'<span style="color:var(--acc);font-size:11px">✅ ano</span>\':\'<span style="color:var(--r);font-size:11px">❌ ne</span>\';'
       + 'var sid=a.id.replace(/\'/g,"\\\\\'");'
       + 'var sname=(a.name||"").replace(/\'/g,"\\\\\'");'
-      + 'return \'<div class="tr" style="grid-template-columns:24px 1fr 130px 50px 65px 80px" data-s="\'+((a.name||"")+a.id).toLowerCase()+\'">\''
+      + 'return \'<div class="tr" style="grid-template-columns:24px 1fr 150px 85px 40px 60px 80px" data-s="\'+((a.name||"")+a.id+(a.email||"")).toLowerCase()+\'">\''
       + '+av'
-      + '+\'<div><div style="color:var(--t1);font-weight:600">\'+a.name+\'</div><div style="font-size:10px;color:var(--t3)">\'+a.id.slice(0,22)+\'...</div></div>\''
-      + '+\'<div style="color:var(--t3);font-size:11px">\'+a.lastSeen+\'</div>\''
+      + '+\'<div><div style="color:var(--t1);font-weight:600">\'+a.name+\'</div>'
+      + '<div style="font-size:10px;color:var(--t3);cursor:pointer" title="\'+a.id+\'" onclick="cpId(\\\'\'+sid+\'\\\')">\'+a.id.slice(0,20)+\'… 📋</div>'
+      + '<div style="font-size:9px;color:var(--t3)">\'+a.lastSeen+\'</div></div>\''
+      + '+emailCell'
+      + '+passCell'
       + '+\'<div style="color:var(--p)">\'+a.servers+\'</div>\''
       + '+badge'
       + '+\'<div style="display:flex;gap:3px"><button class="ab" onclick="vAcc(\\\'\'+sid+\'\\\')" >VIEW</button>\''
@@ -930,19 +955,26 @@ setTimeout(() => location.reload(), 30000);
       + 'if(!a)return;'
       + 'var sid=a.id.replace(/\'/g,"\\\\\'");'
       + 'var sname=(a.name||"").replace(/\'/g,"\\\\\'");'
-      + 'document.getElementById("mdl-t").textContent="ACCOUNT // "+a.name;'
+      + 'document.getElementById("mdl-t").textContent="ÚČET // "+a.name;'
       + 'document.getElementById("mdl-b").innerHTML='
-      + '"<div class=\\"mr\\"><div class=\\"ml\\">ID</div><div style=\\"color:var(--acc);font-size:11px;word-break:break-all\\">"+a.id+"</div></div>"'
-      + '+"<div class=\\"mr\\"><div class=\\"ml\\">Name</div>"+a.name+"</div>"'
-      + '+"<div class=\\"mr\\"><div class=\\"ml\\">Color</div><span style=\\"color:"+a.color+"\\">"+a.color+"</span></div>"'
-      + '+"<div class=\\"mr\\"><div class=\\"ml\\">Servers</div>"+a.servers+"</div>"'
-      + '+"<div class=\\"mr\\"><div class=\\"ml\\">Last seen</div>"+a.lastSeen+"</div>"'
-      + '+"<div class=\\"mr\\"><div class=\\"ml\\">Status</div>"+(a.online?"<span class=\\"on\\">● ONLINE</span>":"<span class=\\"of\\">○ offline</span>")+"</div>"'
+      + '"<div class=\\"mr\\"><div class=\\"ml\\">ID (plné)</div>"'
+      + '+"<div style=\\"color:var(--acc);font-size:10px;word-break:break-all;background:#020204;padding:6px;border-radius:4px;cursor:pointer\\" onclick=\\"cpId(\'"+a.id+"\')\\" title=\\"Klikni pro zkopírování\\">"+a.id+" 📋</div></div>"'
+      + '+"<div class=\\"mr\\"><div class=\\"ml\\">Jméno</div>"+a.name+"</div>"'
+      + '+"<div class=\\"mr\\"><div class=\\"ml\\">Barva</div><span style=\\"color:"+a.color+"\\">"+a.color+"</span></div>"'
+      + '+"<div class=\\"mr\\"><div class=\\"ml\\">Email</div>"+(a.email?\'<span style=\\"color:var(--acc)\\">\'+a.email+\'</span>\':\'<span style=\\"color:var(--t3)\\">— není nastaven</span>\')+\'</div>\''
+      + '+"<div class=\\"mr\\"><div class=\\"ml\\">Heslo</div>"+(a.hasPassword?\'<span style=\\"color:var(--acc)\\">✅ nastaveno</span>\':\'<span style=\\"color:var(--r)\\">❌ nenastaveno</span>\')+\'</div>\''
+      + '+"<div class=\\"mr\\"><div class=\\"ml\\">Servery</div>"+a.servers+"</div>"'
+      + '+"<div class=\\"mr\\"><div class=\\"ml\\">Naposledy viděn</div>"+a.lastSeen+"</div>"'
+      + '+"<div class=\\"mr\\"><div class=\\"ml\\">Stav</div>"+(a.online?"<span class=\\"on\\">● ONLINE</span>":"<span class=\\"of\\">○ offline</span>")+"</div>"'
       + '+"<div style=\\"display:flex;gap:8px;margin-top:12px\\">"'
-      + '+"<button class=\\"ab r\\" onclick=\\"doBan(\'"+sid+"\',\'"+sname+"\')\\" >BAN USER</button>"'
+      + '+"<button class=\\"ab r\\" onclick=\\"doBan(\'"+sid+"\',\'"+sname+"\')\\" >BAN</button>"'
       + '+"<button class=\\"ab r\\" onclick=\\"act(\'kick\',{id:\'"+sid+"\'})\\">KICK</button>"'
+      + '+"<button class=\\"ab\\" onclick=\\"cpId(\'"+a.id+"\')\\" >KOPÍROVAT ID</button>"'
       + '+"</div>";'
       + 'document.getElementById("mdl").classList.add("open");}'
+
+      + 'function cpId(id){'
+      + 'navigator.clipboard&&navigator.clipboard.writeText(id).then(function(){alert("ID zkopírováno!");});}'
 
       + 'function doBan(id,name){'
       + 'var reason=prompt("Ban \\""+name+"\\" — reason:","Banned by admin");'
