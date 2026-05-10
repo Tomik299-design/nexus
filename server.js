@@ -62,42 +62,77 @@ function loadAuth() {
     console.log('[Auth] Disk: načteno', Object.keys(authData).length, 'email účtů');
   } catch(e) { console.warn('[Auth] Disk load error:', e.message); }
 }
+let _authBinId = process.env.AUTH_BIN_ID || null;
+
 function loadAuthCloud() {
-  const binId = process.env.ACCOUNTS_BIN_ID;
-  if (!binId) return;
-  jsonbinRequest('GET', binId + '_auth', null, (err, result) => {
-    if (!err && result && result.record && typeof result.record === 'object') {
-      Object.assign(authData, result.record);
+  if (!_authBinId) {
+    console.log('[Auth] AUTH_BIN_ID není nastaven — po prvním uložení se bin vytvoří automaticky');
+    return;
+  }
+  jsonbinRequest('GET', _authBinId, null, (err, result) => {
+    if (!err && result && result.record) {
+      if (result.record.auth) Object.assign(authData, result.record.auth);
+      if (result.record.tokens) {
+        Object.assign(resetTokens, result.record.tokens);
+        const now = Date.now();
+        Object.keys(resetTokens).forEach(k => { if (resetTokens[k].expires < now) delete resetTokens[k]; });
+      }
       console.log('[Auth] Cloud: načteno', Object.keys(authData).length, 'email účtů');
     } else if (err) {
       console.warn('[Auth] Cloud auth load error:', err.message);
     }
   });
-  jsonbinRequest('GET', binId + '_tokens', null, (err, result) => {
-    if (!err && result && result.record && typeof result.record === 'object') {
-      Object.assign(resetTokens, result.record);
-      const now = Date.now();
-      Object.keys(resetTokens).forEach(k => { if (resetTokens[k].expires < now) delete resetTokens[k]; });
-      console.log('[Auth] Cloud tokeny načteny');
-    }
-  });
 }
+
+function _saveAuthCloud() {
+  const payload = { auth: authData, tokens: resetTokens };
+  if (_authBinId) {
+    jsonbinRequest('PUT', _authBinId, payload, (err) => {
+      if (err) console.warn('[Auth] Cloud save error:', err.message);
+      else console.log('[Auth] Cloud: uloženo', Object.keys(authData).length, 'email účtů');
+    });
+  } else {
+    // Auto-vytvoř bin
+    if (!JSONBIN_KEY) { console.warn('[Auth] JSONBIN_KEY chybí — nelze vytvořit auth bin'); return; }
+    const body = JSON.stringify(payload);
+    const reqOpts = {
+      hostname: 'api.jsonbin.io', path: '/v3/b', method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Bin-Name': 'nexus_auth',
+        'X-Bin-Private': 'true',
+        'X-Master-Key': JSONBIN_KEY,
+        'Content-Length': Buffer.byteLength(body)
+      }
+    };
+    const req = https.request(reqOpts, (res) => {
+      let raw = '';
+      res.on('data', d => raw += d);
+      res.on('end', () => {
+        try {
+          const result = JSON.parse(raw);
+          if (result.metadata?.id) {
+            _authBinId = result.metadata.id;
+            console.log('[Auth] ✅ Auth bin vytvořen:', _authBinId);
+            console.log('[Auth] 👉 Nastav na Render: AUTH_BIN_ID =', _authBinId);
+          }
+        } catch(e) { console.warn('[Auth] Bin create parse error:', e.message); }
+      });
+    });
+    req.on('error', err => console.warn('[Auth] Bin create error:', err.message));
+    req.write(body);
+    req.end();
+  }
+}
+
 function saveAuth() {
   try { fs.writeFileSync(AUTH_FILE, JSON.stringify(authData)); } catch(e) {}
-  const binId = process.env.ACCOUNTS_BIN_ID;
-  if (!binId) return;
-  jsonbinRequest('PUT', binId + '_auth', authData, (err) => {
-    if (err) console.warn('[Auth] Cloud save error:', err.message);
-    else console.log('[Auth] Cloud: uloženo', Object.keys(authData).length, 'email účtů');
-  });
+  _saveAuthCloud();
 }
+
 function saveTokens() {
   try { fs.writeFileSync(TOKEN_FILE, JSON.stringify(resetTokens)); } catch(e) {}
-  const binId = process.env.ACCOUNTS_BIN_ID;
-  if (!binId) return;
-  jsonbinRequest('PUT', binId + '_tokens', resetTokens, (err) => {
-    if (err) console.warn('[Auth] Token cloud save error:', err.message);
-  });
+  _saveAuthCloud();
 }
 
 function sendResetEmail(toEmail, token, cb) {
