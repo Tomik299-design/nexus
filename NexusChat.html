@@ -5587,7 +5587,7 @@ function doChangeEmail() {
   if (!pass || pass.length < 6) { setErr('Zadej heslo (min. 6 znaků)'); return; }
   setErr('Ukládám...');
   // Re-use set-password endpoint — it updates/creates the auth entry
-  fetch('/auth/set-password', {
+  fetch('https://nexus-g7k4.onrender.com/auth/set-password', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ userId: ME.id, email, password: pass, username: ME.name })
   }).then(r => r.json()).then(d => {
@@ -5832,7 +5832,7 @@ function doForgot() {
   const msgEl = document.getElementById('auth-forgot-msg') || document.getElementById('forgot-msg');
   if (!email) { if (msgEl) { msgEl.textContent = 'Zadej email'; msgEl.style.color = '#ff5370'; } return; }
   if (msgEl) { msgEl.textContent = 'Odesílám...'; msgEl.style.color = '#475569'; }
-  fetch('/auth/reset-request', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email }) })
+  fetch('https://nexus-g7k4.onrender.com/auth/reset-request', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email }) })
     .then(r => r.json()).then(() => {
       if (msgEl) { msgEl.textContent = '✅ Pokud email existuje, přišel ti odkaz pro reset.'; msgEl.style.color = '#4fffb0'; }
     }).catch(() => {
@@ -5932,7 +5932,7 @@ function doRegister() {
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { setErr('Zadej platný email'); return; }
   if (!pass || pass.length < 6) { setErr('Heslo musí mít alespoň 6 znaků'); return; }
   setErr('Registruji...');
-  fetch('/auth/register', {
+  fetch('https://nexus-g7k4.onrender.com/auth/register', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email, username: n, password: pass })
   }).then(r => r.json()).then(d => {
@@ -5980,7 +5980,7 @@ function doLogin() {
   if (!email) { setErr('Zadej email'); return; }
   if (!pass)  { setErr('Zadej heslo'); return; }
   setErr('Přihlašuji...');
-  fetch('/auth/login', {
+  fetch('https://nexus-g7k4.onrender.com/auth/login', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email, password: pass })
   }).then(r => r.json()).then(d => {
@@ -6031,7 +6031,7 @@ function showMigrationBanner() {
   if (ls('nx_saved_email', '')) return; // už má email
   _migrationBannerShown = true;
   // Zkontroluj server jestli účet už má email
-  fetch('/auth/has-email?userId=' + encodeURIComponent(ME.id))
+  fetch('https://nexus-g7k4.onrender.com/auth/has-email?userId=' + encodeURIComponent(ME.id))
     .then(r => r.json()).then(d => {
       if (d.hasEmail) return; // server ví o emailu, vše ok
       // Zobraz banner
@@ -6096,7 +6096,7 @@ function doSetPassword() {
   if (!pass || pass.length < 6) { setErr('Heslo musí mít alespoň 6 znaků'); return; }
   if (pass !== pass2) { setErr('Hesla se neshodují'); return; }
   setErr('Ukládám...');
-  fetch('/auth/set-password', {
+  fetch('https://nexus-g7k4.onrender.com/auth/set-password', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ userId: ME.id, email, password: pass, username: ME.name })
   }).then(r => r.json()).then(d => {
