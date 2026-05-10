@@ -126,7 +126,7 @@ function jsonbinRequest(method, binId, data, cb) {
   if (JSONBIN_KEY) headers['X-Master-Key'] = JSONBIN_KEY;
   if (body) headers['Content-Length'] = Buffer.byteLength(body);
 
-  const urlPath = binId ? '/b/' + binId + '/latest' : '/b';
+  const urlPath = binId ? '/b/' + binId + (method === 'GET' ? '/latest' : '') : '/b';
   const options = {
     hostname: 'api.jsonbin.io',
     path: '/v3' + urlPath,
@@ -138,7 +138,15 @@ function jsonbinRequest(method, binId, data, cb) {
     let raw = '';
     res.on('data', d => raw += d);
     res.on('end', () => {
-      try { cb(null, JSON.parse(raw)); } catch(e) { cb(e); }
+      if (res.statusCode >= 400) {
+        console.warn('[JSONBin] HTTP ' + res.statusCode + ' pro ' + method + ' ' + urlPath + ' — odpověď:', raw.slice(0, 200));
+        return cb(new Error('JSONBin HTTP ' + res.statusCode));
+      }
+      try { cb(null, JSON.parse(raw)); }
+      catch(e) {
+        console.warn('[JSONBin] Neplatná JSON odpověď:', raw.slice(0, 200));
+        cb(e);
+      }
     });
   });
   req.on('error', cb);
