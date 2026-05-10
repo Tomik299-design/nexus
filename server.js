@@ -57,21 +57,47 @@ function bulkSaveAccounts() {
 
 function loadAuth() {
   try {
-    if (fs.existsSync(AUTH_FILE))  authData     = JSON.parse(fs.readFileSync(AUTH_FILE, 'utf8'));
-    if (fs.existsSync(TOKEN_FILE)) resetTokens  = JSON.parse(fs.readFileSync(TOKEN_FILE, 'utf8'));
-    console.log('[Auth] Loaded', Object.keys(authData).length, 'email accounts');
-  } catch(e) { console.warn('[Auth] Load error:', e.message); }
+    if (fs.existsSync(AUTH_FILE))  authData    = JSON.parse(fs.readFileSync(AUTH_FILE, 'utf8'));
+    if (fs.existsSync(TOKEN_FILE)) resetTokens = JSON.parse(fs.readFileSync(TOKEN_FILE, 'utf8'));
+    console.log('[Auth] Disk: načteno', Object.keys(authData).length, 'email účtů');
+  } catch(e) { console.warn('[Auth] Disk load error:', e.message); }
 }
-function saveAuth()   { try { fs.writeFileSync(AUTH_FILE,  JSON.stringify(authData));    } catch(e) {} }
+function loadAuthCloud() {
+  const binId = process.env.ACCOUNTS_BIN_ID;
+  if (!binId) return;
+  jsonbinRequest('GET', binId + '_auth', null, (err, result) => {
+    if (!err && result && result.record && typeof result.record === 'object') {
+      Object.assign(authData, result.record);
+      console.log('[Auth] Cloud: načteno', Object.keys(authData).length, 'email účtů');
+    } else if (err) {
+      console.warn('[Auth] Cloud auth load error:', err.message);
+    }
+  });
+  jsonbinRequest('GET', binId + '_tokens', null, (err, result) => {
+    if (!err && result && result.record && typeof result.record === 'object') {
+      Object.assign(resetTokens, result.record);
+      const now = Date.now();
+      Object.keys(resetTokens).forEach(k => { if (resetTokens[k].expires < now) delete resetTokens[k]; });
+      console.log('[Auth] Cloud tokeny načteny');
+    }
+  });
+}
+function saveAuth() {
+  try { fs.writeFileSync(AUTH_FILE, JSON.stringify(authData)); } catch(e) {}
+  const binId = process.env.ACCOUNTS_BIN_ID;
+  if (!binId) return;
+  jsonbinRequest('PUT', binId + '_auth', authData, (err) => {
+    if (err) console.warn('[Auth] Cloud save error:', err.message);
+    else console.log('[Auth] Cloud: uloženo', Object.keys(authData).length, 'email účtů');
+  });
+}
 function saveTokens() {
   try { fs.writeFileSync(TOKEN_FILE, JSON.stringify(resetTokens)); } catch(e) {}
-  // Taky ulož do JSONBin pokud je k dispozici
   const binId = process.env.ACCOUNTS_BIN_ID;
-  if (binId) {
-    jsonbinRequest('PUT', binId + '_tokens', resetTokens, (err) => {
-      if (err) console.warn('[Auth] Token cloud save error:', err.message);
-    });
-  }
+  if (!binId) return;
+  jsonbinRequest('PUT', binId + '_tokens', resetTokens, (err) => {
+    if (err) console.warn('[Auth] Token cloud save error:', err.message);
+  });
 }
 
 function sendResetEmail(toEmail, token, cb) {
@@ -1387,6 +1413,8 @@ function saveAccounts() { try { fs.writeFileSync(ACCOUNTS_FILE, JSON.stringify(a
 
 loadBans();
 loadAuth();
+// Načti auth data z cloudu po startu (JSONBin je dostupný až po inicializaci)
+setTimeout(() => loadAuthCloud(), 3000);
 const history      = {};
 const vcState      = {};
 const offlineState = {};
