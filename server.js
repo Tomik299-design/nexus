@@ -63,7 +63,16 @@ function loadAuth() {
   } catch(e) { console.warn('[Auth] Load error:', e.message); }
 }
 function saveAuth()   { try { fs.writeFileSync(AUTH_FILE,  JSON.stringify(authData));    } catch(e) {} }
-function saveTokens() { try { fs.writeFileSync(TOKEN_FILE, JSON.stringify(resetTokens)); } catch(e) {} }
+function saveTokens() {
+  try { fs.writeFileSync(TOKEN_FILE, JSON.stringify(resetTokens)); } catch(e) {}
+  // Taky ulož do JSONBin pokud je k dispozici
+  const binId = process.env.ACCOUNTS_BIN_ID;
+  if (binId) {
+    jsonbinRequest('PUT', binId + '_tokens', resetTokens, (err) => {
+      if (err) console.warn('[Auth] Token cloud save error:', err.message);
+    });
+  }
+}
 
 function sendResetEmail(toEmail, token, cb) {
   const SMTP_HOST = process.env.SMTP_HOST;
@@ -1160,6 +1169,26 @@ setTimeout(() => location.reload(), 30000);
     const has = Object.values(authData).some(a => a.userId === userId);
     res.writeHead(200,'',{'Content-Type':'application/json'});
     res.end(JSON.stringify({ ok: true, hasEmail: has }));
+    return;
+  }
+
+  if (urlPath === '/auth/login-by-id' && req.method === 'POST') {
+    let body = '';
+    req.on('data', d => { body += d; if (body.length > 8192) req.destroy(); });
+    req.on('end', () => {
+      let parsed; try { parsed = JSON.parse(body); } catch { res.writeHead(400,'',{'Content-Type':'application/json'}); res.end('{"ok":false,"error":"invalid json"}'); return; }
+      const userId   = (parsed.userId   || '').trim();
+      const username = (parsed.username || '').trim();
+      if (!userId || !username) { res.writeHead(400,'',{'Content-Type':'application/json'}); res.end('{"ok":false,"error":"Chybí userId nebo username"}'); return; }
+      // Ověř že userId existuje v accounts (aby se nešlo přihlásit jako cizí účet)
+      if (!accounts[userId]) { res.writeHead(401,'',{'Content-Type':'application/json'}); res.end('{"ok":false,"error":"ID nenalezeno — účet neexistuje nebo server byl restartován"}'); return; }
+      const storedName = accounts[userId]?.profile?.name || '';
+      if (storedName && storedName.toLowerCase() !== username.toLowerCase()) {
+        res.writeHead(401,'',{'Content-Type':'application/json'}); res.end('{"ok":false,"error":"Přezdívka neodpovídá tomuto ID"}'); return;
+      }
+      res.writeHead(200,'',{'Content-Type':'application/json'});
+      res.end(JSON.stringify({ ok: true, userId, username: storedName || username }));
+    });
     return;
   }
 

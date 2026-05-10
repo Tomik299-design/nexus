@@ -5690,6 +5690,10 @@ function showForgotForm() {
     + '<input id="forgot-email" class="ssinp" type="email" placeholder="tvuj@email.cz" style="width:100%" maxlength="128"></div>'
     + '<div id="forgot-msg" style="font-size:12px;min-height:16px;margin:-4px 0 8px"></div>'
     + '<div class="mbtns"><button class="mbtn mbtn-p" style="width:100%;padding:11px" onclick="doForgot()">📧 Odeslat reset email</button></div>'
+    + '<div style="border-top:1px solid var(--bd);margin-top:14px;padding-top:12px">'
+    + '<p style="font-size:11px;color:var(--t3);margin-bottom:10px;text-align:center">📌 Stále máš přístup ke svému ID? Přihlas se přímo:</p>'
+    + '<button class="ssbtn" style="width:100%;justify-content:center" onclick="showLegacyLoginForm()">🔑 Přihlásit se přes ID</button>'
+    + '</div>'
     + '<div style="text-align:center;margin-top:10px;font-size:11px;color:var(--t3)"><a onclick="showLoginForm()" style="color:var(--acc);cursor:pointer">← Zpět na přihlášení</a></div>'
     + '</div>';
   setTimeout(() => document.getElementById('forgot-email')?.focus(), 50);
