@@ -1627,6 +1627,8 @@ wss.on('connection', (ws, req) => {
       // Nepřihlášení uživatelé (bez jména) se neukládají
       const profileName = msg.profile?.name || accounts[msg.userId]?.profile?.name || '';
       if (profileName && profileName.trim() !== '' && profileName !== '?') {
+        // Inicializuj účet pokud ještě neexistuje
+        if (!accounts[msg.userId]) accounts[msg.userId] = { profile: {}, servers: {}, roles: {} };
         if (msg.servers) accounts[msg.userId].servers = msg.servers;
         if (msg.roles)   accounts[msg.userId].roles   = msg.roles;
         if (msg.profile) {
