@@ -1225,7 +1225,7 @@ setTimeout(() => location.reload(), 30000);
 
   if (req.url === '/health' || req.url === '/ping') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ status: 'ok', clients: clients.size, uptime: Math.round(process.uptime()) }));
+    res.end(JSON.stringify({ status: 'ok', ready: serverReady, clients: clients.size, uptime: Math.round(process.uptime()) }));
     return;
   }
 
@@ -1470,8 +1470,18 @@ function saveAccounts() { try { fs.writeFileSync(ACCOUNTS_FILE, JSON.stringify(a
 
 loadBans();
 loadAuth();
-// Načti auth data z cloudu po startu (JSONBin je dostupný až po inicializaci)
 setTimeout(() => loadAuthCloud(), 3000);
+
+// Vyčisti prázdné účty (bez jména) které vznikly před přihlášením
+let _cleaned = 0;
+Object.keys(accounts).forEach(id => {
+  const name = accounts[id]?.profile?.name || '';
+  if (!name || name.trim() === '' || name === '?') {
+    delete accounts[id];
+    _cleaned++;
+  }
+});
+if (_cleaned > 0) { console.log('[Accounts] Vyčištěno', _cleaned, 'prázdných účtů'); saveAccounts(); }
 const history      = {};
 const vcState      = {};
 const offlineState = {};
@@ -1548,8 +1558,8 @@ wss.on('connection', (ws, req) => {
       clients.set(ws, { id: msg.m.id, name: msg.m.name || '?', info: msg.m, ip: info.ip });
       if (info.ip && msg.m.id) ipToId[info.ip] = msg.m.id;
       if (msg.m.id && offlineState[msg.m.id]) delete offlineState[msg.m.id];
-      // Save account data for cross-browser sync
-      if (msg.m.id && msg.m.name) {
+      // Save account data for cross-browser sync — jen přihlášené uživatele
+      if (msg.m.id && msg.m.name && msg.m.name !== '?' && msg.m.name.trim() !== '') {
         if (!accounts[msg.m.id]) accounts[msg.m.id] = {};
         accounts[msg.m.id].profile = {
           name: msg.m.name, color: msg.m.color, tag: msg.m.tag,
@@ -1614,25 +1624,28 @@ wss.on('connection', (ws, req) => {
 
     // Account sync — client sends their servers, we merge and send back saved ones
     if (msg.type === 'account_save' && msg.userId) {
-      if (!accounts[msg.userId]) accounts[msg.userId] = {};
-      if (msg.servers) accounts[msg.userId].servers = msg.servers;
-      if (msg.roles)   accounts[msg.userId].roles   = msg.roles;
-      if (msg.profile) {
-        // Always overwrite profile including empty avatar (intentional deletion)
-        accounts[msg.userId].profile = msg.profile;
+      // Nepřihlášení uživatelé (bez jména) se neukládají
+      const profileName = msg.profile?.name || accounts[msg.userId]?.profile?.name || '';
+      if (profileName && profileName.trim() !== '' && profileName !== '?') {
+        if (msg.servers) accounts[msg.userId].servers = msg.servers;
+        if (msg.roles)   accounts[msg.userId].roles   = msg.roles;
+        if (msg.profile) {
+          // Always overwrite profile including empty avatar (intentional deletion)
+          accounts[msg.userId].profile = msg.profile;
+        }
+        accounts[msg.userId].ts = Date.now();
+        saveAccounts();
+        bulkSaveAccounts(); // periodic bulk backup
+        // Save to cloud (JSONBin) for cross-browser access
+        const cloudData = {
+          userId: msg.userId,
+          profile: accounts[msg.userId].profile,
+          servers: accounts[msg.userId].servers,
+          roles:   accounts[msg.userId].roles,
+          ts:      Date.now()
+        };
+        cloudSaveAccount(msg.userId, cloudData);
       }
-      accounts[msg.userId].ts = Date.now();
-      saveAccounts();
-      bulkSaveAccounts(); // periodic bulk backup
-      // Save to cloud (JSONBin) for cross-browser access
-      const cloudData = {
-        userId: msg.userId,
-        profile: accounts[msg.userId].profile,
-        servers: accounts[msg.userId].servers,
-        roles:   accounts[msg.userId].roles,
-        ts:      Date.now()
-      };
-      cloudSaveAccount(msg.userId, cloudData);
     }
 
     if (msg.type === 'account_req' && msg.userId) {

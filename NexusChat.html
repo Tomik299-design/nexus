@@ -1792,7 +1792,10 @@ function connectWS(url) {
       const short = url.replace(/^wss?:\/\//, '').split('/')[0];
       setConn('ok', '🟢 Připojeno — ' + short);
       toast('Připojeno!', 'ok');
-      bcast({ type: 'presence', m: myInfo() });
+      // Pošli presence jen pokud je uživatel přihlášen
+      if (ME.name && ME.name !== '?') {
+        bcast({ type: 'presence', m: myInfo() });
+      }
       // Save full profile to cloud
       setTimeout(() => {
         if (wsConn && wsConn.readyState === 1 && ME.id && ME.name) {
@@ -6231,6 +6234,7 @@ function confirmLogOut() {
   lss('nx_avatar', '');
   lss('nx_saved_name', '');
   lss('nx_saved_id', '');
+  lss('nx_saved_email', '');
   lss('nx_remember', false);
   ME.name = ''; ME.id = ls('nx_id', ''); ME.color = '#7c6aff'; ME.avatar = '';
   closeModal();
@@ -6993,23 +6997,27 @@ function mentionKeydown(e, inp) {
   const _savedName = ls('nx_saved_name', '');
   const _savedId   = ls('nx_saved_id', '');
   const _remember  = ls('nx_remember', true);
+
+  // Pokud nx_name chybí ale máme uložené saved credentials, obnov nx_name ihned
+  if (!ME.name && _remember && _savedName && _savedId) {
+    ME.name = _savedName;
+    ME.id   = _savedId;
+    lss('nx_name', _savedName);
+    lss('nx_id',   _savedId);
+  }
+
   if (!ME.name) {
-    if (_remember && _savedName && _savedId) {
-      // Auto-restore saved credentials silently
-      ME.name = _savedName;
-      ME.id   = _savedId;
-      lss('nx_name', _savedName);
-      lss('nx_id',   _savedId);
-      applyProfile();
-      // Request account data from server
-      setTimeout(() => { if (wsConn && wsConn.readyState === 1) bcast({ type: 'account_req', userId: ME.id, name: ME.name }); }, 1500);
-      // Check if this legacy account has email set — if not, show migration banner
-      const _savedEmail = ls('nx_saved_email', '');
-      if (!_savedEmail) {
-        setTimeout(() => showMigrationBanner(), 2500);
-      }
-    } else {
-      setTimeout(openFirstRun, 500);
+    // Opravdu žádné přihlášení — zobraz auth overlay
+    setTimeout(openFirstRun, 500);
+  } else {
+    // Přihlášen — ujisti se že UI je správně nastaveno
+    applyProfile();
+    // Request account data from server
+    setTimeout(() => { if (wsConn && wsConn.readyState === 1) bcast({ type: 'account_req', userId: ME.id, name: ME.name }); }, 1500);
+    // Check if this legacy account has email set — if not, show migration banner
+    const _savedEmail = ls('nx_saved_email', '');
+    if (!_savedEmail) {
+      setTimeout(() => showMigrationBanner(), 2500);
     }
   }
   renderDmList();
