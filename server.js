@@ -136,40 +136,62 @@ function saveTokens() {
 }
 
 function sendResetEmail(toEmail, token, cb) {
-  const SMTP_HOST = process.env.SMTP_HOST;
-  const SMTP_USER = process.env.SMTP_USER;
-  const SMTP_PASS = process.env.SMTP_PASS;
-  const APP_URL   = process.env.APP_URL || 'https://nexus-g7k4.onrender.com';
-  console.log('[SMTP] Odesílám reset na:', toEmail, '| SMTP_HOST:', SMTP_HOST || 'NENASTAVENO', '| SMTP_USER:', SMTP_USER || 'NENASTAVENO');
-  if (!SMTP_HOST || !SMTP_USER || !SMTP_PASS) {
-    console.error('[SMTP] Chybí env proměnné! SMTP_HOST/SMTP_USER/SMTP_PASS musí být nastaveny na Render.');
-    return cb(new Error('SMTP not configured'));
+  const APP_URL    = process.env.APP_URL || 'https://nexus-g7k4.onrender.com';
+  const resetUrl   = APP_URL + '/reset?token=' + token;
+  const RESEND_KEY = process.env.RESEND_KEY;
+  const FROM_EMAIL = process.env.SMTP_USER || 'onboarding@resend.dev';
+
+  console.log('[Email] Odesílám reset na:', toEmail, '| FROM:', FROM_EMAIL);
+
+  if (!RESEND_KEY) {
+    console.error('[Email] RESEND_KEY není nastaven!');
+    return cb(new Error('Email service not configured'));
   }
-  const resetUrl = APP_URL + '/reset?token=' + token;
-  const body = 'Resetuj heslo zde:\n' + resetUrl + '\n\nPlatnost: 1 hodina.\nPokud jsi o reset nežádal/a, ignoruj tento email.';
-  let nodemailer;
-  try { nodemailer = require('nodemailer'); } catch(e) {
-    console.error('[SMTP] nodemailer není nainstalován! Spusť: npm install nodemailer');
-    return cb(new Error('nodemailer not installed'));
-  }
-  const transporter = nodemailer.createTransport({
-    host: SMTP_HOST, port: 587, secure: false,
-    auth: { user: SMTP_USER, pass: SMTP_PASS },
-    tls: { rejectUnauthorized: false }
-  });
-  transporter.sendMail({
-    from: '"NexusChat" <' + SMTP_USER + '>',
-    to: toEmail,
+
+  const body = JSON.stringify({
+    from: 'NexusChat <' + FROM_EMAIL + '>',
+    to: [toEmail],
     subject: 'Reset hesla — NexusChat',
-    text: body
-  }, (err, info) => {
-    if (err) {
-      console.error('[SMTP] Chyba při odesílání:', err.message, '| code:', err.code, '| response:', err.response);
-    } else {
-      console.log('[SMTP] Email odeslán! MessageId:', info.messageId, '| Response:', info.response);
-    }
-    cb(err, info);
+    text: 'Resetuj heslo zde:\n' + resetUrl + '\n\nPlatnost: 1 hodina.\nPokud jsi o reset nežádal/a, ignoruj tento email.',
+    html: '<p>Klikni pro reset hesla:</p><p><a href="' + resetUrl + '" style="background:#4fffb0;color:#000;padding:10px 20px;border-radius:8px;text-decoration:none;font-weight:bold">Resetovat heslo →</a></p><p style="color:#888;font-size:12px">Platnost: 1 hodina. Pokud jsi o reset nežádal/a, ignoruj tento email.</p>'
   });
+
+  const options = {
+    hostname: 'api.resend.com',
+    path: '/emails',
+    method: 'POST',
+    headers: {
+      'Authorization': 'Bearer ' + RESEND_KEY,
+      'Content-Type': 'application/json',
+      'Content-Length': Buffer.byteLength(body)
+    }
+  };
+
+  const req = https.request(options, (res) => {
+    let raw = '';
+    res.on('data', d => raw += d);
+    res.on('end', () => {
+      try {
+        const result = JSON.parse(raw);
+        if (res.statusCode >= 400) {
+          console.error('[Email] Resend chyba:', res.statusCode, raw.slice(0, 200));
+          cb(new Error('Resend HTTP ' + res.statusCode + ': ' + (result.message || raw)));
+        } else {
+          console.log('[Email] ✅ Email odeslán! ID:', result.id);
+          cb(null, result);
+        }
+      } catch(e) {
+        console.error('[Email] Parse error:', e.message, raw.slice(0, 100));
+        cb(e);
+      }
+    });
+  });
+  req.on('error', (err) => {
+    console.error('[Email] Síťová chyba:', err.message);
+    cb(err);
+  });
+  req.write(body);
+  req.end();
 }
 
 // ── JSONBin.io cloud storage ──
