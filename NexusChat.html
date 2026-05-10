@@ -864,6 +864,8 @@ textarea { -webkit-user-select: text; user-select: text; }
 
 /* ── Voice chat button active ── */
 #vcchatbtn.act { background: var(--acc-d); color: var(--acc); border-color: var(--acc); }
+/* ── Auth overlay mobile ── */
+@media (max-width:600px){#auth-overlay [style*="grid-template-columns:1fr 1fr"]{grid-template-columns:1fr!important}#auth-overlay [style*="border-right"]{display:none!important}}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiI+CiAgPHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiByeD0iOCIgZmlsbD0iIzBhMGMwZiIvPgogIDxyZWN0IHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiIgcng9IjgiIGZpbGw9InVybCgjZykiLz4KICA8ZGVmcz4KICAgIDxsaW5lYXJHcmFkaWVudCBpZD0iZyIgeDE9IjAiIHkxPSIwIiB4Mj0iMSIgeTI9IjEiPgogICAgICA8c3RvcCBvZmZzZXQ9IjAlIiBzdG9wLWNvbG9yPSIjMGQxYTE0Ii8+CiAgICAgIDxzdG9wIG9mZnNldD0iMTAwJSIgc3RvcC1jb2xvcj0iIzBkMTAyNCIvPgogICAgPC9saW5lYXJHcmFkaWVudD4KICA8L2RlZnM+CiAgPHRleHQgeD0iMTYiIHk9IjIzIiBmb250LWZhbWlseT0iQXJpYWwgQmxhY2ssIHNhbnMtc2VyaWYiIGZvbnQtd2VpZ2h0PSI5MDAiCiAgICAgICAgZm9udC1zaXplPSIyMCIgZmlsbD0iIzRmZmZiMCIgdGV4dC1hbmNob3I9Im1pZGRsZSI+TjwvdGV4dD4KPC9zdmc+">
@@ -5617,22 +5619,138 @@ function applyProfile() {
 
 // ── FIRST RUN ──
 function openFirstRun() {
-  openModal(
-    '<div style="text-align:center;padding:6px 0 10px">'
-    + '<div style="font-size:36px;margin-bottom:6px">⚡</div>'
-    + '<h2 style="font-size:18px;font-weight:700;margin-bottom:4px">NexusChat</h2>'
-    + '<p style="font-size:12px;color:var(--t2);margin-bottom:16px">Přihlas se nebo vytvoř nový účet</p>'
-    + '</div>'
-    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:4px">'
-    + '<button class="mbtn mbtn-p" style="padding:12px;flex-direction:column;display:flex;align-items:center;gap:4px;font-size:12px" onclick="showLoginForm()">'
-    + '<span style="font-size:20px">🔑</span>Přihlásit se</button>'
-    + '<button class="mbtn mbtn-g" style="padding:12px;flex-direction:column;display:flex;align-items:center;gap:4px;font-size:12px;border:1px solid var(--acc)" onclick="showRegisterForm()">'
-    + '<span style="font-size:20px">✨</span>Nový účet</button>'
-    + '</div>'
-    + '<div id="auth-form-wrap" style="margin-top:10px"></div>'
-  );
-  setTimeout(() => showRegisterForm(), 50);
+  // Zavři standardní modal a zobraz fullscreen auth overlay
+  const overlay = document.createElement('div');
+  overlay.id = 'auth-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:#060709;z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px;font-family:system-ui,sans-serif';
+  overlay.innerHTML = `
+    <div style="position:absolute;width:400px;height:400px;background:rgba(79,255,176,.08);border-radius:50%;filter:blur(60px);top:-100px;left:-100px;pointer-events:none"></div>
+    <div style="position:absolute;width:350px;height:350px;background:rgba(124,106,255,.08);border-radius:50%;filter:blur(60px);bottom:-80px;right:-80px;pointer-events:none"></div>
+    <div style="position:relative;z-index:1;display:grid;grid-template-columns:1fr 1fr;width:min(820px,95%);min-height:480px;background:#0d0f12;border:1px solid rgba(79,255,176,.15);border-radius:20px;overflow:hidden">
+      <!-- Brand -->
+      <div style="padding:44px 36px;display:flex;flex-direction:column;justify-content:center;background:linear-gradient(135deg,rgba(79,255,176,.06),rgba(124,106,255,.06));border-right:1px solid rgba(255,255,255,.06)">
+        <div style="font-size:44px;margin-bottom:14px;filter:drop-shadow(0 0 16px rgba(79,255,176,.5))">⚡</div>
+        <div style="font-size:28px;font-weight:800;color:#f1f5f9;letter-spacing:-0.5px;margin-bottom:4px">NexusChat</div>
+        <div style="font-size:13px;color:#4fffb0;font-weight:600;margin-bottom:28px">Chatuj. Volej. Sdílej.</div>
+        <div style="font-size:13px;color:#475569;margin-bottom:9px">💬 Textové kanály &amp; DM</div>
+        <div style="font-size:13px;color:#475569;margin-bottom:9px">🎤 Voice hovory</div>
+        <div style="font-size:13px;color:#475569;margin-bottom:9px">🖥️ Sdílení obrazovky</div>
+        <div style="font-size:13px;color:#475569">📱 Web &amp; Desktop app</div>
+      </div>
+      <!-- Form -->
+      <div style="padding:44px 40px;display:flex;align-items:center;justify-content:center">
+        <div style="width:100%;max-width:300px">
+          <!-- Tabs -->
+          <div style="display:flex;gap:4px;background:rgba(255,255,255,.05);border-radius:11px;padding:4px;margin-bottom:26px">
+            <button onclick="authTab('login')" id="auth-tb-login" style="flex:1;padding:9px;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;background:#0d0f12;color:#e2e8f0;box-shadow:0 2px 10px rgba(0,0,0,.5);transition:all .2s">Přihlásit se</button>
+            <button onclick="authTab('reg')" id="auth-tb-reg" style="flex:1;padding:9px;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;background:transparent;color:#475569;transition:all .2s">Registrovat</button>
+          </div>
+          <!-- LOGIN -->
+          <div id="auth-pnl-login">
+            <div style="margin-bottom:14px">${authField('email','Email','vas@email.cz','email','auth-email')}</div>
+            <div style="margin-bottom:18px">${authFieldPass('auth-pass','Heslo','Tvoje heslo')}</div>
+            <div id="auth-login-err" style="color:#ff5370;font-size:12px;min-height:16px;margin:-10px 0 8px;text-align:center"></div>
+            <button onclick="doLogin()" style="width:100%;background:#4fffb0;color:#000;border:none;border-radius:11px;padding:13px;font-size:15px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px" onmouseover="this.style.background='#3de8a0'" onmouseout="this.style.background='#4fffb0'"><span>Přihlásit se</span><span>→</span></button>
+            <div style="font-size:12px;color:#475569;text-align:center;margin-top:14px"><span style="color:#4fffb0;cursor:pointer" onclick="authTab('forgot')">Zapomněl/a jsi heslo?</span></div>
+            <div style="border-top:1px solid rgba(255,255,255,.06);margin-top:16px;padding-top:14px;text-align:center">
+              <div style="font-size:11px;color:#475569;margin-bottom:8px">Starý systém (přezdívka + ID)</div>
+              <button onclick="authTab('legacy')" style="width:100%;background:transparent;border:1px solid rgba(255,255,255,.1);border-radius:9px;padding:9px;font-size:12px;color:#64748b;cursor:pointer">🔑 Přihlásit se přes ID</button>
+            </div>
+          </div>
+          <!-- REGISTER -->
+          <div id="auth-pnl-reg" style="display:none">
+            <div style="margin-bottom:12px">${authField('text','Přezdívka','Jak se jmenuješ?','text','reg-name')}</div>
+            <div style="margin-bottom:12px">${authField('email','Email','vas@email.cz','email','reg-email')}</div>
+            <div style="margin-bottom:18px">
+              ${authFieldPass('reg-pass','Heslo','Min. 6 znaků','checkStrengthNew(this.value)')}
+              <div style="height:3px;background:rgba(255,255,255,.06);border-radius:2px;margin-top:6px;overflow:hidden"><div id="auth-sbar" style="height:100%;width:0;border-radius:2px;transition:all .3s"></div></div>
+              <div id="auth-slbl" style="font-size:10px;margin-top:3px;color:#475569;height:14px"></div>
+            </div>
+            <div id="auth-reg-err" style="color:#ff5370;font-size:12px;min-height:16px;margin:-10px 0 8px;text-align:center"></div>
+            <button onclick="doRegister()" style="width:100%;background:#4fffb0;color:#000;border:none;border-radius:11px;padding:13px;font-size:15px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px" onmouseover="this.style.background='#3de8a0'" onmouseout="this.style.background='#4fffb0'"><span>Vytvořit účet</span><span>→</span></button>
+          </div>
+          <!-- FORGOT -->
+          <div id="auth-pnl-forgot" style="display:none;text-align:center">
+            <div style="font-size:36px;margin-bottom:10px">🔑</div>
+            <div style="font-size:15px;font-weight:700;color:#f1f5f9;margin-bottom:6px">Reset hesla</div>
+            <div style="font-size:12px;color:#64748b;margin-bottom:20px;line-height:1.5">Zadej email a pošleme ti odkaz<br>pro nastavení nového hesla.</div>
+            <div style="margin-bottom:16px;text-align:left">${authField('email','Email','vas@email.cz','email','forgot-email')}</div>
+            <div id="auth-forgot-msg" style="font-size:12px;min-height:16px;margin-bottom:8px;text-align:center"></div>
+            <button onclick="doForgot()" style="width:100%;background:#4fffb0;color:#000;border:none;border-radius:11px;padding:13px;font-size:15px;font-weight:800;cursor:pointer" onmouseover="this.style.background='#3de8a0'" onmouseout="this.style.background='#4fffb0'">Poslat reset email 📧</button>
+            <div style="font-size:12px;color:#475569;margin-top:14px"><span style="color:#4fffb0;cursor:pointer" onclick="authTab('login')">← Zpět na přihlášení</span></div>
+          </div>
+          <!-- LEGACY LOGIN -->
+          <div id="auth-pnl-legacy" style="display:none">
+            <div style="margin-bottom:12px">${authField('text','Přezdívka','Tvoje přezdívka','text','legacy-name')}</div>
+            <div style="margin-bottom:18px">${authField('text','Tvoje ID','Vlož své ID','text','legacy-id','font-family:monospace;font-size:11px')}</div>
+            <div id="auth-legacy-err" style="color:#ff5370;font-size:12px;min-height:16px;margin:-10px 0 8px;text-align:center"></div>
+            <button onclick="doLoginLegacy()" style="width:100%;background:#4fffb0;color:#000;border:none;border-radius:11px;padding:13px;font-size:15px;font-weight:800;cursor:pointer" onmouseover="this.style.background='#3de8a0'" onmouseout="this.style.background='#4fffb0'">Přihlásit se →</button>
+            <div style="font-size:12px;color:#475569;text-align:center;margin-top:14px"><span style="color:#4fffb0;cursor:pointer" onclick="authTab('login')">← Zpět</span></div>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  // Předvyplň uložené hodnoty
+  const savedEmail = ls('nx_saved_email','');
+  const savedName  = ls('nx_saved_name','');
+  const savedId    = ls('nx_saved_id','');
+  if (savedEmail) { const el = document.getElementById('auth-email'); if(el) el.value = savedEmail; }
+  if (savedName)  { const el = document.getElementById('legacy-name'); if(el) el.value = savedName; }
+  if (savedId)    { const el = document.getElementById('legacy-id');   if(el) el.value = savedId; }
+  setTimeout(() => document.getElementById('auth-email')?.focus(), 100);
 }
+
+function authField(type, label, placeholder, inputType, id, extraStyle) {
+  const inp = `<input type="${inputType||type}" id="${id}" placeholder="${placeholder}" style="width:100%;background:rgba(255,255,255,.04);border:1.5px solid rgba(255,255,255,.08);border-radius:10px;padding:11px 14px;color:#e2e8f0;font-size:14px;outline:none;box-sizing:border-box;${extraStyle||''}" onfocus="this.style.borderColor='#4fffb0'" onblur="this.style.borderColor='rgba(255,255,255,.08)'">`;
+  return `<div style="font-size:10px;font-weight:700;color:#475569;letter-spacing:.7px;text-transform:uppercase;margin-bottom:5px">${label}</div>${inp}`;
+}
+function authFieldPass(id, label, placeholder, oninput) {
+  return `<div style="font-size:10px;font-weight:700;color:#475569;letter-spacing:.7px;text-transform:uppercase;margin-bottom:5px">${label}</div>
+  <div style="position:relative">
+    <input type="password" id="${id}" placeholder="${placeholder}" ${oninput?`oninput="${oninput}"`:''}  style="width:100%;background:rgba(255,255,255,.04);border:1.5px solid rgba(255,255,255,.08);border-radius:10px;padding:11px 44px 11px 14px;color:#e2e8f0;font-size:14px;outline:none;box-sizing:border-box" onfocus="this.style.borderColor='#4fffb0'" onblur="this.style.borderColor='rgba(255,255,255,.08)'">
+    <button onclick="togglePass('${id}',this)" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#475569;font-size:14px">👁</button>
+  </div>`;
+}
+
+function authTab(tab) {
+  ['login','reg','forgot','legacy'].forEach(t => {
+    const pnl = document.getElementById('auth-pnl-'+t);
+    if (pnl) pnl.style.display = t===tab ? '' : 'none';
+    const btn = document.getElementById('auth-tb-'+t);
+    if (btn) {
+      btn.style.background  = t===tab ? '#0d0f12' : 'transparent';
+      btn.style.color       = t===tab ? '#e2e8f0' : '#475569';
+      btn.style.boxShadow   = t===tab ? '0 2px 10px rgba(0,0,0,.5)' : 'none';
+    }
+  });
+  // Focus první input
+  const focusMap = { login:'auth-email', reg:'reg-name', forgot:'forgot-email', legacy:'legacy-name' };
+  setTimeout(() => document.getElementById(focusMap[tab])?.focus(), 50);
+}
+
+function closeAuthOverlay() {
+  document.getElementById('auth-overlay')?.remove();
+}
+
+function checkStrengthNew(val) {
+  const bar = document.getElementById('auth-sbar');
+  const lbl = document.getElementById('auth-slbl');
+  if (!bar || !lbl) return;
+  let s = 0;
+  if (val.length >= 6) s++; if (val.length >= 10) s++;
+  if (/[A-Z]/.test(val)) s++; if (/[0-9]/.test(val)) s++;
+  if (/[^A-Za-z0-9]/.test(val)) s++;
+  const colors = ['','#ff5370','#ff9a3c','#ffcb6b','#4fffb0','#4fffb0'];
+  const labels = ['','Slabé','Ujde','Dobré','Silné','Velmi silné'];
+  bar.style.width = (s*20)+'%'; bar.style.background = colors[s]||'';
+  lbl.textContent = val.length ? (labels[s]||'') : ''; lbl.style.color = colors[s]||'#475569';
+}
+
+function showLoginForm()    { authTab('login'); }
+function showRegisterForm() { authTab('reg'); }
+function showForgotForm()   { authTab('forgot'); }
+function showLegacyLoginForm() { authTab('legacy'); }
 
 function showLoginForm() {
   const savedEmail = ls('nx_saved_email', '');
@@ -5708,14 +5826,14 @@ function togglePass(inputId, btn) {
 
 function doForgot() {
   const email = (document.getElementById('forgot-email')?.value || '').trim();
-  const msgEl = document.getElementById('forgot-msg');
-  if (!email) { if (msgEl) { msgEl.textContent = 'Zadej email'; msgEl.style.color = 'var(--red)'; } return; }
-  if (msgEl) { msgEl.textContent = 'Odesílám...'; msgEl.style.color = 'var(--t3)'; }
+  const msgEl = document.getElementById('auth-forgot-msg') || document.getElementById('forgot-msg');
+  if (!email) { if (msgEl) { msgEl.textContent = 'Zadej email'; msgEl.style.color = '#ff5370'; } return; }
+  if (msgEl) { msgEl.textContent = 'Odesílám...'; msgEl.style.color = '#475569'; }
   fetch('/auth/reset-request', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email }) })
-    .then(r => r.json()).then(d => {
-      if (msgEl) { msgEl.textContent = '✅ Pokud email existuje, přišel ti odkaz pro reset.'; msgEl.style.color = 'var(--acc)'; }
+    .then(r => r.json()).then(() => {
+      if (msgEl) { msgEl.textContent = '✅ Pokud email existuje, přišel ti odkaz pro reset.'; msgEl.style.color = '#4fffb0'; }
     }).catch(() => {
-      if (msgEl) { msgEl.textContent = '❌ Síťová chyba'; msgEl.style.color = 'var(--red)'; }
+      if (msgEl) { msgEl.textContent = '❌ Síťová chyba'; msgEl.style.color = '#ff5370'; }
     });
 }
 
@@ -5805,7 +5923,7 @@ function doRegister() {
   const n       = (document.getElementById('reg-name')?.value  || '').trim();
   const email   = (document.getElementById('reg-email')?.value || '').trim();
   const pass    = (document.getElementById('reg-pass')?.value  || '');
-  const errEl   = document.getElementById('reg-err');
+  const errEl   = document.getElementById('auth-reg-err');
   const setErr  = msg => { if (errEl) errEl.textContent = msg; };
   if (!n) { setErr('Zadej přezdívku'); return; }
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { setErr('Zadej platný email'); return; }
@@ -5816,15 +5934,14 @@ function doRegister() {
     body: JSON.stringify({ email, username: n, password: pass })
   }).then(r => r.json()).then(d => {
     if (!d.ok) { setErr('❌ ' + (d.error || 'Chyba')); return; }
-    // Login success — set up identity
     ME.id   = d.userId;
     ME.name = d.username;
-    lss('nx_id',    ME.id);   lss('nx_name',  ME.name);
+    lss('nx_id', ME.id); lss('nx_name', ME.name);
     lss('nx_color', ME.color);
     lss('nx_remember', true);
     lss('nx_saved_name', ME.name); lss('nx_saved_id', ME.id);
     lss('nx_saved_email', email);
-    applyProfile(); closeModal();
+    applyProfile(); closeAuthOverlay(); closeModal();
     showIdReveal();
     renderAll();
   }).catch(() => setErr('❌ Síťová chyba — zkus to znovu'));
@@ -5853,9 +5970,9 @@ function showIdReveal() {
 }
 
 function doLogin() {
-  const email   = (document.getElementById('login-email')?.value || '').trim();
-  const pass    = (document.getElementById('login-pass')?.value  || '');
-  const errEl   = document.getElementById('login-err');
+  const email   = (document.getElementById('auth-email')?.value || '').trim();
+  const pass    = (document.getElementById('auth-pass')?.value  || '');
+  const errEl   = document.getElementById('auth-login-err');
   const setErr  = msg => { if (errEl) errEl.textContent = msg; };
   if (!email) { setErr('Zadej email'); return; }
   if (!pass)  { setErr('Zadej heslo'); return; }
@@ -5868,7 +5985,7 @@ function doLogin() {
     const oldId = ME.id;
     ME.id   = d.userId;
     ME.name = d.username;
-    lss('nx_id',    ME.id);   lss('nx_name',  ME.name);
+    lss('nx_id', ME.id); lss('nx_name', ME.name);
     lss('nx_color', ME.color);
     lss('nx_remember', true);
     lss('nx_saved_name', ME.name); lss('nx_saved_id', ME.id);
@@ -5876,7 +5993,7 @@ function doLogin() {
     for (const [srvId, srv] of Object.entries(SERVERS)) {
       if (srv.ownerId === oldId) srv.ownerId = ME.id;
     }
-    saveSrvs(); applyProfile(); closeModal();
+    saveSrvs(); applyProfile(); closeAuthOverlay(); closeModal();
     toast('✅ Přihlášen jako ' + ME.name, 'ok');
     if (wsConn) { try { wsConn.close(); } catch {} wsConn = null; }
     setTimeout(() => { if (wsUrl) connectWS(wsUrl); renderAll(); }, 400);
@@ -5884,26 +6001,23 @@ function doLogin() {
 }
 
 function doLoginLegacy() {
-  const name = (document.getElementById('login-name')?.value || '').trim();
-  const id   = (document.getElementById('login-id')?.value   || '').trim();
-  const errEl = document.getElementById('login-err');
+  const name  = (document.getElementById('legacy-name')?.value || '').trim();
+  const id    = (document.getElementById('legacy-id')?.value   || '').trim();
+  const errEl = document.getElementById('auth-legacy-err');
   if (!name) { if (errEl) errEl.textContent = 'Zadej přezdívku'; return; }
   if (!id)   { if (errEl) errEl.textContent = 'Zadej své ID'; return; }
   const oldId = ME.id;
   ME.id   = id;
   ME.name = name;
-  const remember = document.getElementById('login-remember')?.checked !== false;
-  lss('nx_id',   id); lss('nx_name', name); lss('nx_remember', remember);
-  if (remember) { lss('nx_saved_name', name); lss('nx_saved_id', id); }
-  else { lss('nx_saved_name', ''); lss('nx_saved_id', ''); }
+  lss('nx_id', id); lss('nx_name', name); lss('nx_remember', true);
+  lss('nx_saved_name', name); lss('nx_saved_id', id);
   for (const [srvId, srv] of Object.entries(SERVERS)) {
     if (srv.ownerId === oldId) srv.ownerId = id;
   }
-  saveSrvs(); applyProfile(); closeModal();
+  saveSrvs(); applyProfile(); closeAuthOverlay(); closeModal();
   toast('🔄 Přihlašování — načítám účet...', 'inf');
   if (wsConn) { try { wsConn.close(); } catch {} wsConn = null; }
   setTimeout(() => { if (wsUrl) connectWS(wsUrl); renderAll(); }, 400);
-  // Show migration banner after login — they used legacy ID
   setTimeout(() => showMigrationBanner(), 2000);
 }
 
