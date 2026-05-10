@@ -40,6 +40,21 @@ function loadBulkAccounts(cb) {
   });
 }
 
+// bulkSaveAccounts — uloží všechny účty do JSONBin (pokud je nastaveno ACCOUNTS_BIN_ID)
+let _bulkSaveTimer = null;
+function bulkSaveAccounts() {
+  const binId = process.env.ACCOUNTS_BIN_ID;
+  if (!binId) return;
+  // Debounce — nevolej víckrát než jednou za 30 sekund
+  if (_bulkSaveTimer) return;
+  _bulkSaveTimer = setTimeout(() => {
+    _bulkSaveTimer = null;
+    jsonbinRequest('PUT', binId, accounts, (err) => {
+      if (err) console.warn('[Cloud] bulkSaveAccounts error:', err.message);
+    });
+  }, 30000);
+}
+
 function loadAuth() {
   try {
     if (fs.existsSync(AUTH_FILE))  authData     = JSON.parse(fs.readFileSync(AUTH_FILE, 'utf8'));
