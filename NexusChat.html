@@ -1960,7 +1960,7 @@ function handleNet(d) {
     if (d.id) {
       // Use member info from message OR from our local cache
       const leavingMbr = d.m || onlineMbrs[d.id];
-      if (leavingMbr) {
+      if (leavingMbr && leavingMbr.name && leavingMbr.name.trim() !== '' && leavingMbr.name !== '?') {
         offlineMbrs[d.id] = { ...leavingMbr, status: 'offline' };
         saveOffline();
       }
