@@ -1627,8 +1627,6 @@ wss.on('connection', (ws, req) => {
       // Nepřihlášení uživatelé (bez jména) se neukládají
       const profileName = msg.profile?.name || accounts[msg.userId]?.profile?.name || '';
       if (profileName && profileName.trim() !== '' && profileName !== '?') {
-        // Inicializuj účet pokud ještě neexistuje
-        if (!accounts[msg.userId]) accounts[msg.userId] = { profile: {}, servers: {}, roles: {} };
         if (msg.servers) accounts[msg.userId].servers = msg.servers;
         if (msg.roles)   accounts[msg.userId].roles   = msg.roles;
         if (msg.profile) {
@@ -1707,14 +1705,24 @@ wss.on('connection', (ws, req) => {
 
     // Audio relay — send only to others in same voice channel
     if (msg.type === 'audio' && msg.chId) {
-      // Relay only to clients in the same voice channel
+      // Legacy audio relay — ponecháno pro kompatibilitu ale WebRTC to nepoužívá
       for (const [client, info] of clients) {
         if (client !== ws && client.readyState === WebSocket.OPEN && info.id !== msg.from) {
-          // Check if this client is in the same VC channel
           const clientVcCh = vcState[info.id]?.chId;
           if (clientVcCh === msg.chId) {
             try { client.send(str); } catch { clients.delete(client); }
           }
+        }
+      }
+      return;
+    }
+
+    // WebRTC signaling — přepošli zprávu konkrétnímu uživateli
+    if ((msg.type === 'rtc_offer' || msg.type === 'rtc_answer' || msg.type === 'rtc_ice') && msg.to) {
+      for (const [client, info] of clients) {
+        if (client.readyState === WebSocket.OPEN && info.id === msg.to) {
+          try { client.send(str); } catch { clients.delete(client); }
+          break;
         }
       }
       return;

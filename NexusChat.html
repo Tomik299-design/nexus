@@ -1974,6 +1974,7 @@ function handleNet(d) {
   } else if (d.type === 'vc_leave') {
     if (d.id) {
       delete vcMembers[d.id];
+      closePeer(d.id);  // Zavři WebRTC spojení
       renderChs();
       if (inVc) renderVcParts();
     }
@@ -2288,7 +2289,13 @@ function handleNet(d) {
     return;
   }
   if (d.type === 'audio') {
-    handleAudio(d);
+    handleAudio(d); // legacy — ignorováno při WebRTC
+  } else if (d.type === 'rtc_offer') {
+    handleRtcOffer(d);
+  } else if (d.type === 'rtc_answer') {
+    handleRtcAnswer(d);
+  } else if (d.type === 'rtc_ice') {
+    handleRtcIce(d);
   } else if (d.type === 'vc_speaking') {
     if (d.id && d.id !== ME.id) {
       const el = document.getElementById('vcp-' + d.id);
@@ -2303,6 +2310,10 @@ function handleNet(d) {
       if (inVc && d.chId === vcChId) {
         renderVcParts();
         toast(d.m.name + ' se připojil/a do 🔊', 'inf');
+        // Pošli WebRTC offer novému členovi (my jsme initiator)
+        setTimeout(() => {
+          if (inVc && vcChId === d.chId) createPeer(d.m.id, true);
+        }, 400);
       }
     }
   } else if (d.type === 'history') {
@@ -3481,21 +3492,169 @@ function clearTypingOthers() {
 //  WebRTC Voice — peer-to-peer audio
 // ══════════════════════════════════════════════
 const VC = {
-  stream:     null,
-  scrStream:  null,
-  ctx:        null,
-  an:         null,
-  vad:        null,
-  recorder:   null,
-  audioEls:   {},
-  gainNodes:  {},
-  micMuted:   false,
-  deafened:   false,
-  speaking:   false,
+  stream:      null,
+  scrStream:   null,
+  ctx:         null,
+  an:          null,
+  vad:         null,
+  recorder:    null,
+  audioEls:    {},   // legacy fallback
+  gainNodes:   {},
+  micMuted:    false,
+  deafened:    false,
+  speaking:    false,
   localVolume: 1.0,
-  noiseGate:  0.015,
-  gateGain:   null,
+  noiseGate:   0.015,
+  gateGain:    null,
+  // WebRTC
+  peers:       {},   // peerId -> RTCPeerConnection
+  remoteAudio: {},   // peerId -> { el, gainNode }
 };
+
+// STUN servers pro ICE
+const ICE_SERVERS = [
+  { urls: 'stun:stun.l.google.com:19302' },
+  { urls: 'stun:stun1.l.google.com:19302' },
+  { urls: 'stun:stun.cloudflare.com:3478' },
+];
+
+async function createPeer(peerId, isInitiator) {
+  // Zavři staré spojení pokud existuje
+  if (VC.peers[peerId]) {
+    try { VC.peers[peerId].close(); } catch {}
+    delete VC.peers[peerId];
+  }
+
+  const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS, iceCandidatePoolSize: 5 });
+  VC.peers[peerId] = pc;
+
+  // Přidej local audio track
+  if (VC.stream) {
+    VC.stream.getAudioTracks().forEach(track => {
+      pc.addTrack(track, VC.stream);
+    });
+  }
+
+  // Přijatý remote audio
+  pc.ontrack = (e) => {
+    if (VC.deafened) return;
+    if (!VC.remoteAudio[peerId]) {
+      const audio = document.createElement('audio');
+      audio.autoplay = true;
+      audio.playsInline = true;
+      audio.style.display = 'none';
+      const outId = ls('nx_out_device', '');
+      if (outId && audio.setSinkId) audio.setSinkId(outId).catch(() => {});
+      document.body.appendChild(audio);
+      // Web Audio gain pro volume control
+      const actx = new (window.AudioContext || window.webkitAudioContext)();
+      const src = actx.createMediaElementSource(audio);
+      const gain = actx.createGain();
+      gain.gain.value = Math.min(2, parseInt(ls('nx_out_vol', 100)) / 100);
+      src.connect(gain);
+      gain.connect(actx.destination);
+      VC.remoteAudio[peerId] = { el: audio, gain, actx };
+    }
+    VC.remoteAudio[peerId].el.srcObject = e.streams[0];
+  };
+
+  // ICE kandidáti
+  pc.onicecandidate = (e) => {
+    if (e.candidate && wsConn && wsConn.readyState === 1) {
+      wsConn.send(JSON.stringify({
+        type: 'rtc_ice', to: peerId, from: ME.id, chId: vcChId, candidate: e.candidate
+      }));
+    }
+  };
+
+  pc.oniceconnectionstatechange = () => {
+    if (pc.iceConnectionState === 'disconnected' || pc.iceConnectionState === 'failed') {
+      // Zkus reconnect po 2s
+      setTimeout(() => {
+        if (inVc && VC.peers[peerId] === pc) createPeer(peerId, true).then(() => initiateOffer(peerId));
+      }, 2000);
+    }
+  };
+
+  if (isInitiator) await initiateOffer(peerId);
+  return pc;
+}
+
+async function initiateOffer(peerId) {
+  const pc = VC.peers[peerId];
+  if (!pc) return;
+  try {
+    const offer = await pc.createOffer({ offerToReceiveAudio: true });
+    await pc.setLocalDescription(offer);
+    if (wsConn && wsConn.readyState === 1) {
+      wsConn.send(JSON.stringify({
+        type: 'rtc_offer', to: peerId, from: ME.id, chId: vcChId, sdp: offer
+      }));
+    }
+  } catch(e) { console.warn('[WebRTC] offer error:', e.message); }
+}
+
+async function handleRtcOffer(d) {
+  if (!inVc || d.chId !== vcChId) return;
+  const pc = await createPeer(d.from, false);
+  try {
+    await pc.setRemoteDescription(new RTCSessionDescription(d.sdp));
+    const answer = await pc.createAnswer();
+    await pc.setLocalDescription(answer);
+    if (wsConn && wsConn.readyState === 1) {
+      wsConn.send(JSON.stringify({
+        type: 'rtc_answer', to: d.from, from: ME.id, chId: vcChId, sdp: answer
+      }));
+    }
+  } catch(e) { console.warn('[WebRTC] answer error:', e.message); }
+}
+
+async function handleRtcAnswer(d) {
+  const pc = VC.peers[d.from];
+  if (!pc) return;
+  try {
+    if (pc.signalingState !== 'stable') {
+      await pc.setRemoteDescription(new RTCSessionDescription(d.sdp));
+    }
+  } catch(e) { console.warn('[WebRTC] setRemoteDesc error:', e.message); }
+}
+
+async function handleRtcIce(d) {
+  const pc = VC.peers[d.from];
+  if (!pc || !d.candidate) return;
+  try { await pc.addIceCandidate(new RTCIceCandidate(d.candidate)); }
+  catch(e) { /* ignore stale candidates */ }
+}
+
+function closeAllPeers() {
+  for (const pid of Object.keys(VC.peers)) {
+    try { VC.peers[pid].close(); } catch {}
+  }
+  VC.peers = {};
+  for (const pid of Object.keys(VC.remoteAudio)) {
+    try {
+      VC.remoteAudio[pid].el.pause();
+      VC.remoteAudio[pid].el.remove();
+      VC.remoteAudio[pid].actx.close();
+    } catch {}
+  }
+  VC.remoteAudio = {};
+}
+
+function closePeer(peerId) {
+  if (VC.peers[peerId]) {
+    try { VC.peers[peerId].close(); } catch {}
+    delete VC.peers[peerId];
+  }
+  if (VC.remoteAudio[peerId]) {
+    try {
+      VC.remoteAudio[peerId].el.pause();
+      VC.remoteAudio[peerId].el.remove();
+      VC.remoteAudio[peerId].actx.close();
+    } catch {}
+    delete VC.remoteAudio[peerId];
+  }
+}
 
 async function joinVc(ch) {
   if (inVc) { if (vcChId === ch.id) { leaveVc(); return; } leaveVc(); }
@@ -3556,34 +3715,23 @@ async function joinVc(ch) {
   const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus'
     : MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/ogg';
 
-  VC.recorder = new MediaRecorder(dest.stream, {
-    mimeType,
-    audioBitsPerSecond: 16000  // sníženo z 32k pro méně dat
-  });
-  VC.recorder.ondataavailable = async (e) => {
-    if (!e.data || e.data.size < 50 || VC.micMuted || !VC.speaking) return;
-    if (!wsConn || wsConn.readyState !== 1) return;
-    const buf = await e.data.arrayBuffer();
-    // Chunked base64 - méně paměti než spread operator
-    const bytes = new Uint8Array(buf);
-    let b64 = '';
-    const chunk = 8192;
-    for (let i = 0; i < bytes.length; i += chunk) {
-      b64 += btoa(String.fromCharCode.apply(null, bytes.subarray(i, i + chunk)));
-    }
-    wsConn.send(JSON.stringify({ type: 'audio', chId: vcChId, from: ME.id, data: b64, mime: mimeType }));
-  };
-  VC.recorder.start(200);  // zvýšeno z 80ms - méně paketů = méně CPU
-
+  // Nepoužíváme MediaRecorder — WebRTC přenáší audio přímo peer-to-peer
+  // Oznámíme ostatním že jsme vstoupili — oni nám pošlou WebRTC offer
   vcMembers[ME.id] = { id: ME.id, name: ME.name, color: ME.color, avatar: ME.avatar, chId: ch.id };
   bcast({ type: 'vc_join', chId: ch.id, m: { id: ME.id, name: ME.name, color: ME.color, avatar: ME.avatar, tag: ME.tag, servers: Object.keys(SERVERS) } });
   bcast({ type: 'vc_state_req' });
-  // Also explicitly broadcast our vc membership so others update
+  // Po 600ms pošleme offer všem kdo jsou už v kanálu
   setTimeout(() => {
     if (inVc && vcChId) {
       bcast({ type: 'vc_join', chId: vcChId, m: { id: ME.id, name: ME.name, color: ME.color, avatar: ME.avatar, tag: ME.tag, servers: Object.keys(SERVERS) } });
+      // Vytvoř WebRTC spojení s každým kdo je v kanálu
+      for (const pid of Object.keys(vcMembers)) {
+        if (pid !== ME.id) {
+          createPeer(pid, true);
+        }
+      }
     }
-  }, 500);
+  }, 600);
   lss('nx_vc_restore', { chId: ch.id, srvId: curSrv });
   renderVcParts();
   renderChs();
@@ -3592,72 +3740,19 @@ async function joinVc(ch) {
 }
 
 function handleAudio(d) {
-  if (!inVc || d.chId !== vcChId || d.from === ME.id || VC.deafened) return;
-
-  // Jednoduché přehrávání bez MediaSource - méně CPU
-  if (!VC.audioEls[d.from]) {
-    const audio = document.createElement('audio');
-    audio.autoplay = true;
-    audio.playsInline = true;
-    audio.style.display = 'none';
-    // Apply output device
-    const outId = ls('nx_out_device', '');
-    if (outId && audio.setSinkId) audio.setSinkId(outId).catch(() => {});
-    document.body.appendChild(audio);
-    VC.audioEls[d.from] = { el: audio, queue: [], busy: false, mime: d.mime };
-  }
-
-  const peer = VC.audioEls[d.from];
-
-  // Dekóduj base64
-  const raw = atob(d.data);
-  const buf = new Uint8Array(raw.length);
-  for (let i = 0; i < raw.length; i++) buf[i] = raw.charCodeAt(i);
-  const blob = new Blob([buf], { type: d.mime || 'audio/webm' });
-  const url  = URL.createObjectURL(blob);
-
-  // Fronta — max 3 chunky (zahoď staré aby nebyl delay)
-  peer.queue.push(url);
-  if (peer.queue.length > 2) {
-    URL.revokeObjectURL(peer.queue.shift()); // zahoď nejstarší
-  }
-
-  if (!peer.busy) playNext(d.from);
+  // Legacy fallback — není potřeba při WebRTC, ignoruj
 }
 
 function playNext(fromId) {
-  const peer = VC.audioEls[fromId];
-  if (!peer || peer.queue.length === 0) { if (peer) peer.busy = false; return; }
-  peer.busy = true;
-  const url = peer.queue.shift();
-  // Apply output volume
-  const outVol = parseInt(ls('nx_out_vol', 100)) / 100;
-  if (peer.el.volume !== outVol) peer.el.volume = Math.min(2, outVol);
-  peer.el.src = url;
-  peer.el.play().then(() => {
-    peer.el.onended = () => {
-      URL.revokeObjectURL(url);
-      playNext(fromId);
-    };
-  }).catch((e) => {
-    console.warn('[Audio] playNext error:', e.message);
-    URL.revokeObjectURL(url);
-    peer.busy = false;
-    // Retry next in queue
-    setTimeout(() => playNext(fromId), 50);
-  });
+  // Legacy — není potřeba
 }
 
 function flushAudioQueue(pid) {
-  const p = VC.audioEls[pid];
-  if (!p || !p.sb || p.sb === 'blob' || p.busy || !p.queue.length || p.sb.updating) return;
-  try { p.busy = true; p.sb.appendBuffer(p.queue.shift()); }
-  catch(e) { p.busy = false; if (e.name === 'QuotaExceededError' && p.sb.buffered.length) p.sb.remove(0, p.sb.buffered.end(0) - 2); }
+  // Legacy — není potřeba
 }
 
 function removePeer(pid) {
-  const p = VC.audioEls[pid];
-  if (p) { try { p.el.pause(); p.el.remove(); URL.revokeObjectURL(p.el.src); } catch {} delete VC.audioEls[pid]; }
+  closePeer(pid);
   delete VC.gainNodes[pid];
 }
 
@@ -3736,6 +3831,7 @@ function leaveVc() {
   lss('nx_vc_restore', null);
   if (VC.recorder && VC.recorder.state !== 'inactive') try { VC.recorder.stop(); } catch {}
   VC.recorder = null;
+  closeAllPeers();
   for (const pid of Object.keys(VC.audioEls)) removePeer(pid);
   VC.audioEls = {}; VC.gainNodes = {};
   if (VC.stream) { VC.stream.getTracks().forEach(t => t.stop()); VC.stream = null; }
@@ -5452,9 +5548,13 @@ async function restartVcStream() {
 }
 function saveOutVol(val) {
   lss('nx_out_vol', val);
-  // Apply to all peer audio elements
+  // Apply to WebRTC remote audio gain nodes
+  for (const ra of Object.values(VC.remoteAudio)) {
+    if (ra.gain) ra.gain.gain.value = Math.min(2, val / 100);
+  }
+  // Legacy fallback
   for (const audio of Object.values(VC.audioEls)) {
-    audio.volume = Math.min(1, val / 100);
+    if (audio.el) audio.el.volume = Math.min(1, val / 100);
   }
   toast((LANG==='en' ? '🎧 Output volume: ' : '🎧 Hlasitost výstupu: ') + val + '%', 'ok');
 }
