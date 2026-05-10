@@ -70,25 +70,36 @@ function sendResetEmail(toEmail, token, cb) {
   const SMTP_USER = process.env.SMTP_USER;
   const SMTP_PASS = process.env.SMTP_PASS;
   const APP_URL   = process.env.APP_URL || 'https://nexus-g7k4.onrender.com';
+  console.log('[SMTP] Odesílám reset na:', toEmail, '| SMTP_HOST:', SMTP_HOST || 'NENASTAVENO', '| SMTP_USER:', SMTP_USER || 'NENASTAVENO');
   if (!SMTP_HOST || !SMTP_USER || !SMTP_PASS) {
+    console.error('[SMTP] Chybí env proměnné! SMTP_HOST/SMTP_USER/SMTP_PASS musí být nastaveny na Render.');
     return cb(new Error('SMTP not configured'));
   }
   const resetUrl = APP_URL + '/reset?token=' + token;
   const body = 'Resetuj heslo zde:\n' + resetUrl + '\n\nPlatnost: 1 hodina.\nPokud jsi o reset nežádal/a, ignoruj tento email.';
-  const msg  = 'From: NexusChat <' + SMTP_USER + '>\r\nTo: ' + toEmail + '\r\nSubject: Reset hesla — NexusChat\r\nContent-Type: text/plain; charset=utf-8\r\n\r\n' + body;
-  const net  = require('net');
-  // Use nodemailer if available, else simple SMTP
   let nodemailer;
-  try { nodemailer = require('nodemailer'); } catch(e) { nodemailer = null; }
-  if (nodemailer) {
-    const transporter = nodemailer.createTransport({
-      host: SMTP_HOST, port: 587, secure: false,
-      auth: { user: SMTP_USER, pass: SMTP_PASS }
-    });
-    transporter.sendMail({ from: SMTP_USER, to: toEmail, subject: 'Reset hesla — NexusChat', text: body }, cb);
-  } else {
-    cb(new Error('nodemailer not installed — run: npm install nodemailer'));
+  try { nodemailer = require('nodemailer'); } catch(e) {
+    console.error('[SMTP] nodemailer není nainstalován! Spusť: npm install nodemailer');
+    return cb(new Error('nodemailer not installed'));
   }
+  const transporter = nodemailer.createTransport({
+    host: SMTP_HOST, port: 587, secure: false,
+    auth: { user: SMTP_USER, pass: SMTP_PASS },
+    tls: { rejectUnauthorized: false }
+  });
+  transporter.sendMail({
+    from: '"NexusChat" <' + SMTP_USER + '>',
+    to: toEmail,
+    subject: 'Reset hesla — NexusChat',
+    text: body
+  }, (err, info) => {
+    if (err) {
+      console.error('[SMTP] Chyba při odesílání:', err.message, '| code:', err.code, '| response:', err.response);
+    } else {
+      console.log('[SMTP] Email odeslán! MessageId:', info.messageId, '| Response:', info.response);
+    }
+    cb(err, info);
+  });
 }
 
 // ── JSONBin.io cloud storage ──
@@ -1209,7 +1220,11 @@ setTimeout(() => location.reload(), 30000);
       resetTokens[token] = { email, expires: Date.now() + 3600000 };
       saveTokens();
       sendResetEmail(email, token, (err) => {
-        if (err) console.warn('[Auth] Email error:', err.message);
+        if (err) {
+          console.error('[Auth] SMTP chyba:', err.message, err.code || '', err.response || '');
+        } else {
+          console.log('[Auth] Reset email odeslán na:', email);
+        }
       });
       res.writeHead(200,'',{'Content-Type':'application/json'});
       res.end('{"ok":true}');
