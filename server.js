@@ -1704,25 +1704,19 @@ wss.on('connection', (ws, req) => {
     const str = data.toString();
 
     // Audio relay — send only to others in same voice channel
+    if (msg.type === 'ping') {
+      try { ws.send(JSON.stringify({ type: 'pong' })); } catch {}
+      return;
+    }
     if (msg.type === 'audio' && msg.chId) {
-      // Legacy audio relay — ponecháno pro kompatibilitu ale WebRTC to nepoužívá
+      // Relay only to clients in the same voice channel
       for (const [client, info] of clients) {
         if (client !== ws && client.readyState === WebSocket.OPEN && info.id !== msg.from) {
+          // Check if this client is in the same VC channel
           const clientVcCh = vcState[info.id]?.chId;
           if (clientVcCh === msg.chId) {
             try { client.send(str); } catch { clients.delete(client); }
           }
-        }
-      }
-      return;
-    }
-
-    // WebRTC signaling — přepošli zprávu konkrétnímu uživateli
-    if ((msg.type === 'rtc_offer' || msg.type === 'rtc_answer' || msg.type === 'rtc_ice') && msg.to) {
-      for (const [client, info] of clients) {
-        if (client.readyState === WebSocket.OPEN && info.id === msg.to) {
-          try { client.send(str); } catch { clients.delete(client); }
-          break;
         }
       }
       return;
@@ -1804,6 +1798,10 @@ wss.on('connection', (ws, req) => {
     }
 
     // Audio relay — only to others in same voice channel (don't broadcast to everyone)
+    if (msg.type === 'ping') {
+      try { ws.send(JSON.stringify({ type: 'pong' })); } catch {}
+      return;
+    }
     if (msg.type === 'audio' && msg.chId) {
       for (const [client] of clients) {
         if (client !== ws && client.readyState === WebSocket.OPEN) {
