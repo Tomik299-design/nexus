@@ -1733,8 +1733,6 @@ let curCh  = null;
 let inVc   = false;
 let vcChId    = null;   // voice channel ID (separate from curCh)
 let vcChatOpen = false;  // is voice chat panel open
-let vcSpeaking = {};
-let vcScreenSharer = null;
 let mbrVis = true;
 let searchQ = '';
 let emoOpen = false;
@@ -2373,19 +2371,6 @@ function handleNet(d) {
       renderVcParts();
     }
     if (d.from !== ME.id) { const _o = document.getElementById('screen-share-overlay'); if (_o) _o.remove(); }
-    return;
-  }
-  if (d.type === 'pong') {
-    if (window._vcPingSent) {
-      const ms = Date.now() - window._vcPingSent;
-      const el = document.getElementById('vc-ping');
-      if (el) {
-        el.textContent = ms + ' ms';
-        el.style.color = ms < 80 ? 'var(--acc)' : ms < 200 ? 'var(--yel)' : 'var(--red)';
-        el.style.borderColor = ms < 80 ? 'rgba(79,255,176,.2)' : ms < 200 ? 'rgba(255,203,107,.3)' : 'rgba(255,83,112,.3)';
-        el.style.background = ms < 80 ? 'rgba(79,255,176,.08)' : ms < 200 ? 'rgba(255,203,107,.08)' : 'rgba(255,83,112,.08)';
-      }
-    }
     return;
   }
   if (d.type === 'audio') {
@@ -3820,7 +3805,6 @@ async function joinVc(ch) {
   vcMembers[ME.id] = { id: ME.id, name: ME.name, color: ME.color, avatar: ME.avatar, chId: ch.id };
   bcast({ type: 'vc_join', chId: ch.id, m: { id: ME.id, name: ME.name, color: ME.color, avatar: ME.avatar, tag: ME.tag, servers: Object.keys(SERVERS) } });
   bcast({ type: 'vc_state_req' });
-  startVcPing();
   // Po 600ms pošleme offer všem kdo jsou už v kanálu
   setTimeout(() => {
     if (inVc && vcChId) {
@@ -3952,38 +3936,6 @@ function renderVcParts() {
   document.getElementById('vcparts').innerHTML = html;
 }
 
-function startVcPing() {
-  if (window._vcPingInt) clearInterval(window._vcPingInt);
-  const el = document.getElementById('vc-ping');
-  if (el) el.style.display = 'block';
-  window._vcPingInt = setInterval(() => {
-    if (!inVc || !wsConn || wsConn.readyState !== 1) { stopVcPing(); return; }
-    window._vcPingSent = Date.now();
-    try { wsConn.send(JSON.stringify({ type: 'ping' })); } catch {}
-  }, 3000);
-}
-function stopVcPing() {
-  clearInterval(window._vcPingInt);
-  window._vcPingInt = null;
-  const el = document.getElementById('vc-ping');
-  if (el) el.style.display = 'none';
-}
-function startVcPing() {
-  if (window._vcPingInt) clearInterval(window._vcPingInt);
-  const el = document.getElementById('vc-ping');
-  if (el) el.style.display = 'block';
-  window._vcPingInt = setInterval(() => {
-    if (!inVc || !wsConn || wsConn.readyState !== 1) { stopVcPing(); return; }
-    window._vcPingSent = Date.now();
-    try { wsConn.send(JSON.stringify({ type: 'ping' })); } catch {}
-  }, 3000);
-}
-function stopVcPing() {
-  clearInterval(window._vcPingInt);
-  window._vcPingInt = null;
-  const el = document.getElementById('vc-ping');
-  if (el) el.style.display = 'none';
-}
 function startVAD() {
   const data = new Uint8Array(VC.an.frequencyBinCount);
   let last = 0;
@@ -3996,7 +3948,7 @@ function startVAD() {
     VC.an.getByteFrequencyData(data);
     let sum = 0; for (let i = 2; i < 60; i++) sum += data[i];
     const avg = sum / 58 / 255;
-    const spk = avg > (VC.noiseGate || 0.015) && !VC.micMuted;
+    const spk = avg > (VC.noiseGate || 0.015) && !VC.micMuted && !VC.deafened;
     if (spk !== VC.speaking) {
       VC.speaking = spk;
       const el = document.getElementById('vcp-me'); if (el) el.classList.toggle('spk', spk);
@@ -4023,8 +3975,6 @@ function leaveVc() {
   if (VC.vad) { cancelAnimationFrame(VC.vad); VC.vad = null; }
   Object.assign(VC, { speaking:false, micMuted:false, deafened:false, localVolume:1.0 });
   inVc = false; vcChId = null; vcChatOpen = false;
-  stopVcPing();
-  stopVcPing();
   vcScreenSharer = null;
   document.getElementById('vcroom')?.classList.remove('sharing');
   const cb = document.getElementById('vcchatbtn'); if (cb) cb.classList.remove('act');
@@ -4106,6 +4056,7 @@ function toggleVcMic() {
   if (!VC.stream) { toast('Mikrofon nedostupný', 'er'); return; }
   VC.micMuted = !VC.micMuted;
   VC.stream.getAudioTracks().forEach(t => t.enabled = !VC.micMuted);
+  if (VC.micMuted) { VC.speaking = false; const el = document.getElementById('vcp-me'); if (el) el.classList.remove('spk'); bcast({ type: 'vc_speaking', id: ME.id, chId: vcChId||curCh, speaking: false }); }
   const b = document.getElementById('vcmicbtn'); if(b){b.classList.toggle('am', VC.micMuted); b.textContent = VC.micMuted ? '🔇' : '🎤';}
   const el = document.getElementById('vcp-me'); if (el) { el.classList.toggle('mut', VC.micMuted); const mi = el.querySelector('.vcmi'); if (mi) mi.textContent = VC.micMuted ? '🔇' : '🎤'; }
   toast(VC.micMuted ? '🔇 Mikrofon vypnut' : '🎤 Mikrofon zapnut', 'inf');
