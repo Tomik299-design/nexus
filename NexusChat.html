@@ -2413,8 +2413,14 @@ function handleNet(d) {
     handleRtcIce(d);
   } else if (d.type === 'vc_speaking') {
     if (d.id && d.id !== ME.id) {
+      vcSpeaking[d.id] = !!d.speaking;
       const el = document.getElementById('vcp-' + d.id);
-      if (el) el.classList.toggle('spk', d.speaking);
+      if (el) {
+        el.classList.toggle('spk', d.speaking);
+      } else {
+        // Element neexistuje — přerenderuj
+        if (inVc) renderVcParts();
+      }
     }
   } else if (d.type === 'vc_join') {
     if (d.m && d.m.id !== ME.id) {
@@ -3619,7 +3625,7 @@ const VC = {
   deafened:    false,
   speaking:    false,
   localVolume: 1.0,
-  noiseGate:   0.008,
+  noiseGate:   0.003,
   gateGain:    null,
   // WebRTC
   peers:       {},   // peerId -> RTCPeerConnection
@@ -3956,7 +3962,7 @@ function renderVcParts() {
 
   let html = '<div class="vc-sidebar-label">Členové</div>';
   // Me first
-  html += memberCard(ME.id, ME.name||'Ty', ME.color, ME.avatar, VC.speaking, VC.micMuted, true, false);
+  html += memberCard(ME.id, ME.name||'Ty', ME.color, ME.avatar, VC.speaking, VC.micMuted, true, vcScreenSharer === ME.id);
   // Others
   for (const m of Object.values(vcMembers)) {
     if (m.id === ME.id || m.chId !== vcChId) continue;
@@ -3996,7 +4002,7 @@ function startVAD() {
     let sum = 0;
     for (let i = 1; i < data.length; i++) sum += data[i] * data[i];
     const rms = Math.sqrt(sum / data.length) / 255;
-    const threshold = VC.noiseGate || 0.008;
+    const threshold = VC.noiseGate || 0.003; // velmi nízký threshold
     const isLoud = rms > threshold && !VC.micMuted && !VC.deafened;
     if (isLoud && !VC.speaking) {
       clearTimeout(silenceTimer);
