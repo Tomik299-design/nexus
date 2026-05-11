@@ -105,71 +105,103 @@ button, input, textarea, select { font-family: var(--f); }
 /* ── CONN BAR ── */
 
 /* ── VOICE ROOM ── */
+/* ── VOICE ROOM ── */
+/* ── VOICE ROOM ── */
 #vcroom {
-  flex: 1; display: none; flex-direction: column; align-items: center;
-  justify-content: center; gap: 0; padding: 0; overflow: hidden;
-  background: linear-gradient(180deg, var(--bg0) 0%, var(--bg1) 100%);
-  position: relative;
+  flex: 1; display: none; flex-direction: column;
+  overflow: hidden; background: var(--bg0); position: relative;
 }
 #vcroom.open { display: flex; }
-#vcroom::before {
-  content: ''; position: absolute; inset: 0; pointer-events: none;
-  background: radial-gradient(ellipse 70% 60% at 50% 40%, rgba(79,255,176,.04) 0%, transparent 70%);
-}
 .vc-topbar {
-  width: 100%; display: flex; align-items: center; justify-content: center;
-  padding: 16px 20px 8px; gap: 10px; position: relative; z-index: 1;
+  width: 100%; display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 14px; border-bottom: 1px solid var(--bd);
+  background: var(--bg1); position: relative; z-index: 2; flex-shrink: 0;
 }
-.vc-bar { padding: 5px 14px; border-radius: 20px; background: rgba(79,255,176,.1); border: 1px solid rgba(79,255,176,.3); font-size: 11px; color: var(--acc); font-weight: 600; display: flex; align-items: center; gap: 6px; letter-spacing: .3px; }
-.vc-bar .vp { width: 7px; height: 7px; border-radius: 50%; background: var(--acc); box-shadow: 0 0 6px var(--acc); animation: pulse 1.4s ease infinite; }
-#vct { font-size: 16px; font-weight: 700; color: var(--t1); text-align: center; padding: 0 20px; }
-#vcs { font-size: 12px; color: var(--t3); text-align: center; }
+.vc-topbar-left { display: flex; align-items: center; gap: 8px; }
+.vc-bar { padding: 4px 12px; border-radius: 20px; background: rgba(79,255,176,.1); border: 1px solid rgba(79,255,176,.3); font-size: 11px; color: var(--acc); font-weight: 600; display: flex; align-items: center; gap: 6px; }
+.vc-bar .vp { width: 7px; height: 7px; border-radius: 50%; background: var(--acc); animation: pulse 1.4s ease infinite; }
+#vct { font-size: 13px; font-weight: 700; color: var(--t1); }
+#vcs { font-size: 11px; color: var(--t3); }
+.vc-topbar-right { display: flex; align-items: center; gap: 6px; }
+.vc-ping { background: rgba(79,255,176,.08); border: 1px solid rgba(79,255,176,.2); border-radius: 6px; padding: 2px 8px; font-size: 11px; color: var(--acc); font-family: var(--fm); }
+.vc-share-badge { background: rgba(124,106,255,.12); border: 1px solid rgba(124,106,255,.3); border-radius: 6px; padding: 2px 8px; font-size: 11px; color: #a89cff; display: none; gap: 4px; align-items: center; }
+#vcroom.sharing .vc-share-badge { display: flex; }
+#vc-main { flex: 1; display: flex; overflow: hidden; }
+#vc-screen-area { display: none; flex-direction: column; flex: 1; border-right: 1px solid var(--bd); position: relative; }
+#vcroom.sharing #vc-screen-area { display: flex; }
+#vc-screen-label { position: absolute; top: 10px; left: 12px; z-index: 3; background: rgba(0,0,0,.65); border-radius: 6px; padding: 3px 10px; font-size: 11px; color: rgba(255,255,255,.7); display: flex; align-items: center; gap: 5px; }
+.vc-rec-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--red); animation: blink-dot 1.2s infinite; flex-shrink: 0; }
+@keyframes blink-dot { 0%,100%{opacity:1}50%{opacity:.2} }
+#vc-screen-video { flex: 1; background: #070a0d; display: flex; align-items: center; justify-content: center; padding: 32px 16px 10px; overflow: hidden; }
+#vc-screen-video video { width: 100%; height: 100%; object-fit: contain; border-radius: 8px; }
+.vc-noscreen { width: 100%; height: 100%; background: var(--bg2); border: 1px solid var(--bd); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 13px; color: var(--t3); }
+#vc-screen-bottom { padding: 7px 12px; display: flex; align-items: center; justify-content: space-between; border-top: 1px solid var(--bd); flex-shrink: 0; }
+.vc-sharer-info { display: flex; align-items: center; gap: 7px; }
+.vc-sharer-av { width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; color: #fff; flex-shrink: 0; }
+.vc-sharer-name { font-size: 12px; color: var(--t2); }
+.vc-screen-acts { display: flex; gap: 5px; }
+.vc-sact { background: var(--bg3); border: 1px solid var(--bd); border-radius: 6px; padding: 3px 10px; font-size: 11px; color: var(--t3); cursor: pointer; transition: all .15s; }
+.vc-sact:hover { background: var(--bg4); color: var(--t1); }
+.vc-sact.acc { border-color: rgba(124,106,255,.4); color: #a89cff; background: rgba(124,106,255,.08); }
 #vcparts {
-  display: flex; flex-wrap: wrap; gap: 14px; justify-content: center;
-  max-width: 680px; padding: 24px 20px; flex: 1; align-content: center;
-  position: relative; z-index: 1;
+  display: flex; flex-wrap: wrap; gap: 12px; justify-content: center;
+  padding: 20px 16px; flex: 1; align-content: center; overflow-y: auto; position: relative; z-index: 1;
+}
+#vcroom.sharing #vcparts {
+  width: 140px; min-width: 140px; flex: none; flex-wrap: nowrap;
+  flex-direction: column; align-content: flex-start; justify-content: flex-start;
+  padding: 6px 0; overflow-y: auto; gap: 0;
 }
 .vcp {
   display: flex; flex-direction: column; align-items: center; gap: 8px;
-  padding: 18px 20px 14px; border-radius: 18px;
-  background: rgba(255,255,255,.04); border: 1.5px solid rgba(255,255,255,.08);
-  transition: all .25s ease; min-width: 96px; max-width: 120px;
-  backdrop-filter: blur(8px); position: relative;
+  padding: 16px 14px 12px; border-radius: 14px;
+  background: rgba(255,255,255,.04); border: 1.5px solid rgba(255,255,255,.07);
+  transition: all .2s ease; min-width: 100px; max-width: 120px; position: relative;
 }
-.vcp:hover { background: rgba(255,255,255,.07); border-color: rgba(255,255,255,.14); }
-.vcp.spk {
-  border-color: var(--acc); background: rgba(79,255,176,.08);
-  box-shadow: 0 0 0 3px rgba(79,255,176,.12), 0 8px 24px rgba(0,0,0,.3);
-}
-.vcp.spk::after {
-  content: ''; position: absolute; inset: -3px; border-radius: 20px;
-  border: 2px solid var(--acc); opacity: .4; animation: spk-ring 1s ease infinite;
-}
-@keyframes spk-ring { 0%,100%{opacity:.4;transform:scale(1)} 50%{opacity:.1;transform:scale(1.02)} }
+.vcp:hover { background: rgba(255,255,255,.07); border-color: rgba(255,255,255,.13); }
+.vcp.spk { border-color: var(--acc); background: rgba(79,255,176,.07); box-shadow: 0 0 0 3px rgba(79,255,176,.1); }
+.vcp.spk::after { content: ''; position: absolute; inset: -3px; border-radius: 16px; border: 2px solid var(--acc); opacity: .35; animation: spk-ring 1s ease infinite; }
+@keyframes spk-ring { 0%,100%{opacity:.35;transform:scale(1)} 50%{opacity:.1;transform:scale(1.02)} }
 .vcp.mut { opacity: .45; filter: grayscale(.5); }
-.vcav { width: 56px; height: 56px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: 800; overflow: hidden; border: 2px solid rgba(255,255,255,.1); box-shadow: 0 4px 12px rgba(0,0,0,.4); transition: all .2s; }
-.vcmi { position: absolute; bottom: -2px; right: -2px; width: 17px; height: 17px; border-radius: 50%; background: var(--bg3); border: 2px solid var(--bd); font-size: 9px; display: flex; align-items: center; justify-content: center; }
-.vcpn { font-size: 12px; font-weight: 400; color: var(--t2); }
+#vcroom.sharing .vcp { flex-direction: row; min-width: unset; max-width: unset; width: 100%; border-radius: 0; border: none; border-bottom: 1px solid var(--bd); padding: 8px 10px; gap: 8px; background: transparent; align-items: center; }
+#vcroom.sharing .vcp:hover { background: rgba(255,255,255,.04); }
+#vcroom.sharing .vcp.spk { border-color: transparent; border-bottom-color: var(--bd); box-shadow: none; background: rgba(79,255,176,.05); }
+#vcroom.sharing .vcp.spk::after { display: none; }
+.vcav { width: 52px; height: 52px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 800; overflow: hidden; border: 2px solid rgba(255,255,255,.1); transition: border-color .2s; flex-shrink: 0; }
+.vcp.spk .vcav { border-color: var(--acc); }
+#vcroom.sharing .vcav { width: 34px; height: 34px; font-size: 13px; }
+.vcav.vcav-sharer { border-color: #7c6aff; }
+.vcmi { position: absolute; bottom: -1px; right: -1px; width: 16px; height: 16px; border-radius: 50%; background: var(--bg2); border: 1.5px solid var(--bd); font-size: 9px; display: flex; align-items: center; justify-content: center; }
+#vcroom.sharing .vcmi { bottom: -2px; right: -2px; width: 14px; height: 14px; font-size: 8px; }
+.vcpn { font-size: 12px; font-weight: 500; color: var(--t2); text-align: center; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#vcroom.sharing .vcpn { font-size: 11px; text-align: left; }
+.vcps { font-size: 10px; color: var(--t3); }
+.vc-wave { display: flex; align-items: center; gap: 2px; height: 12px; }
+.vc-wave .wb { width: 2px; border-radius: 1px; background: var(--acc); animation: vcwave .8s ease-in-out infinite; }
+.vc-wave .wb:nth-child(1){animation-delay:0s} .vc-wave .wb:nth-child(2){animation-delay:.15s} .vc-wave .wb:nth-child(3){animation-delay:.3s} .vc-wave .wb:nth-child(4){animation-delay:.15s}
+@keyframes vcwave { 0%,100%{height:3px}50%{height:11px} }
+.vc-sidebar-label { font-size: 10px; color: var(--t3); padding: 8px 12px 4px; letter-spacing: .05em; text-transform: uppercase; }
+#vcroom:not(.sharing) .vc-sidebar-label { display: none; }
+.vcpn-col { display: flex; flex-direction: column; flex: 1; min-width: 0; }
 #vcctrls {
-  display: flex; gap: 10px; align-items: center; justify-content: center;
-  padding: 16px 24px 20px; position: relative; z-index: 1;
-  background: linear-gradient(0deg, rgba(0,0,0,.3) 0%, transparent 100%);
-  width: 100%;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 16px 12px; position: relative; z-index: 2; flex-shrink: 0;
+  background: var(--bg1); border-top: 1px solid var(--bd);
 }
-.vcb {
-  width: 48px; height: 48px; border-radius: 50%; border: none; cursor: pointer;
-  font-size: 18px; display: flex; align-items: center; justify-content: center;
-  transition: all .2s ease; background: rgba(255,255,255,.08);
-  color: var(--t1); backdrop-filter: blur(4px);
-  border: 1px solid rgba(255,255,255,.1); position: relative;
-}
-.vcb:hover { background: rgba(255,255,255,.15); transform: scale(1.08); border-color: rgba(255,255,255,.2); }
+.vc-you { display: flex; align-items: center; gap: 8px; }
+.vc-you-av { width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: var(--bg0); background: var(--acc); overflow: hidden; flex-shrink: 0; }
+.vc-you-av img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+.vc-you-name { font-size: 13px; font-weight: 500; color: var(--t1); }
+.vc-you-tag { font-size: 11px; color: var(--t3); }
+.vc-btns { display: flex; gap: 6px; align-items: center; }
+.vcb { width: 36px; height: 36px; border-radius: 9px; border: 1px solid rgba(255,255,255,.1); cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center; transition: all .15s ease; background: rgba(255,255,255,.07); color: var(--t1); }
+.vcb:hover { background: rgba(255,255,255,.13); border-color: rgba(255,255,255,.18); transform: scale(1.05); }
 .vcb:active { transform: scale(.95); }
-.vcb.am { background: var(--red-d); color: var(--red); }
-.vcb.lv { background: rgba(255,83,112,.2); border-color: rgba(255,83,112,.4); color: #ff5370; }
-.vcb.lv:hover { background: rgba(255,83,112,.4); border-color: #ff5370; }
-.vcb.lv:hover { background: #ff6b83; transform: scale(1.05); }
-#vcerr { max-width: 360px; text-align: center; }
+.vcb.am { background: var(--red-d); color: var(--red); border-color: rgba(255,83,112,.3); }
+.vcb.ams { background: rgba(124,106,255,.15); color: #a89cff; border-color: rgba(124,106,255,.3); }
+.vcb.lv { background: rgba(255,83,112,.15); border-color: rgba(255,83,112,.35); color: #ff5370; }
+.vcb.lv:hover { background: rgba(255,83,112,.3); border-color: #ff5370; }
+#vcerr { max-width: 360px; text-align: center; font-size: 12px; color: var(--red); padding: 0 20px; }
 .verr { background: var(--red-d); border: 1px solid var(--red); border-radius: var(--r); padding: 12px 14px; font-size: 12px; color: var(--red); line-height: 1.6; }
 
 /* ── MESSAGES ── */
@@ -934,34 +966,62 @@ textarea { -webkit-user-select: text; user-select: text; }
 
     <!-- VOICE ROOM -->
     <div id="vcroom">
+      <!-- Header -->
       <div class="vc-topbar">
-        <div class="vc-bar"><div class="vp"></div><span id="vcstxt">Připojuji...</span></div>
+        <div class="vc-topbar-left">
+          <div class="vc-bar"><div class="vp"></div><span id="vcstxt">Připojuji...</span></div>
+          <div id="vct"></div>
+          <div id="vcs"></div>
+        </div>
+        <div class="vc-topbar-right">
+          <div class="vc-share-badge" id="vc-share-badge">🖥️ <span id="vc-sharer-name-badge">sdílí</span></div>
+          <div class="vc-ping" id="vc-ping" style="display:none">– ms</div>
+        </div>
       </div>
-      <div id="vct">🔊 Lobby</div>
-      <div id="vcs"></div>
-      <div id="vcerr" style="font-size:12px;color:var(--red);text-align:center;padding:0 20px"></div>
-      <div id="vcparts"></div>
+      <div id="vcerr"></div>
+      <!-- Main: screen area + members -->
+      <div id="vc-main">
+        <!-- Screen share area (visible only when sharing) -->
+        <div id="vc-screen-area">
+          <div id="vc-screen-label">
+            <div class="vc-rec-dot"></div>
+            <span id="vc-screen-label-txt">sdílí obrazovku</span>
+          </div>
+          <div id="vc-screen-video">
+            <div class="vc-noscreen">Čekám na stream...</div>
+          </div>
+          <div id="vc-screen-bottom">
+            <div class="vc-sharer-info">
+              <div class="vc-sharer-av" id="vc-sharer-av" style="background:#7c6aff">?</div>
+              <span class="vc-sharer-name" id="vc-sharer-name">Někdo sdílí obrazovku</span>
+            </div>
+            <div class="vc-screen-acts">
+              <div class="vc-sact" onclick="toggleFullscreenShare()">⛶ Celá obrazovka</div>
+              <div class="vc-sact acc" id="vc-audio-btn" onclick="toggleShareAudio()">🔊 Zvuk</div>
+            </div>
+          </div>
+        </div>
+        <!-- Members grid / sidebar -->
+        <div id="vcparts">
+          <div class="vc-sidebar-label">Členové</div>
+        </div>
+      </div>
+      <!-- Footer controls -->
       <div id="vcctrls">
-        <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
+        <div class="vc-you">
+          <div class="vc-you-av" id="vc-you-av"></div>
+          <div>
+            <div class="vc-you-name" id="vc-you-name"></div>
+            <div class="vc-you-tag" id="vc-you-tag"></div>
+          </div>
+        </div>
+        <div class="vc-btns">
           <button class="vcb" id="vcmicbtn" onclick="toggleVcMic()" title="Mikrofon">🎤</button>
-          <span style="font-size:9px;color:var(--t3);font-weight:600">MIC</span>
-        </div>
-        <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
           <button class="vcb" id="vcdfbtn" onclick="toggleVcDeaf()" title="Sluchátka">🎧</button>
-          <span style="font-size:9px;color:var(--t3);font-weight:600">DEAF</span>
-        </div>
-        <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
           <button class="vcb" id="vcchatbtn" onclick="toggleVcChat()" title="Chat kanálu">💬</button>
-          <span style="font-size:9px;color:var(--t3);font-weight:600">CHAT</span>
-        </div>
-        <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
           <button class="vcb" id="vcscrbtn" onclick="toggleScreen()" title="Sdílet obrazovku">🖥️</button>
-          <span style="font-size:9px;color:var(--t3);font-weight:600">SCREEN</span>
-        </div>
-        <div style="width:1px;height:40px;background:rgba(255,255,255,.1);margin:0 4px"></div>
-        <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
+          <div style="width:1px;height:24px;background:rgba(255,255,255,.1)"></div>
           <button class="vcb lv" onclick="leaveVc()" title="Opustit hovor">📵</button>
-          <span style="font-size:9px;color:rgba(255,83,112,.7);font-weight:600">ODEJÍT</span>
         </div>
       </div>
     </div>
@@ -1673,6 +1733,8 @@ let curCh  = null;
 let inVc   = false;
 let vcChId    = null;   // voice channel ID (separate from curCh)
 let vcChatOpen = false;  // is voice chat panel open
+let vcSpeaking = {};     // kdo mluví: { userId: true/false }
+let vcScreenSharer = null; // kdo sdílí obrazovku
 let mbrVis = true;
 let searchQ = '';
 let emoOpen = false;
@@ -2281,10 +2343,35 @@ function handleNet(d) {
   }
   if (d.type === 'screen_start') {
     if (!inVc || d.chId !== vcChId || d.from === ME.id) return;
-    toast('🖥️ ' + (d.name||'Někdo') + ' sdílí obrazovku', 'inf', 5000);
+    vcScreenSharer = d.from;
+    const sharerName = d.name || vcMembers[d.from]?.name || 'Někdo';
+    const sharerColor = d.color || vcMembers[d.from]?.color || '#7c6aff';
+    // Update screen area UI
+    const videoArea = document.getElementById('vc-screen-video');
+    if (videoArea) {
+      videoArea.innerHTML = '<div class="vc-noscreen">Čekám na stream ' + sharerName + '...</div>';
+    }
+    const sharerAv = document.getElementById('vc-sharer-av');
+    const sharerNameEl = document.getElementById('vc-sharer-name');
+    const labelTxt = document.getElementById('vc-screen-label-txt');
+    const badgeName = document.getElementById('vc-sharer-name-badge');
+    if (sharerAv) { sharerAv.style.background = sharerColor; sharerAv.textContent = sharerName[0]; }
+    if (sharerNameEl) sharerNameEl.textContent = sharerName + ' sdílí obrazovku';
+    if (labelTxt) labelTxt.textContent = sharerName + ' · sdílí obrazovku';
+    if (badgeName) badgeName.textContent = sharerName + ' sdílí';
+    document.getElementById('vcroom').classList.add('sharing');
+    renderVcParts();
+    toast('🖥️ ' + sharerName + ' sdílí obrazovku', 'inf', 5000);
     return;
   }
   if (d.type === 'screen_stop') {
+    if (d.from === vcScreenSharer) {
+      vcScreenSharer = null;
+      document.getElementById('vcroom').classList.remove('sharing');
+      const videoArea = document.getElementById('vc-screen-video');
+      if (videoArea) videoArea.innerHTML = '<div class="vc-noscreen">Sdílení obrazovky skončilo</div>';
+      renderVcParts();
+    }
     if (d.from !== ME.id) { const _o = document.getElementById('screen-share-overlay'); if (_o) _o.remove(); }
     return;
   }
@@ -3780,23 +3867,73 @@ function saveNoiseGate(val) {
 }
 
 function renderVcParts() {
-  const meAvCnt = ME.avatar ? '<img src="' + ME.avatar + '" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%">' : (ME.name||'?')[0];
-  const meAvBg  = ME.avatar ? 'transparent' : ME.color;
-  let html = '<div class="vcp' + (VC.speaking?' spk':'') + (VC.micMuted?' mut':'') + '" id="vcp-me">'
-    + '<div class="vcav" style="background:' + meAvBg + '">' + meAvCnt + '<div class="vcmi">' + (VC.micMuted?'🔇':'🎤') + '</div></div>'
-    + '<div class="vcpn">' + (ME.name||'Ty') + ' <span style="font-size:10px;color:var(--t3)">(já)</span></div></div>';
+  const isSharing = !!VC.scrStream || !!document.getElementById('vcroom').classList.contains('sharing');
+
+  function avHTML(avatar, name, color, size) {
+    if (avatar) return '<img src="' + avatar + '" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%">';
+    return (name||'?')[0].toUpperCase();
+  }
+
+  function waveHTML() {
+    return '<div class="vc-wave"><div class="wb"></div><div class="wb"></div><div class="wb"></div><div class="wb"></div></div>';
+  }
+
+  function memberCard(id, name, color, avatar, isSpeaking, isMuted, isMe, isSharer) {
+    const avBg = avatar ? 'transparent' : (color||'#7c6aff');
+    const avClass = 'vcav' + (isSpeaking ? '' : '') + (isSharer ? ' vcav-sharer' : '');
+    const cardClass = 'vcp' + (isSpeaking ? ' spk' : '') + (isMuted ? ' mut' : '');
+    const micIcon = isMuted ? '🔇' : (isSpeaking ? '🎤' : '🎤');
+    const statusText = isSharer ? '🖥️ sdílí' : (isSpeaking ? waveHTML() : (isMuted ? 'ztlumen' : 'online'));
+    const nameLabel = name + (isMe ? ' <span style="font-size:10px;color:var(--t3)">(já)</span>' : '');
+
+    if (isSharing) {
+      // Sidebar compact row
+      return '<div class="' + cardClass + '" id="vcp-' + id + '"' +
+        (isMe ? '' : ' data-uid="' + id + '" data-uname="' + (name||'').replace(/"/g,'&quot;') + '" oncontextmenu="vcpRightClick(event,this.dataset.uid,this.dataset.uname)" style="cursor:context-menu"') + '>' +
+        '<div class="av-wrap" style="position:relative;flex-shrink:0">' +
+          '<div class="' + avClass + '" style="background:' + avBg + '">' + avHTML(avatar, name, color) + '</div>' +
+          '<div class="vcmi">' + micIcon + '</div>' +
+        '</div>' +
+        '<div class="vcpn-col">' +
+          '<div class="vcpn">' + name + (isMe ? ' <span style="opacity:.5;font-size:9px">(já)</span>' : '') + '</div>' +
+          '<div class="vcps">' + (isSharer ? '🖥️ sdílí' : (isSpeaking ? 'mluví' : (isMuted ? 'ztlumen' : 'online'))) + '</div>' +
+        '</div>' +
+      '</div>';
+    } else {
+      // Grid card
+      return '<div class="' + cardClass + '" id="vcp-' + id + '"' +
+        (isMe ? '' : ' data-uid="' + id + '" data-uname="' + (name||'').replace(/"/g,'&quot;') + '" oncontextmenu="vcpRightClick(event,this.dataset.uid,this.dataset.uname)" style="cursor:context-menu"') + '>' +
+        '<div style="position:relative">' +
+          '<div class="' + avClass + '" style="background:' + avBg + '">' + avHTML(avatar, name, color) + '</div>' +
+          '<div class="vcmi">' + micIcon + '</div>' +
+        '</div>' +
+        (isSpeaking ? waveHTML() : '<div style="height:12px"></div>') +
+        '<div class="vcpn">' + nameLabel + '</div>' +
+        '<div class="vcps">' + (isSharer ? '🖥️ sdílí' : (isMuted ? 'ztlumeno' : '')) + '</div>' +
+      '</div>';
+    }
+  }
+
+  // Update you footer
+  const youAv = document.getElementById('vc-you-av');
+  const youName = document.getElementById('vc-you-name');
+  const youTag = document.getElementById('vc-you-tag');
+  if (youAv) {
+    youAv.style.background = ME.avatar ? 'transparent' : (ME.color||'var(--acc)');
+    youAv.innerHTML = ME.avatar ? '<img src="' + ME.avatar + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%">' : (ME.name||'?')[0].toUpperCase();
+  }
+  if (youName) youName.textContent = ME.name || 'Ty';
+  if (youTag && ME.tag) youTag.textContent = '#' + ME.tag;
+
+  let html = '<div class="vc-sidebar-label">Členové</div>';
+  // Me first
+  html += memberCard(ME.id, ME.name||'Ty', ME.color, ME.avatar, VC.speaking, VC.micMuted, true, false);
+  // Others
   for (const m of Object.values(vcMembers)) {
     if (m.id === ME.id || m.chId !== vcChId) continue;
-    const avCnt = m.avatar ? '<img src="' + m.avatar + '" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%">' : (m.name||'?')[0];
-    const avBg  = m.avatar ? 'transparent' : (m.color||'#888');
-    const peer  = VC.audioEls[m.id];
-    const vol   = peer ? Math.round(peer.el.volume * 100) : 100;
-    const muted = peer?.el.muted || false;
-    html += '<div class="vcp" id="vcp-' + m.id + '" data-uid="' + m.id + '" data-uname="' + (m.name||'').replace(/"/g,'&quot;') + '" oncontextmenu="vcpRightClick(event,this.dataset.uid,this.dataset.uname)" style="cursor:context-menu">'
-      + '<div class="vcav" style="background:' + avBg + '">' + avCnt + '<div class="vcmi">' + (muted?'🔇':'🎤') + '</div></div>'
-      + '<div class="vcpn">' + (m.name||'?') + '</div>'
-      + '<div style="font-size:10px;color:var(--t3);margin-top:4px">' + (muted ? '🔇 ztlumeno' : '🔊 ' + vol + '%') + '</div>'
-      + '</div>';
+    const isSpeaking = !!vcSpeaking[m.id];
+    const isSharer = m.id === vcScreenSharer;
+    html += memberCard(m.id, m.name||'?', m.color, m.avatar, isSpeaking, false, false, isSharer);
   }
   document.getElementById('vcparts').innerHTML = html;
 }
@@ -3840,6 +3977,8 @@ function leaveVc() {
   if (VC.vad) { cancelAnimationFrame(VC.vad); VC.vad = null; }
   Object.assign(VC, { speaking:false, micMuted:false, deafened:false, localVolume:1.0 });
   inVc = false; vcChId = null; vcChatOpen = false;
+  vcScreenSharer = null;
+  document.getElementById('vcroom')?.classList.remove('sharing');
   const cb = document.getElementById('vcchatbtn'); if (cb) cb.classList.remove('act');
   lss('nx_vc_restore', null);
   // 1. Hide vcroom FIRST
@@ -3947,10 +4086,15 @@ async function toggleScreen() {
   if (VC.scrStream) {
     VC.scrStream.getTracks().forEach(t => t.stop());
     VC.scrStream = null;
+    vcScreenSharer = null;
     document.getElementById('vcscrbtn').classList.remove('am');
-    // Hide screen share overlay for all
+    document.getElementById('vcscrbtn').classList.remove('ams');
+    document.getElementById('vcroom').classList.remove('sharing');
+    const videoArea = document.getElementById('vc-screen-video');
+    if (videoArea) videoArea.innerHTML = '<div class="vc-noscreen">Sdílení ukončeno</div>';
     bcast({ type: 'screen_stop', from: ME.id, chId: vcChId });
     hideScreenShare();
+    renderVcParts();
     toast('Sdílení ukončeno', 'inf');
     return;
   }
@@ -3984,49 +4128,76 @@ async function toggleScreen() {
   }
 }
 
+function toggleFullscreenShare() {
+  const v = document.querySelector('#vc-screen-video video');
+  if (v) { if (document.fullscreenElement) document.exitFullscreen(); else v.requestFullscreen().catch(()=>{}); }
+}
+function toggleShareAudio() {
+  const btn = document.getElementById('vc-audio-btn');
+  if (!btn) return;
+  // Toggle mute on remote audio
+  const muted = btn.dataset.muted === '1';
+  btn.dataset.muted = muted ? '0' : '1';
+  btn.textContent = muted ? '🔊 Zvuk' : '🔇 Bez zvuku';
+  btn.classList.toggle('acc', muted);
+  for (const ra of Object.values(VC.remoteAudio)) {
+    if (ra.gain) ra.gain.gain.value = muted ? (Math.min(2, parseInt(ls('nx_out_vol',100))/100)) : 0;
+  }
+}
 let _screenInterval = null;
 let _screenCanvas = null;
 let _screenCtx = null;
 
 function startScreenShare(stream) {
-  const video = document.createElement('video');
-  video.srcObject = stream;
-  video.muted = true;
-  video.play();
-
-  _screenCanvas = document.createElement('canvas');
-  _screenCtx = _screenCanvas.getContext('2d');
-
-  showLocalScreenPreview(stream, video);
-  bcast({ type: 'screen_start', from: ME.id, chId: vcChId, name: ME.name });
-
-  // 60fps pomocí requestAnimationFrame
-  let _scrRunning = true;
-  let _lastSend = 0;
-  const _minInterval = 1000 / 60;
-
-  function scrFrame(ts) {
-    if (!_scrRunning || !VC.scrStream || !wsConn || wsConn.readyState !== 1) return;
-    const vt = stream.getVideoTracks()[0];
-    if (!vt || vt.readyState === 'ended') { _scrRunning = false; return; }
-    if (ts - _lastSend >= _minInterval) {
-      _lastSend = ts;
-      const settings = vt.getSettings();
-      const w = Math.min(settings.width  || 1920, 1920);
-      const h = Math.min(settings.height || 1080, 1080);
-      if (_screenCanvas.width !== w || _screenCanvas.height !== h) {
-        _screenCanvas.width = w; _screenCanvas.height = h;
-      }
-      _screenCtx.drawImage(video, 0, 0, w, h);
-      const frame = _screenCanvas.toDataURL('image/jpeg', 0.85);
-      try { wsConn.send(JSON.stringify({ type: 'screen_frame', from: ME.id, chId: vcChId, frame })); } catch {}
-    }
-    _screenInterval = requestAnimationFrame(scrFrame);
+  // Zobraz vlastní screen preview lokálně
+  const videoArea = document.getElementById('vc-screen-video');
+  if (videoArea) {
+    const video = document.createElement('video');
+    video.srcObject = stream;
+    video.muted = true;
+    video.autoplay = true;
+    video.playsInline = true;
+    video.style.cssText = 'width:100%;height:100%;object-fit:contain;border-radius:8px';
+    videoArea.innerHTML = '';
+    videoArea.appendChild(video);
   }
 
-  // Store stop function
-  window._stopScrShare = () => { _scrRunning = false; };
-  _screenInterval = requestAnimationFrame(scrFrame);
+  // Nastav sharer info
+  const sharerAv = document.getElementById('vc-sharer-av');
+  const sharerName = document.getElementById('vc-sharer-name');
+  const labelTxt = document.getElementById('vc-screen-label-txt');
+  const badge = document.getElementById('vc-share-badge');
+  const badgeName = document.getElementById('vc-sharer-name-badge');
+  if (sharerAv) { sharerAv.style.background = ME.color||'#7c6aff'; sharerAv.textContent = (ME.name||'?')[0]; }
+  if (sharerName) sharerName.textContent = ME.name + ' sdílí obrazovku';
+  if (labelTxt) labelTxt.textContent = ME.name + ' · sdílí obrazovku';
+  if (badgeName) badgeName.textContent = (ME.name||'Ty') + ' sdílí';
+
+  // Přidej .sharing class na vcroom
+  document.getElementById('vcroom').classList.add('sharing');
+  vcScreenSharer = ME.id;
+
+  // Nastav scrbtn aktivní
+  const scrBtn = document.getElementById('vcscrbtn');
+  if (scrBtn) scrBtn.classList.add('ams');
+
+  // Přidej screen video track do všech WebRTC peer connections
+  const videoTrack = stream.getVideoTracks()[0];
+  if (videoTrack) {
+    for (const pc of Object.values(VC.peers)) {
+      try {
+        const sender = pc.getSenders().find(s => s.track && s.track.kind === 'video');
+        if (sender) sender.replaceTrack(videoTrack);
+        else pc.addTrack(videoTrack, stream);
+      } catch(e) { console.warn('[Screen] addTrack:', e.message); }
+    }
+  }
+
+  // Stopni sdílení když track skončí
+  if (videoTrack) videoTrack.onended = () => stopScreenShare();
+
+  bcast({ type: 'screen_start', from: ME.id, chId: vcChId, name: ME.name, color: ME.color });
+  renderVcParts();
 }
 
 function showLocalScreenPreview(stream, videoEl) {
