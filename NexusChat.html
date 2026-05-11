@@ -3917,7 +3917,7 @@ function renderVcParts() {
 
     if (isSharing) {
       // Sidebar compact row
-      return '<div class="' + cardClass + '" id="vcp-' + id + '"' +
+      return '<div class="' + cardClass + '" id="' + (isMe ? 'vcp-me' : 'vcp-' + id) + '"' +
         (isMe ? '' : ' data-uid="' + id + '" data-uname="' + (name||'').replace(/"/g,'&quot;') + '" oncontextmenu="vcpRightClick(event,this.dataset.uid,this.dataset.uname)" style="cursor:context-menu"') + '>' +
         '<div class="av-wrap" style="position:relative;flex-shrink:0">' +
           '<div class="' + avClass + '" style="background:' + avBg + '">' + avHTML(avatar, name, color) + '</div>' +
@@ -3930,7 +3930,7 @@ function renderVcParts() {
       '</div>';
     } else {
       // Grid card
-      return '<div class="' + cardClass + '" id="vcp-' + id + '"' +
+      return '<div class="' + cardClass + '" id="' + (isMe ? 'vcp-me' : 'vcp-' + id) + '"' +
         (isMe ? '' : ' data-uid="' + id + '" data-uname="' + (name||'').replace(/"/g,'&quot;') + '" oncontextmenu="vcpRightClick(event,this.dataset.uid,this.dataset.uname)" style="cursor:context-menu"') + '>' +
         '<div style="position:relative">' +
           '<div class="' + avClass + '" style="background:' + avBg + '">' + avHTML(avatar, name, color) + '</div>' +
@@ -3970,17 +3970,12 @@ function renderVcParts() {
 function startVcPing() {
   if (window._vcPingInt) clearInterval(window._vcPingInt);
   const el = document.getElementById('vc-ping');
-  if (el) { el.style.display = 'block'; el.textContent = '... ms'; }
-  // Pošli první ping hned
-  if (wsConn && wsConn.readyState === 1) {
-    window._vcPingSent = Date.now();
-    try { wsConn.send(JSON.stringify({ type: 'ping' })); } catch {}
-  }
+  if (el) el.style.display = 'block';
   window._vcPingInt = setInterval(() => {
     if (!inVc || !wsConn || wsConn.readyState !== 1) { stopVcPing(); return; }
     window._vcPingSent = Date.now();
     try { wsConn.send(JSON.stringify({ type: 'ping' })); } catch {}
-  }, 2000);
+  }, 3000);
 }
 function stopVcPing() {
   clearInterval(window._vcPingInt);
