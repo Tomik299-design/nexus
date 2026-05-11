@@ -1229,6 +1229,32 @@ setTimeout(() => location.reload(), 30000);
     return;
   }
 
+  if (req.url === '/api/geoip') {
+    const clientIp = (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').split(',')[0].trim();
+    // Použij ip-api.com pro geolokaci (free, bez API klíče)
+    const ipApiUrl = 'http://ip-api.com/json/' + clientIp + '?fields=countryCode';
+    https.get(ipApiUrl.replace('http://', 'http://'), (apiRes) => {
+      let data = '';
+      apiRes.on('data', chunk => data += chunk);
+      apiRes.on('end', () => {
+        try {
+          const json = JSON.parse(data);
+          const country = json.countryCode || 'CZ';
+          const lang = country === 'CZ' || country === 'SK' ? 'cs' : 'en';
+          res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+          res.end(JSON.stringify({ country, lang }));
+        } catch {
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ country: 'CZ', lang: 'cs' }));
+        }
+      });
+    }).on('error', () => {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ country: 'CZ', lang: 'cs' }));
+    });
+    return;
+  }
+
   if (urlPath === '/auth/set-password' && req.method === 'POST') {
     let body = '';
     req.on('data', d => { body += d; if (body.length > 8192) req.destroy(); });

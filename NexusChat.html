@@ -1231,6 +1231,20 @@ function mkSrv() {
 // ══════════════════════════════════════════
 var LANG = ls('nx_lang', 'cs'); // 'cs' or 'en'
 
+// Auto-detekce jazyka podle IP při prvním načtení
+if (!localStorage.getItem('nx_lang_set')) {
+  fetch('https://nexus-g7k4.onrender.com/api/geoip')
+    .then(r => r.json())
+    .then(d => {
+      if (d && d.lang) {
+        LANG = d.lang;
+        lss('nx_lang', d.lang);
+        if (typeof applyLang === 'function') applyLang();
+      }
+    })
+    .catch(() => {});
+}
+
 var T = {
   cs: {
     // UI labels
@@ -1586,6 +1600,7 @@ function t(key) {
 function setLang(lang) {
   LANG = lang;
   lss('nx_lang', lang);
+  lss('nx_lang_set', '1'); // uživatel manuálně zvolil jazyk — nepřepisovat
   applyLang();
   toast(lang === 'en' ? '🇺🇸 Language set to English' : '🇨🇿 Jazyk nastaven na češtinu', 'ok');
 }
