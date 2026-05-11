@@ -3970,12 +3970,17 @@ function renderVcParts() {
 function startVcPing() {
   if (window._vcPingInt) clearInterval(window._vcPingInt);
   const el = document.getElementById('vc-ping');
-  if (el) el.style.display = 'block';
+  if (el) { el.style.display = 'block'; el.textContent = '... ms'; }
+  // Pošli první ping hned
+  if (wsConn && wsConn.readyState === 1) {
+    window._vcPingSent = Date.now();
+    try { wsConn.send(JSON.stringify({ type: 'ping' })); } catch {}
+  }
   window._vcPingInt = setInterval(() => {
     if (!inVc || !wsConn || wsConn.readyState !== 1) { stopVcPing(); return; }
     window._vcPingSent = Date.now();
     try { wsConn.send(JSON.stringify({ type: 'ping' })); } catch {}
-  }, 3000);
+  }, 2000);
 }
 function stopVcPing() {
   clearInterval(window._vcPingInt);

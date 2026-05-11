@@ -1231,15 +1231,15 @@ setTimeout(() => location.reload(), 30000);
 
   if (req.url === '/api/geoip') {
     const clientIp = (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').split(',')[0].trim();
-    // Použij ip-api.com pro geolokaci (free, bez API klíče)
-    const ipApiUrl = 'http://ip-api.com/json/' + clientIp + '?fields=countryCode';
-    https.get(ipApiUrl.replace('http://', 'http://'), (apiRes) => {
+    // Použij ipapi.co — podporuje HTTPS zdarma
+    const apiUrl = 'https://ipapi.co/' + clientIp + '/json/';
+    https.get(apiUrl, { headers: { 'User-Agent': 'NexusChat/1.0' } }, (apiRes) => {
       let data = '';
       apiRes.on('data', chunk => data += chunk);
       apiRes.on('end', () => {
         try {
           const json = JSON.parse(data);
-          const country = json.countryCode || 'CZ';
+          const country = json.country_code || 'CZ';
           const lang = country === 'CZ' || country === 'SK' ? 'cs' : 'en';
           res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
           res.end(JSON.stringify({ country, lang }));
