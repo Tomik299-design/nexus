@@ -2390,6 +2390,19 @@ function handleNet(d) {
     if (d.from !== ME.id) { const _o = document.getElementById('screen-share-overlay'); if (_o) _o.remove(); }
     return;
   }
+  if (d.type === 'pong') {
+    if (window._vcPingSent) {
+      const ms = Date.now() - window._vcPingSent;
+      const el = document.getElementById('vc-ping');
+      if (el) {
+        el.textContent = ms + ' ms';
+        el.style.color = ms < 80 ? 'var(--acc)' : ms < 200 ? 'var(--yel)' : 'var(--red)';
+        el.style.borderColor = ms < 80 ? 'rgba(79,255,176,.2)' : ms < 200 ? 'rgba(255,203,107,.3)' : 'rgba(255,83,112,.3)';
+        el.style.background = ms < 80 ? 'rgba(79,255,176,.08)' : ms < 200 ? 'rgba(255,203,107,.08)' : 'rgba(255,83,112,.08)';
+      }
+    }
+    return;
+  }
   if (d.type === 'audio') {
     handleAudio(d); // legacy — ignorováno při WebRTC
   } else if (d.type === 'rtc_offer') {
@@ -3606,7 +3619,7 @@ const VC = {
   deafened:    false,
   speaking:    false,
   localVolume: 1.0,
-  noiseGate:   0.015,
+  noiseGate:   0.008,
   gateGain:    null,
   // WebRTC
   peers:       {},   // peerId -> RTCPeerConnection
@@ -3822,6 +3835,7 @@ async function joinVc(ch) {
   vcMembers[ME.id] = { id: ME.id, name: ME.name, color: ME.color, avatar: ME.avatar, chId: ch.id };
   bcast({ type: 'vc_join', chId: ch.id, m: { id: ME.id, name: ME.name, color: ME.color, avatar: ME.avatar, tag: ME.tag, servers: Object.keys(SERVERS) } });
   bcast({ type: 'vc_state_req' });
+  startVcPing();
   // Po 600ms pošleme offer všem kdo jsou už v kanálu
   setTimeout(() => {
     if (inVc && vcChId) {
@@ -3953,23 +3967,49 @@ function renderVcParts() {
   document.getElementById('vcparts').innerHTML = html;
 }
 
+function startVcPing() {
+  if (window._vcPingInt) clearInterval(window._vcPingInt);
+  const el = document.getElementById('vc-ping');
+  if (el) el.style.display = 'block';
+  window._vcPingInt = setInterval(() => {
+    if (!inVc || !wsConn || wsConn.readyState !== 1) { stopVcPing(); return; }
+    window._vcPingSent = Date.now();
+    try { wsConn.send(JSON.stringify({ type: 'ping' })); } catch {}
+  }, 3000);
+}
+function stopVcPing() {
+  clearInterval(window._vcPingInt);
+  window._vcPingInt = null;
+  const el = document.getElementById('vc-ping');
+  if (el) el.style.display = 'none';
+}
 function startVAD() {
   const data = new Uint8Array(VC.an.frequencyBinCount);
   let last = 0;
+  let silenceTimer = null;
   function tick(ts) {
-    if (!VC.an || !inVc) return;
+    if (!VC.an || !inVc) { VC.vad = null; return; }
     VC.vad = requestAnimationFrame(tick);
-    if (ts - last < 150) return; last = ts;  // zvýšeno z 80ms
-    // Snížená frekvence když je okno skryté (hra na pozadí)
-    if (document.hidden && ts - last < 500) return;
+    if (ts - last < 80) return; last = ts;
     VC.an.getByteFrequencyData(data);
-    let sum = 0; for (let i = 2; i < 60; i++) sum += data[i];
-    const avg = sum / 58 / 255;
-    const spk = avg > (VC.noiseGate || 0.015) && !VC.micMuted && !VC.deafened;
-    if (spk !== VC.speaking) {
-      VC.speaking = spk;
-      const el = document.getElementById('vcp-me'); if (el) el.classList.toggle('spk', spk);
-      bcast({ type: 'vc_speaking', id: ME.id, chId: vcChId||curCh, speaking: spk });
+    // RMS — citlivější než průměr
+    let sum = 0;
+    for (let i = 1; i < data.length; i++) sum += data[i] * data[i];
+    const rms = Math.sqrt(sum / data.length) / 255;
+    const threshold = VC.noiseGate || 0.008;
+    const isLoud = rms > threshold && !VC.micMuted && !VC.deafened;
+    if (isLoud && !VC.speaking) {
+      clearTimeout(silenceTimer);
+      VC.speaking = true;
+      const el = document.getElementById('vcp-me'); if (el) el.classList.add('spk');
+      bcast({ type: 'vc_speaking', id: ME.id, chId: vcChId||curCh, speaking: true });
+    } else if (!isLoud && VC.speaking) {
+      clearTimeout(silenceTimer);
+      silenceTimer = setTimeout(() => {
+        VC.speaking = false;
+        const el = document.getElementById('vcp-me'); if (el) el.classList.remove('spk');
+        bcast({ type: 'vc_speaking', id: ME.id, chId: vcChId||curCh, speaking: false });
+      }, 400);
     }
   }
   VC.vad = requestAnimationFrame(tick);
@@ -3992,6 +4032,7 @@ function leaveVc() {
   if (VC.vad) { cancelAnimationFrame(VC.vad); VC.vad = null; }
   Object.assign(VC, { speaking:false, micMuted:false, deafened:false, localVolume:1.0 });
   inVc = false; vcChId = null; vcChatOpen = false;
+  if (typeof stopVcPing === 'function') stopVcPing();
   vcScreenSharer = null;
   document.getElementById('vcroom')?.classList.remove('sharing');
   const cb = document.getElementById('vcchatbtn'); if (cb) cb.classList.remove('act');
@@ -4081,19 +4122,38 @@ function toggleVcMic() {
 }
 function toggleVcDeaf() {
   VC.deafened = !VC.deafened;
-  // Mute/unmute all peer audio
-  for (const [peerId, gain] of Object.entries(VC.gainNodes)) {
-    if (VC.deafened) {
-      gain._prevVol = gain.gain.value;
-      gain.gain.value = 0;
-    } else {
-      gain.gain.value = gain._prevVol !== undefined ? gain._prevVol : 1;
+
+  if (VC.deafened) {
+    // Vypni mikrofon
+    VC.micMuted = true;
+    if (VC.stream) VC.stream.getAudioTracks().forEach(t => t.enabled = false);
+    const mb = document.getElementById('vcmicbtn'); if(mb){mb.classList.add('am'); mb.textContent = '🔇';}
+    // Okamžitě zastav speaking indikátor
+    VC.speaking = false;
+    const me = document.getElementById('vcp-me'); if (me) me.classList.remove('spk');
+    bcast({ type: 'vc_speaking', id: ME.id, chId: vcChId||curCh, speaking: false });
+  } else {
+    // Zapni mikrofon zpět
+    VC.micMuted = false;
+    if (VC.stream) VC.stream.getAudioTracks().forEach(t => t.enabled = true);
+    const mb = document.getElementById('vcmicbtn'); if(mb){mb.classList.remove('am'); mb.textContent = '🎤';}
+  }
+
+  // Mute/unmute WebRTC remote audio
+  for (const ra of Object.values(VC.remoteAudio || {})) {
+    if (ra.gain) {
+      if (VC.deafened) { ra.gain._prevVol = ra.gain.gain.value; ra.gain.gain.value = 0; }
+      else ra.gain.gain.value = ra.gain._prevVol !== undefined ? ra.gain._prevVol : Math.min(2, parseInt(ls('nx_out_vol',100))/100);
     }
+    if (ra.el) ra.el.muted = VC.deafened;
   }
-  // Mute audio elements too
-  for (const audio of Object.values(VC.audioEls)) {
-    audio.muted = VC.deafened;
+  // Legacy gainNodes
+  for (const gain of Object.values(VC.gainNodes)) {
+    if (VC.deafened) { gain._prevVol = gain.gain.value; gain.gain.value = 0; }
+    else gain.gain.value = gain._prevVol !== undefined ? gain._prevVol : 1;
   }
+  for (const audio of Object.values(VC.audioEls)) { audio.muted = VC.deafened; }
+
   const b = document.getElementById('vcdfbtn'); if(b){b.classList.toggle('am', VC.deafened); b.textContent = VC.deafened ? '🔕' : '🎧';}
   toast(VC.deafened ? '🔕 Sluchátka vypnuta' : '🎧 Sluchátka zapnuta', 'inf');
   renderVcParts();
