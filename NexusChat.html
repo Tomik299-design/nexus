@@ -3625,7 +3625,7 @@ const VC = {
   deafened:    false,
   speaking:    false,
   localVolume: 1.0,
-  noiseGate:   0.003,
+  noiseGate:   0.02,
   gateGain:    null,
   // WebRTC
   peers:       {},   // peerId -> RTCPeerConnection
@@ -4002,7 +4002,7 @@ function startVAD() {
     let sum = 0;
     for (let i = 1; i < data.length; i++) sum += data[i] * data[i];
     const rms = Math.sqrt(sum / data.length) / 255;
-    const threshold = VC.noiseGate || 0.003; // velmi nízký threshold
+    const threshold = VC.noiseGate || 0.02; // rozumny threshold pro hlas
     const isLoud = rms > threshold && !VC.micMuted && !VC.deafened;
     if (isLoud && !VC.speaking) {
       clearTimeout(silenceTimer);
