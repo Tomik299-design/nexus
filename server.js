@@ -297,6 +297,7 @@ const PORT = process.env.PORT || 3001;
 let serverReady = false;
 let serverStartTime = Date.now();
 setTimeout(() => { serverReady = true; console.log('[NexusChat] Server ready!'); }, 12000);
+const _spkThrottle = {};
 setInterval(() => {
   const cutoff = Date.now() - 5000;
   for (const k of Object.keys(_spkThrottle)) { if (_spkThrottle[k] < cutoff) delete _spkThrottle[k]; }
