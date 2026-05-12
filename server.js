@@ -1768,6 +1768,13 @@ wss.on('connection', (ws, req) => {
     // Store server structure updates for new clients
     if (msg.type === 'srv_update' && msg.srvId && msg.srv) {
       serverData[msg.srvId] = msg.srv;
+      // Broadcast to all OTHER clients so they see channel/server changes
+      for (const [client] of clients) {
+        if (client !== ws && client.readyState === WebSocket.OPEN) {
+          try { client.send(str); } catch {}
+        }
+      }
+      return;
     }
 
     // Server deleted - remove from memory and relay to all
