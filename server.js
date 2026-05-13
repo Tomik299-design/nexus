@@ -10,9 +10,56 @@ const path      = require('path');
 const os        = require('os');
 const crypto    = require('crypto');
 
+// ── Supabase REST API ────────────────────────────────────────────────
+const SB_URL = process.env.SUPABASE_URL || 'https://rugjmtxanhmihodefcur.supabase.co';
+const SB_KEY = process.env.SUPABASE_KEY || '';
+
+function sbRequest(method, table, body, params, cb) {
+  const bodyStr = body ? JSON.stringify(body) : null;
+  const urlPath = '/rest/v1/' + table + (params || '');
+  const host = SB_URL.replace('https://', '');
+  const headers = {
+    'apikey': SB_KEY,
+    'Authorization': 'Bearer ' + SB_KEY,
+    'Content-Type': 'application/json',
+    'Prefer': method === 'POST' ? 'resolution=merge-duplicates,return=minimal' : 'return=minimal'
+  };
+  if (bodyStr) headers['Content-Length'] = Buffer.byteLength(bodyStr);
+  const opts = { hostname: host, path: urlPath, method, headers };
+  const req = https.request(opts, (res) => {
+    let raw = '';
+    res.on('data', d => raw += d);
+    res.on('end', () => {
+      if (res.statusCode >= 400) {
+        console.warn('[Supabase] ' + method + ' ' + table + ' HTTP ' + res.statusCode + ':', raw.slice(0,200));
+        return cb && cb(new Error('Supabase HTTP ' + res.statusCode));
+      }
+      if (!raw || raw === '') return cb && cb(null, null);
+      try { cb && cb(null, JSON.parse(raw)); }
+      catch(e) { cb && cb(null, null); }
+    });
+  });
+  req.on('error', e => { console.warn('[Supabase] Network error:', e.message); cb && cb(e); });
+  if (bodyStr) req.write(bodyStr);
+  req.end();
+}
+
+function sbUpsert(table, row, cb) {
+  sbRequest('POST', table, row, null, cb);
+}
+
+function sbGet(table, pkCol, pkVal, cb) {
+  sbRequest('GET', table, null, '?' + pkCol + '=eq.' + encodeURIComponent(pkVal) + '&limit=1', (err, rows) => {
+    if (err) return cb(err);
+    cb(null, Array.isArray(rows) && rows.length > 0 ? rows[0] : null);
+  });
+}
+
+function sbDelete(table, pkCol, pkVal, cb) {
+  sbRequest('DELETE', table, null, '?' + pkCol + '=eq.' + encodeURIComponent(pkVal), cb || function(){});
+}
+
 // ── Email+Password Auth ──────────────────────────────────────────────
-const AUTH_FILE   = '/tmp/nexus_auth.json';
-const TOKEN_FILE  = '/tmp/nexus_tokens.json';
 let authData      = {};  // { email: { userId, passHash, salt, username, createdAt } }
 let resetTokens   = {};  // { token: { email, expires } }
 
@@ -25,114 +72,52 @@ function verifyPass(password, salt, hash) {
 function genToken(len) {
   return crypto.randomBytes(len || 32).toString('hex');
 }
-// loadBulkAccounts — načte účty z JSONBin (pokud je nastaveno ACCOUNTS_BIN_ID)
-function loadBulkAccounts(cb) {
-  const binId = process.env.ACCOUNTS_BIN_ID;
-  if (!binId) { if (cb) cb(); return; }
-  jsonbinRequest('GET', binId, null, (err, result) => {
-    if (!err && result && result.record && typeof result.record === 'object') {
-      Object.assign(accounts, result.record);
-      console.log('[Cloud] Loaded', Object.keys(result.record).length, 'accounts from JSONBin');
-    } else if (err) {
-      console.warn('[Cloud] loadBulkAccounts error:', err.message);
+
+function loadAuth(cb) {
+  sbRequest('GET', 'auth_data', null, null, (err, rows) => {
+    if (err) { console.warn('[Auth] Load error:', err.message); if (cb) cb(); return; }
+    if (rows) for (const row of rows) authData[row.email] = row.data;
+    console.log('[Auth] Supabase: nacteno', Object.keys(authData).length, 'email uctu');
+    if (cb) cb();
+  });
+}
+
+function loadTokens(cb) {
+  sbRequest('GET', 'reset_tokens', null, null, (err, rows) => {
+    if (err) { if (cb) cb(); return; }
+    const now = Date.now();
+    if (rows) for (const row of rows) {
+      if (row.data.expires > now) resetTokens[row.token] = row.data;
+      else sbDelete('reset_tokens', 'token', row.token, null);
     }
     if (cb) cb();
   });
 }
 
-// bulkSaveAccounts — uloží všechny účty do JSONBin (pokud je nastaveno ACCOUNTS_BIN_ID)
-let _bulkSaveTimer = null;
-function bulkSaveAccounts() {
-  const binId = process.env.ACCOUNTS_BIN_ID;
-  if (!binId) return;
-  // Debounce — nevolej víckrát než jednou za 30 sekund
-  if (_bulkSaveTimer) return;
-  _bulkSaveTimer = setTimeout(() => {
-    _bulkSaveTimer = null;
-    jsonbinRequest('PUT', binId, accounts, (err) => {
-      if (err) console.warn('[Cloud] bulkSaveAccounts error:', err.message);
-    });
-  }, 30000);
-}
-
-function loadAuth() {
-  try {
-    if (fs.existsSync(AUTH_FILE))  authData    = JSON.parse(fs.readFileSync(AUTH_FILE, 'utf8'));
-    if (fs.existsSync(TOKEN_FILE)) resetTokens = JSON.parse(fs.readFileSync(TOKEN_FILE, 'utf8'));
-    console.log('[Auth] Disk: načteno', Object.keys(authData).length, 'email účtů');
-  } catch(e) { console.warn('[Auth] Disk load error:', e.message); }
-}
-let _authBinId = process.env.AUTH_BIN_ID || null;
-
-function loadAuthCloud() {
-  if (!_authBinId) {
-    console.log('[Auth] AUTH_BIN_ID není nastaven — po prvním uložení se bin vytvoří automaticky');
-    return;
-  }
-  jsonbinRequest('GET', _authBinId, null, (err, result) => {
-    if (!err && result && result.record) {
-      if (result.record.auth) Object.assign(authData, result.record.auth);
-      if (result.record.tokens) {
-        Object.assign(resetTokens, result.record.tokens);
-        const now = Date.now();
-        Object.keys(resetTokens).forEach(k => { if (resetTokens[k].expires < now) delete resetTokens[k]; });
-      }
-      console.log('[Auth] Cloud: načteno', Object.keys(authData).length, 'email účtů');
-    } else if (err) {
-      console.warn('[Auth] Cloud auth load error:', err.message);
-    }
-  });
-}
-
-function _saveAuthCloud() {
-  const payload = { auth: authData, tokens: resetTokens };
-  if (_authBinId) {
-    jsonbinRequest('PUT', _authBinId, payload, (err) => {
-      if (err) console.warn('[Auth] Cloud save error:', err.message);
-      else console.log('[Auth] Cloud: uloženo', Object.keys(authData).length, 'email účtů');
-    });
-  } else {
-    // Auto-vytvoř bin
-    if (!JSONBIN_KEY) { console.warn('[Auth] JSONBIN_KEY chybí — nelze vytvořit auth bin'); return; }
-    const body = JSON.stringify(payload);
-    const reqOpts = {
-      hostname: 'api.jsonbin.io', path: '/v3/b', method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Bin-Name': 'nexus_auth',
-        'X-Bin-Private': 'true',
-        'X-Master-Key': JSONBIN_KEY,
-        'Content-Length': Buffer.byteLength(body)
-      }
-    };
-    const req = https.request(reqOpts, (res) => {
-      let raw = '';
-      res.on('data', d => raw += d);
-      res.on('end', () => {
-        try {
-          const result = JSON.parse(raw);
-          if (result.metadata?.id) {
-            _authBinId = result.metadata.id;
-            console.log('[Auth] ✅ Auth bin vytvořen:', _authBinId);
-            console.log('[Auth] 👉 Nastav na Render: AUTH_BIN_ID =', _authBinId);
-          }
-        } catch(e) { console.warn('[Auth] Bin create parse error:', e.message); }
-      });
-    });
-    req.on('error', err => console.warn('[Auth] Bin create error:', err.message));
-    req.write(body);
-    req.end();
-  }
-}
-
 function saveAuth() {
-  try { fs.writeFileSync(AUTH_FILE, JSON.stringify(authData)); } catch(e) {}
-  _saveAuthCloud();
+  for (const [email, data] of Object.entries(authData)) {
+    sbUpsert('auth_data', { email, data }, (err) => {
+      if (err) console.warn('[Auth] Save error for', email, ':', err.message);
+    });
+  }
 }
 
 function saveTokens() {
-  try { fs.writeFileSync(TOKEN_FILE, JSON.stringify(resetTokens)); } catch(e) {}
-  _saveAuthCloud();
+  for (const [token, data] of Object.entries(resetTokens)) {
+    sbUpsert('reset_tokens', { token, data }, null);
+  }
+}
+
+function saveOneAuth(email) {
+  if (!authData[email]) return;
+  sbUpsert('auth_data', { email, data: authData[email] }, (err) => {
+    if (err) console.warn('[Auth] saveOneAuth error:', err.message);
+  });
+}
+
+function saveOneToken(token) {
+  if (!resetTokens[token]) return;
+  sbUpsert('reset_tokens', { token, data: resetTokens[token] }, null);
 }
 
 function sendResetEmail(toEmail, token, cb) {
@@ -192,102 +177,6 @@ function sendResetEmail(toEmail, token, cb) {
   });
   req.write(body);
   req.end();
-}
-
-// ── JSONBin.io cloud storage ──
-// Zdarma na jsonbin.io — účet není nutný pro základní použití
-// Pro vlastní API klíč: nastavit env proměnnou JSONBIN_KEY na Render
-const JSONBIN_KEY = process.env.JSONBIN_KEY || '';
-const JSONBIN_BASE = 'https://api.jsonbin.io/v3';
-
-function jsonbinRequest(method, binId, data, cb) {
-  const body = data ? JSON.stringify(data) : null;
-  const headers = {
-    'Content-Type': 'application/json',
-    'X-Bin-Private': 'false',
-  };
-  if (JSONBIN_KEY) headers['X-Master-Key'] = JSONBIN_KEY;
-  if (body) headers['Content-Length'] = Buffer.byteLength(body);
-
-  const urlPath = binId ? '/b/' + binId + (method === 'GET' ? '/latest' : '') : '/b';
-  const options = {
-    hostname: 'api.jsonbin.io',
-    path: '/v3' + urlPath,
-    method: method,
-    headers
-  };
-
-  const req = https.request(options, (res) => {
-    let raw = '';
-    res.on('data', d => raw += d);
-    res.on('end', () => {
-      if (res.statusCode >= 400) {
-        console.warn('[JSONBin] HTTP ' + res.statusCode + ' pro ' + method + ' ' + urlPath + ' — odpověď:', raw.slice(0, 200));
-        return cb(new Error('JSONBin HTTP ' + res.statusCode));
-      }
-      try { cb(null, JSON.parse(raw)); }
-      catch(e) {
-        console.warn('[JSONBin] Neplatná JSON odpověď:', raw.slice(0, 200));
-        cb(e);
-      }
-    });
-  });
-  req.on('error', cb);
-  if (body) req.write(body);
-  req.end();
-}
-
-function cloudSaveAccount(userId, data) {
-  // Use userId as bin name via metadata
-  const binId = accounts[userId]?._binId;
-  if (binId) {
-    // Update existing bin
-    jsonbinRequest('PUT', binId, data, (err) => {
-      if (err) console.warn('[Cloud] Save error:', err.message);
-    });
-  } else {
-    // Create new bin
-    const reqOpts = {
-      hostname: 'api.jsonbin.io',
-      path: '/v3/b',
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Bin-Name': 'nx_' + userId.slice(0, 16),
-        'X-Bin-Private': 'false',
-        ...(JSONBIN_KEY ? { 'X-Master-Key': JSONBIN_KEY } : {})
-      }
-    };
-    const body = JSON.stringify(data);
-    reqOpts.headers['Content-Length'] = Buffer.byteLength(body);
-    const req = https.request(reqOpts, (res) => {
-      let raw = '';
-      res.on('data', d => raw += d);
-      res.on('end', () => {
-        try {
-          const result = JSON.parse(raw);
-          if (result.metadata?.id) {
-            if (!accounts[userId]) accounts[userId] = {};
-            accounts[userId]._binId = result.metadata.id;
-            saveAccounts(); // persist binId locally
-            console.log('[Cloud] Created bin for', userId.slice(0,8), ':', result.metadata.id);
-          }
-        } catch(e) {}
-      });
-    });
-    req.on('error', err => console.warn('[Cloud] Create error:', err.message));
-    req.write(body);
-    req.end();
-  }
-}
-
-function cloudLoadAccount(userId, cb) {
-  const binId = accounts[userId]?._binId;
-  if (!binId) { cb(null, null); return; }
-  jsonbinRequest('GET', binId, null, (err, result) => {
-    if (err) { cb(err); return; }
-    cb(null, result?.record || null);
-  });
 }
 
 const PORT = process.env.PORT || 3001;
@@ -1278,7 +1167,7 @@ setTimeout(() => location.reload(), 30000);
       const salt     = genToken(16);
       const passHash = hashPass(password, salt);
       authData[email] = { userId, passHash, salt, username, createdAt: Date.now() };
-      saveAuth();
+      saveOneAuth(email);
       res.writeHead(200,'',{'Content-Type':'application/json'});
       res.end(JSON.stringify({ ok: true, userId, username, email }));
     });
@@ -1334,7 +1223,7 @@ setTimeout(() => location.reload(), 30000);
       const passHash = hashPass(password, salt);
       const userId   = 'nx_' + genToken(16);
       authData[email] = { userId, passHash, salt, username, createdAt: Date.now() };
-      saveAuth();
+      saveOneAuth(email);
       res.writeHead(200,'',{'Content-Type':'application/json'});
       res.end(JSON.stringify({ ok: true, userId, username, email }));
     });
@@ -1369,7 +1258,7 @@ setTimeout(() => location.reload(), 30000);
       if (!authData[email]) { res.writeHead(200,'',{'Content-Type':'application/json'}); res.end('{"ok":true}'); return; }
       const token = genToken(32);
       resetTokens[token] = { email, expires: Date.now() + 3600000 };
-      saveTokens();
+      saveOneToken(token);
       sendResetEmail(email, token, (err) => {
         if (err) {
           console.error('[Auth] SMTP chyba:', err.message, err.code || '', err.response || '');
@@ -1399,7 +1288,9 @@ setTimeout(() => location.reload(), 30000);
       acct.salt      = salt;
       acct.passHash  = hashPass(password, salt);
       delete resetTokens[token];
-      saveAuth(); saveTokens();
+      saveOneAuth(entry.email);
+      sbDelete('reset_tokens', 'token', token, null);
+      delete resetTokens[token];
       res.writeHead(200,'',{'Content-Type':'application/json'});
       res.end('{"ok":true}');
     });
@@ -1465,43 +1356,84 @@ const clients      = new Map();
 const ipToId       = {}; // ip -> persistent userId
 
 // ── Persistent bans — saved to disk ──
-const BANS_FILE    = '/tmp/nexus_bans.json';
-const OFFLINE_FILE = '/tmp/nexus_offline.json';
-const MEMBERS_FILE = '/tmp/nexus_members.json';
+// Persistent storage: Supabase (bans, offline, members, accounts, history, server_data)
 
 let bannedUsers  = {}; // { srvId: { userId: { reason, ts, name } } }
 let savedOffline = {}; // { userId: memberInfo } — persistent offline members
 let savedMembers = {}; // { srvId: { userId: memberInfo } } — all known members per server
 
-const ACCOUNTS_FILE = '/tmp/nexus_accounts.json';
-let accounts = {}; // { userId: { name, color, servers: {...}, roles: {...}, ts } }
+let accounts = {}; // { userId: { profile, servers, roles, ts } }
 
-function loadBans() {
-  try {
-    if (fs.existsSync(BANS_FILE))    bannedUsers  = JSON.parse(fs.readFileSync(BANS_FILE, 'utf8'));
-    if (fs.existsSync(OFFLINE_FILE)) savedOffline = JSON.parse(fs.readFileSync(OFFLINE_FILE, 'utf8'));
-    if (fs.existsSync(MEMBERS_FILE)) savedMembers = JSON.parse(fs.readFileSync(MEMBERS_FILE, 'utf8'));
-    if (fs.existsSync(ACCOUNTS_FILE)) {
-      accounts = JSON.parse(fs.readFileSync(ACCOUNTS_FILE, 'utf8'));
-      console.log('[Accounts] Loaded', Object.keys(accounts).length, 'accounts from disk');
-    }
-    // Load from JSONBin bulk store if ACCOUNTS_BIN_ID is set
-    loadBulkAccounts(function() {
-      console.log('[Accounts] Total after bulk load:', Object.keys(accounts).length);
-    });
-    // Note: /tmp/ is wiped on Render restart - set ACCOUNTS_BIN_ID env var for persistence
-    console.log('[Data] Bans:', Object.keys(bannedUsers).length, '| Offline:', Object.keys(savedOffline).length, '| Members:', Object.keys(savedMembers).length);
-  } catch(e) { console.warn('[Data] Load error:', e.message); }
+// ── Supabase load functions ──
+function loadAccounts(cb) {
+  sbRequest('GET', 'accounts', null, null, (err, rows) => {
+    if (err) { console.warn('[Accounts] Load error:', err.message); if (cb) cb(); return; }
+    if (rows) for (const row of rows) accounts[row.user_id] = row.data;
+    console.log('[Accounts] Supabase: nacteno', Object.keys(accounts).length, 'uctu');
+    if (cb) cb();
+  });
 }
 
-function saveBans()     { try { fs.writeFileSync(BANS_FILE,     JSON.stringify(bannedUsers));  } catch(e) {} }
-function saveOffline()  { try { fs.writeFileSync(OFFLINE_FILE,  JSON.stringify(savedOffline)); } catch(e) {} }
-function saveMembers()  { try { fs.writeFileSync(MEMBERS_FILE,  JSON.stringify(savedMembers)); } catch(e) {} }
-function saveAccounts() { try { fs.writeFileSync(ACCOUNTS_FILE, JSON.stringify(accounts));     } catch(e) {} }
+function loadBansFromDB(cb) {
+  sbGet('bans', 'id', 'bans', (err, row) => {
+    if (!err && row) bannedUsers = row.data || {};
+    console.log('[Data] Bans:', Object.keys(bannedUsers).length);
+    if (cb) cb();
+  });
+}
 
-loadBans();
-loadAuth();
-setTimeout(() => loadAuthCloud(), 3000);
+function loadOfflineFromDB(cb) {
+  sbGet('offline_members', 'id', 'offline', (err, row) => {
+    if (!err && row) savedOffline = row.data || {};
+    if (cb) cb();
+  });
+}
+
+function loadMembersFromDB(cb) {
+  sbGet('saved_members', 'id', 'members', (err, row) => {
+    if (!err && row) savedMembers = row.data || {};
+    if (cb) cb();
+  });
+}
+
+function saveBans()    { sbUpsert('bans',           { id: 'bans',    data: bannedUsers  }, null); }
+function saveOffline() { sbUpsert('offline_members', { id: 'offline', data: savedOffline }, null); }
+function saveMembers() { sbUpsert('saved_members',   { id: 'members', data: savedMembers  }, null); }
+function saveAccounts() {
+  for (const [user_id, data] of Object.entries(accounts)) {
+    sbUpsert('accounts', { user_id, data }, null);
+  }
+}
+function saveOneAccount(userId) {
+  if (!accounts[userId]) return;
+  sbUpsert('accounts', { user_id: userId, data: accounts[userId] }, (err) => {
+    if (err) console.warn('[Accounts] Save error:', err.message);
+  });
+}
+
+// Startup: nacti vse z Supabase
+function initData(cb) {
+  loadHistory(() => {
+    loadServerData(() => {
+      loadAccounts(() => {
+        loadBansFromDB(() => {
+          loadOfflineFromDB(() => {
+            loadMembersFromDB(() => {
+              loadAuth(() => {
+                loadTokens(() => {
+                  console.log('[Data] Offline:', Object.keys(savedOffline).length, '| Members:', Object.keys(savedMembers).length);
+                  if (cb) cb();
+                });
+              });
+            });
+          });
+        });
+      });
+    });
+  });
+}
+
+initData(() => {
 
 // Vyčisti prázdné účty (bez jména) které vznikly před přihlášením
 let _cleaned = 0;
@@ -1531,24 +1463,53 @@ function trackUser(id) {
 } // id -> memberInfo — kdo se odpojil
 const MAX_HIST     = 300;
 const serverData   = {}; // srvId -> server structure (pro sync)
-const HISTORY_FILE = '/tmp/nexus_history.json';
 
-function loadHistory() {
-  try {
-    if (fs.existsSync(HISTORY_FILE)) {
-      const data = JSON.parse(fs.readFileSync(HISTORY_FILE, 'utf8'));
-      Object.assign(history, data);
-      const total = Object.values(data).reduce((s, a) => s + a.length, 0);
-      console.log('[History] Loaded', total, 'messages across', Object.keys(data).length, 'channels');
+function loadHistory(cb) {
+  sbRequest('GET', 'history', null, null, (err, rows) => {
+    if (err) { console.warn('[History] Load error:', err.message); if (cb) cb(); return; }
+    if (rows) {
+      for (const row of rows) history[row.ch_id] = row.msgs || [];
+      const total = rows.reduce((s, r) => s + (r.msgs || []).length, 0);
+      console.log('[History] Loaded', total, 'messages across', rows.length, 'channels');
     }
-  } catch(e) { console.warn('[History] Load error:', e.message); }
+    if (cb) cb();
+  });
 }
 
-function saveHistory() {
-  try { fs.writeFileSync(HISTORY_FILE, JSON.stringify(history)); } catch(e) {}
+// Debounced save per channel — max jednou za 5s na kanal
+const _histSaveTimers = {};
+function saveHistory(chId) {
+  if (chId) {
+    if (_histSaveTimers[chId]) return;
+    _histSaveTimers[chId] = setTimeout(() => {
+      delete _histSaveTimers[chId];
+      sbUpsert('history', { ch_id: chId, msgs: history[chId] || [] }, null);
+    }, 5000);
+  } else {
+    // bulk save all
+    for (const [ch_id, msgs] of Object.entries(history)) {
+      sbUpsert('history', { ch_id, msgs }, null);
+    }
+  }
 }
 
-loadHistory();
+function loadServerData(cb) {
+  sbRequest('GET', 'server_data', null, null, (err, rows) => {
+    if (err) { if (cb) cb(); return; }
+    if (rows) for (const row of rows) serverData[row.srv_id] = row.data;
+    console.log('[ServerData] Loaded', Object.keys(serverData).length, 'servers');
+    if (cb) cb();
+  });
+}
+
+function saveServerData(srvId) {
+  if (!serverData[srvId]) return;
+  sbUpsert('server_data', { srv_id: srvId, data: serverData[srvId] }, null);
+}
+
+function deleteServerData(srvId) {
+  sbDelete('server_data', 'srv_id', srvId, null);
+}
 
 wss.on('connection', (ws, req) => {
   const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '?';
@@ -1665,17 +1626,7 @@ wss.on('connection', (ws, req) => {
           accounts[msg.userId].profile = msg.profile;
         }
         accounts[msg.userId].ts = Date.now();
-        saveAccounts();
-        bulkSaveAccounts(); // periodic bulk backup
-        // Save to cloud (JSONBin) for cross-browser access
-        const cloudData = {
-          userId: msg.userId,
-          profile: accounts[msg.userId].profile,
-          servers: accounts[msg.userId].servers,
-          roles:   accounts[msg.userId].roles,
-          ts:      Date.now()
-        };
-        cloudSaveAccount(msg.userId, cloudData);
+        saveOneAccount(msg.userId);
       }
     }
 
@@ -1684,13 +1635,11 @@ wss.on('connection', (ws, req) => {
       if (acc && (acc.servers || acc.profile)) {
         try { ws.send(JSON.stringify({ type: 'account_data', account: acc })); } catch {}
       } else {
-        // Try loading from cloud
-        cloudLoadAccount(msg.userId, (err, cloudAcc) => {
-          if (cloudAcc) {
+        sbGet('accounts', 'user_id', msg.userId, (err, row) => {
+          if (row && row.data) {
             if (!accounts[msg.userId]) accounts[msg.userId] = {};
-            Object.assign(accounts[msg.userId], cloudAcc);
-            saveAccounts();
-            try { ws.send(JSON.stringify({ type: 'account_data', account: cloudAcc })); } catch {}
+            Object.assign(accounts[msg.userId], row.data);
+            try { ws.send(JSON.stringify({ type: 'account_data', account: row.data })); } catch {}
           } else {
             try { ws.send(JSON.stringify({ type: 'account_data', account: null, notFound: true })); } catch {}
           }
@@ -1729,7 +1678,7 @@ wss.on('connection', (ws, req) => {
       history[msg.ch].push(msg.msg);
       if (history[msg.ch].length > MAX_HIST)
         history[msg.ch] = history[msg.ch].slice(-MAX_HIST);
-      saveHistory();
+      saveHistory(msg.ch);
     }
 
     const str = data.toString();
@@ -1768,19 +1717,13 @@ wss.on('connection', (ws, req) => {
     // Store server structure updates for new clients
     if (msg.type === 'srv_update' && msg.srvId && msg.srv) {
       serverData[msg.srvId] = msg.srv;
-      // Broadcast to all OTHER clients so they see channel/server changes
-      for (const [client] of clients) {
-        if (client !== ws && client.readyState === WebSocket.OPEN) {
-          try { client.send(str); } catch {}
-        }
-      }
-      return;
     }
 
     // Server deleted - remove from memory and relay to all
     if (msg.type === 'srv_delete' && msg.srvId) {
       // Clear server data and all channel histories for this server
       delete serverData[msg.srvId];
+      deleteServerData(msg.srvId);
       // Clear histories for channels of this server (we don't track per-server so clear all orphaned)
       console.log('[Server] srv_delete:', msg.srvId);
       // Relay to all connected clients
@@ -1805,7 +1748,7 @@ wss.on('connection', (ws, req) => {
         const before = history[msg.ch].length;
         history[msg.ch] = history[msg.ch].filter(m => m.mid !== msg.mid);
         if (history[msg.ch].length !== before) {
-          saveHistory();
+          saveHistory(msg.ch);
           // Broadcast to all clients
           const delPacket = JSON.stringify({ type: 'msg_delete', ch: msg.ch, mid: msg.mid });
           for (const [client] of clients) {
@@ -1884,6 +1827,8 @@ setInterval(() => {
     else clients.delete(ws);
   }
 }, 25000);
+
+}); // end initData
 
 httpServer.listen(PORT, '0.0.0.0', () => {
   console.log('\n=== NexusChat Server ===');
