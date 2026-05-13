@@ -1931,9 +1931,8 @@ function connectWS(url) {
 
 function getInviteUrl() {
   const srv = SERVERS[curSrv] || {};
-  const onlineCount = Object.keys(onlineMbrs).length + 1; // +1 = já
-  const totalCount  = Object.keys(onlineMbrs).length + Object.keys(offlineMbrs).length + 1;
-  return buildInviteLink(srv.name, wsUrl || 'wss://nexus-g7k4.onrender.com', '', totalCount, onlineCount);
+  const others = Object.values(onlineMbrs);
+  return buildInviteLink(srv.name, wsUrl || 'wss://nexus-g7k4.onrender.com', '', others.length + 1, others.length);
 }
 
 function setConn(state, msg) {
@@ -3651,6 +3650,16 @@ const ICE_SERVERS = [
   { urls: 'stun:stun.l.google.com:19302' },
   { urls: 'stun:stun1.l.google.com:19302' },
   { urls: 'stun:stun.cloudflare.com:3478' },
+  {
+    urls: [
+      'turn:openrelay.metered.ca:80',
+      'turn:openrelay.metered.ca:443',
+      'turn:openrelay.metered.ca:443?transport=tcp',
+      'turns:openrelay.metered.ca:443',
+    ],
+    username:   'openrelayproject',
+    credential: 'openrelayproject',
+  },
 ];
 
 async function createPeer(peerId, isInitiator) {
@@ -5233,9 +5242,8 @@ function unbanMbr(userId, name) {
 }
 function ssInvite() {
   const srv    = SERVERS[curSrv] || {};
-  const onlineCount = Object.keys(onlineMbrs).length + 1;
-  const totalCount  = Object.keys(onlineMbrs).length + Object.keys(offlineMbrs).length + 1;
-  const inviteUrl = buildInviteLink(srv.name, '', srv.desc || '', totalCount, onlineCount, curSrv);
+  const others = Object.values(onlineMbrs);
+  const inviteUrl = buildInviteLink(srv.name, '', srv.desc || '', others.length + 1, others.length, curSrv);
   const httpsUrl  = 'https://nexus-g7k4.onrender.com';
   // Store invite URL globally so buttons can access it
   window._ssInviteUrl = inviteUrl;
@@ -6775,9 +6783,8 @@ function copyInviteLink() {
 
 function openInvite() {
   const srv    = SERVERS[curSrv] || {};
-  const onlineCount2 = Object.keys(onlineMbrs).length + 1;
-  const totalCount2  = Object.keys(onlineMbrs).length + Object.keys(offlineMbrs).length + 1;
-  const inviteUrl = buildInviteLink(srv.name, '', srv.desc || '', totalCount2, onlineCount2, curSrv);
+  const others = Object.values(onlineMbrs);
+  const inviteUrl = buildInviteLink(srv.name, '', srv.desc || '', others.length + 1, others.length, curSrv);
   openModal(
     '<h2>🔗 Pozvat kamarády</h2>'
     + '<div class="ibox" style="margin-bottom:12px">'
