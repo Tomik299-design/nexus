@@ -1254,20 +1254,27 @@ setTimeout(() => location.reload(), 30000);
     req.on('end', () => {
       let parsed; try { parsed = JSON.parse(body); } catch { res.writeHead(400,'',{'Content-Type':'application/json'}); res.end('{"ok":false,"error":"invalid json"}'); return; }
       const email = (parsed.email || '').toLowerCase().trim();
-      // Always return ok to prevent email enumeration
-      if (!authData[email]) { res.writeHead(200,'',{'Content-Type':'application/json'}); res.end('{"ok":true}'); return; }
-      const token = genToken(32);
-      resetTokens[token] = { email, expires: Date.now() + 3600000 };
-      saveOneToken(token);
-      sendResetEmail(email, token, (err) => {
-        if (err) {
-          console.error('[Auth] SMTP chyba:', err.message, err.code || '', err.response || '');
-        } else {
-          console.log('[Auth] Reset email odeslán na:', email);
-        }
-      });
-      res.writeHead(200,'',{'Content-Type':'application/json'});
-      res.end('{"ok":true}');
+      function doResetSend() {
+        if (!authData[email]) { res.writeHead(200,'',{'Content-Type':'application/json'}); res.end('{"ok":true}'); return; }
+        const token = genToken(32);
+        resetTokens[token] = { email, expires: Date.now() + 3600000 };
+        saveOneToken(token);
+        sendResetEmail(email, token, (err) => {
+          if (err) console.error('[Auth] SMTP chyba:', err.message);
+          else console.log('[Auth] Reset email odeslan na:', email);
+        });
+        res.writeHead(200,'',{'Content-Type':'application/json'});
+        res.end('{"ok":true}');
+      }
+      // Pokud authData není v paměti, načti ze Supabase
+      if (!authData[email]) {
+        sbGet('auth_data', 'email', email, (err, row) => {
+          if (row && row.data) authData[email] = row.data;
+          doResetSend();
+        });
+      } else {
+        doResetSend();
+      }
     });
     return;
   }
@@ -1621,6 +1628,7 @@ wss.on('connection', (ws, req) => {
       // Nepřihlášení uživatelé (bez jména) se neukládají
       const profileName = msg.profile?.name || accounts[msg.userId]?.profile?.name || '';
       if (profileName && profileName.trim() !== '' && profileName !== '?') {
+        if (!accounts[msg.userId]) accounts[msg.userId] = {};
         if (msg.servers) accounts[msg.userId].servers = msg.servers;
         if (msg.roles)   accounts[msg.userId].roles   = msg.roles;
         if (msg.profile) {
