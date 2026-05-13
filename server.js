@@ -1433,6 +1433,13 @@ function loadServerData(cb) {
   });
 }
 
+const history      = {};
+const vcState      = {};
+const offlineState = {};
+const MAX_HIST     = 300;
+const serverData   = {}; // srvId -> server structure (pro sync)
+const stats = { msgsByDay: {}, usersByDay: {} };
+
 function initData(cb) {
   loadHistory(() => {
     loadServerData(() => {
@@ -1466,12 +1473,7 @@ Object.keys(accounts).forEach(id => {
   }
 });
 if (_cleaned > 0) { console.log('[Accounts] Vyčištěno', _cleaned, 'prázdných účtů'); saveAccounts(); }
-const history      = {};
-const vcState      = {};
-const offlineState = {};
 
-// ── Stats ──
-const stats = { msgsByDay: {}, usersByDay: {} };
 function todayKey() { return new Date().toISOString().slice(0,10); }
 function trackMsg() {
   const k = todayKey();
@@ -1482,8 +1484,6 @@ function trackUser(id) {
   if (!stats.usersByDay[k]) stats.usersByDay[k] = new Set();
   stats.usersByDay[k].add(id);
 } // id -> memberInfo — kdo se odpojil
-const MAX_HIST     = 300;
-const serverData   = {}; // srvId -> server structure (pro sync)
 
 
 // Debounced save per channel — max jednou za 5s na kanal
