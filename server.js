@@ -1412,6 +1412,27 @@ function saveOneAccount(userId) {
 }
 
 // Startup: nacti vse z Supabase
+function loadHistory(cb) {
+  sbRequest('GET', 'history', null, null, (err, rows) => {
+    if (err) { console.warn('[History] Load error:', err.message); if (cb) cb(); return; }
+    if (rows) {
+      for (const row of rows) history[row.ch_id] = row.msgs || [];
+      const total = rows.reduce((s, r) => s + (r.msgs || []).length, 0);
+      console.log('[History] Loaded', total, 'messages across', rows.length, 'channels');
+    }
+    if (cb) cb();
+  });
+}
+
+function loadServerData(cb) {
+  sbRequest('GET', 'server_data', null, null, (err, rows) => {
+    if (err) { if (cb) cb(); return; }
+    if (rows) for (const row of rows) serverData[row.srv_id] = row.data;
+    console.log('[ServerData] Loaded', Object.keys(serverData).length, 'servers');
+    if (cb) cb();
+  });
+}
+
 function initData(cb) {
   loadHistory(() => {
     loadServerData(() => {
@@ -1464,17 +1485,6 @@ function trackUser(id) {
 const MAX_HIST     = 300;
 const serverData   = {}; // srvId -> server structure (pro sync)
 
-function loadHistory(cb) {
-  sbRequest('GET', 'history', null, null, (err, rows) => {
-    if (err) { console.warn('[History] Load error:', err.message); if (cb) cb(); return; }
-    if (rows) {
-      for (const row of rows) history[row.ch_id] = row.msgs || [];
-      const total = rows.reduce((s, r) => s + (r.msgs || []).length, 0);
-      console.log('[History] Loaded', total, 'messages across', rows.length, 'channels');
-    }
-    if (cb) cb();
-  });
-}
 
 // Debounced save per channel — max jednou za 5s na kanal
 const _histSaveTimers = {};
@@ -1493,14 +1503,6 @@ function saveHistory(chId) {
   }
 }
 
-function loadServerData(cb) {
-  sbRequest('GET', 'server_data', null, null, (err, rows) => {
-    if (err) { if (cb) cb(); return; }
-    if (rows) for (const row of rows) serverData[row.srv_id] = row.data;
-    console.log('[ServerData] Loaded', Object.keys(serverData).length, 'servers');
-    if (cb) cb();
-  });
-}
 
 function saveServerData(srvId) {
   if (!serverData[srvId]) return;
