@@ -32,6 +32,51 @@
   --fm: 'IBM Plex Mono', monospace;
   --tr: 0ms;
 }
+
+/* ── LIGHT MODE ── */
+body.light {
+  --bg0: #f0f2f5; --bg1: #e8eaed; --bg2: #f5f6f8; --bg3: #eaecef;
+  --bg4: #dde0e4; --bg5: #c8ccd2;
+  --bd: #d1d5db;  --bd2: #c0c5ce;
+  --acc: #00a86b; --acc-d: #d4f0e7;
+  --acc2: #5b4fcf; --acc2-d: rgba(91,79,207,.12);
+  --red: #e53e3e; --red-d: rgba(229,62,62,.12);
+  --yel: #d97706;
+  --t1: #1a202c; --t2: #4a5568; --t3: #a0aec0;
+}
+body.light #rail { background: #dde1e7; border-right-color: rgba(0,0,0,.08); }
+body.light #chpan { border-right-color: rgba(0,0,0,.08); }
+body.light #srvhdr:hover { background: rgba(0,0,0,.04); }
+body.light .mr:hover { background: #eef0f3; }
+body.light #msgs::-webkit-scrollbar-thumb { background: var(--bg5); }
+body.light .chit:hover { background: rgba(0,0,0,.06); }
+body.light .chit.act { background: rgba(0,0,0,.1); }
+body.light .si { background: #e2e5ea; border-color: rgba(0,0,0,.1); }
+body.light .si:hover { background: #d4d8de; }
+body.light #ubar { background: rgba(0,0,0,.07); border-top-color: rgba(0,0,0,.1); }
+body.light .ub:hover { background: rgba(0,0,0,.1); }
+body.light #chdr { background: var(--bg2); }
+body.light .hb:hover { background: var(--bg3); }
+body.light #srch { background: var(--bg3); border-color: var(--bd); }
+body.light .sysmsg::before, body.light .sysmsg::after { background: var(--bd); }
+body.light .welbar { background: var(--bg3); }
+body.light #mob-sidebar { background: var(--bg1); }
+body.light #mob-ubar { background: var(--bg0); }
+body.light .vcp { background: rgba(0,0,0,.04); border-color: rgba(0,0,0,.1); }
+body.light .vcp:hover { background: rgba(0,0,0,.07); }
+body.light #vcroom { background: var(--bg0); }
+body.light .vc-topbar, body.light #vcctrls { background: var(--bg1); }
+body.light #theme-toggle { color: var(--t2); }
+
+/* Theme toggle button */
+#theme-toggle {
+  width: 32px; height: 32px; border-radius: 8px; border: none;
+  background: transparent; color: var(--t3); font-size: 16px;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  transition: none; flex-shrink: 0;
+}
+#theme-toggle:hover { background: rgba(255,255,255,.08); color: var(--t1); }
+body.light #theme-toggle:hover { background: rgba(0,0,0,.08); }
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; -webkit-font-smoothing: antialiased; }
 html, body { width: 100%; height: 100%; background: var(--bg0); color: var(--t1); font-family: var(--f); font-size: 14px; overflow: hidden; }
 button, input, textarea, select { font-family: var(--f); }
@@ -40,15 +85,15 @@ button, input, textarea, select { font-family: var(--f); }
 #app { display: flex; width: 100%; height: 100%; }
 
 /* ── RAIL ── */
-#rail { width: 64px; min-width: 64px; height: 100%; background: #060810; border-right: 1px solid rgba(255,255,255,0.04); display: flex; flex-direction: column; align-items: center; padding: 10px 0; gap: 6px; overflow-y: auto; scrollbar-width: none; }
+#rail { width: 68px; min-width: 68px; height: 100%; background: #060810; border-right: 1px solid rgba(255,255,255,0.04); display: flex; flex-direction: column; align-items: center; padding: 10px 0; gap: 6px; overflow-y: auto; scrollbar-width: none; }
 #rail::-webkit-scrollbar { display: none; }
 #rail-icons { display: flex; flex-direction: column; gap: 4px; align-items: center; width: 100%; }
-.si { width: 44px; height: 44px; border-radius: 14px; background: var(--bg3); border: 1.5px solid rgba(255,255,255,.06); display: flex; align-items: center; justify-content: center; cursor: pointer; font-weight: 700; font-size: 13px; color: var(--t2); transition: none; position: relative; flex-shrink: 0; user-select: none; }
+.si { width: 48px; height: 48px; border-radius: 14px; background: var(--bg3); border: 1.5px solid rgba(255,255,255,.06); display: flex; align-items: center; justify-content: center; cursor: pointer; font-weight: 700; font-size: 14px; color: var(--t2); transition: none; position: relative; flex-shrink: 0; user-select: none; }
 .si:hover { border-radius: 50%; background: var(--bg4); color: var(--t1); border-color: rgba(255,255,255,.12); }
 .si.act { border-radius: 50%; background: var(--acc-d); color: var(--acc); border-color: rgba(79,255,176,.35); }
 .si.act::after { content:''; position:absolute; left:-12px; top:50%; transform:translateY(-50%); width:4px; height:32px; background:var(--acc); border-radius:0 3px 3px 0; }
 .rsep { width: 28px; height: 1px; background: var(--bd2); flex-shrink: 0; margin: 2px 0; }
-.radd { width: 44px; height: 44px; border-radius: 50%; border: 1.5px dashed rgba(79,255,176,.3); background: rgba(79,255,176,.04); display: flex; align-items: center; justify-content: center; cursor: pointer; color: rgba(79,255,176,.5); font-size: 20px; transition: none; flex-shrink: 0; margin-top: 2px; }
+.radd { width: 48px; height: 48px; border-radius: 50%; border: 1.5px dashed rgba(79,255,176,.3); background: rgba(79,255,176,.04); display: flex; align-items: center; justify-content: center; cursor: pointer; color: rgba(79,255,176,.5); font-size: 22px; transition: none; flex-shrink: 0; margin-top: 2px; }
 .radd:hover { border-color: var(--acc); color: var(--acc); background: var(--acc-d); border-radius: 14px; }
 
 /* ── CHANNEL PANEL ── */
@@ -89,7 +134,7 @@ button, input, textarea, select { font-family: var(--f); }
 #ubar .un { font-size: 12px; font-weight: 500; color: var(--t1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.3; }
 #ubar .ut { font-size: 10px; color: var(--t3); font-family: var(--fm); line-height: 1.3; }
 #ubar .ubs { display: flex; gap: 1px; }
-.ub { width: 30px; height: 30px; border-radius: 8px; border: none; background: transparent; color: var(--t3); font-size: 15px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: none; }
+.ub { width: 32px; height: 32px; border-radius: 8px; border: none; background: transparent; color: var(--t3); font-size: 17px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: none; }
 .ub:hover { background: rgba(255,255,255,.08); color: var(--t1); }
 .ub.mut { color: var(--red); background: rgba(255,83,112,.1); }
 
@@ -100,7 +145,7 @@ button, input, textarea, select { font-family: var(--f); }
 #chdr .ht { font-size: 13px; font-weight: 500; color: var(--t1); }
 #chdr .hd { font-size: 11px; color: var(--t3); flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-left: 8px; border-left: 1px solid var(--bd); margin-left: 3px; }
 #chdr .hbs { display: flex; gap: 1px; margin-left: auto; }
-.hb { width: 28px; height: 28px; border-radius: 5px; border: none; background: transparent; color: var(--t3); font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: none; }
+.hb { width: 32px; height: 32px; border-radius: 6px; border: none; background: transparent; color: var(--t3); font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: none; }
 .hb:hover { background: var(--bg3); color: var(--t1); }
 .hb.on { color: var(--acc); }
 #srch { background: var(--bg3); border: 1px solid var(--bd); border-radius: 5px; padding: 4px 9px; color: var(--t1); font-size: 12px; outline: none; width: 140px; transition: none; }
@@ -958,7 +1003,7 @@ textarea { -webkit-user-select: text; user-select: text; }
         <button class="hb" id="notif-btn" onclick="toggleNotifPanel()" title="Notifikace">🔔</button>
         <button class="hb" onclick="openSupport()" title="Podpora & Nápady">💡</button>
         <button class="hb" onclick="openHelp()">❓</button>
-
+        <button id="theme-toggle" onclick="toggleTheme()" title="Přepnout světlý/tmavý režim">🌙</button>
       </div>
     </div>
 
@@ -7489,6 +7534,24 @@ function mentionKeydown(e, inp) {
   }
 })();
 
+// ── THEME TOGGLE ──
+function toggleTheme() {
+  const isLight = document.body.classList.toggle('light');
+  const btn = document.getElementById('theme-toggle');
+  if (btn) btn.textContent = isLight ? '☀️' : '🌙';
+  try { localStorage.setItem('nx_theme', isLight ? 'light' : 'dark'); } catch {}
+}
+// Apply saved theme on load
+(function() {
+  try {
+    const saved = localStorage.getItem('nx_theme');
+    if (saved === 'light') {
+      document.body.classList.add('light');
+      const btn = document.getElementById('theme-toggle');
+      if (btn) btn.textContent = '☀️';
+    }
+  } catch {}
+})();
 </script>
 </body>
 </html>
