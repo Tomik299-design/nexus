@@ -126,14 +126,16 @@ button, input, textarea, select { font-family: var(--f); }
 .vmrow.spk .vmav { box-shadow: 0 0 0 2px var(--acc); }
 
 /* ── USER BAR ── */
-#ubar { height: 52px; background: rgba(0,0,0,.25); border-top: 1px solid rgba(255,255,255,.04); display: flex; align-items: center; padding: 0 8px; gap: 6px; flex-shrink: 0; }
+#ubar { height: 64px; background: rgba(0,0,0,.25); border-top: 1px solid rgba(255,255,255,.04); display: flex; align-items: center; padding: 0 10px; gap: 8px; flex-shrink: 0; }
+#ubar #myav { width: 38px; height: 38px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 600; cursor: pointer; position: relative; overflow: visible; }
+#ubar #myav img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+#ubar .ui { flex: 1; min-width: 0; overflow: visible; }
+#ubar .un { font-size: 13px; font-weight: 600; color: var(--t1); white-space: nowrap; overflow: visible; text-overflow: unset; line-height: 1.4; display: flex; align-items: center; flex-wrap: nowrap; gap: 2px; }
+#ubar .ut { font-size: 10px; color: var(--t3); font-family: var(--fm); line-height: 1.3; }
+#ubar .ubs { display: flex; gap: 2px; flex-shrink: 0; }
 #myav { width: 30px; height: 30px; border-radius: 50%; background: var(--acc2); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 500; color: var(--bg0); position: relative; cursor: pointer; flex-shrink: 0; overflow: hidden; }
 #myav img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
 #myav .sd { position: absolute; bottom: -1px; right: -1px; width: 10px; height: 10px; border-radius: 50%; border: 2px solid var(--bg0); background: var(--acc); }
-#ubar .ui { flex: 1; overflow: hidden; }
-#ubar .un { font-size: 12px; font-weight: 500; color: var(--t1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.3; }
-#ubar .ut { font-size: 10px; color: var(--t3); font-family: var(--fm); line-height: 1.3; }
-#ubar .ubs { display: flex; gap: 1px; }
 .ub { width: 32px; height: 32px; border-radius: 8px; border: none; background: transparent; color: var(--t3); font-size: 17px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: none; }
 .ub:hover { background: rgba(255,255,255,.08); color: var(--t1); }
 .ub.mut { color: var(--red); background: rgba(255,83,112,.1); }
@@ -945,9 +947,9 @@ textarea { -webkit-user-select: text; user-select: text; }
 /* ── SUBSCRIPTION BADGES ── */
 .sub-badge {
   display: inline-flex; align-items: center;
-  font-size: 10px; font-weight: 700; letter-spacing: .05em;
-  padding: 2px 8px; border-radius: 12px; flex-shrink: 0;
-  vertical-align: middle; margin-left: 5px; line-height: 1.4;
+  font-size: 11px; font-weight: 700; letter-spacing: .06em;
+  padding: 2px 9px; border-radius: 12px; flex-shrink: 0;
+  vertical-align: middle; margin-left: 6px; line-height: 1.5;
 }
 .sub-badge.plus {
   background: rgba(79,255,176,.15);
@@ -1086,7 +1088,6 @@ body.light .sub-badge.pro  { background: rgba(59,130,246,.1); color: #1d6fa0; bo
       <div class="ubs">
         <button class="ub" id="micbtn" title="Mikrofon" onclick="toggleMic()">🎤</button>
         <button class="ub" id="dfbtn" title="Sluchátka" onclick="toggleDeaf()">🎧</button>
-        <button class="ub" title="Podpora & Nápady" onclick="openSupport()">💡</button>
         <button class="ub" title="Profil" onclick="openProf()">⚙️</button>
       </div>
     </div>
@@ -5753,8 +5754,8 @@ function profPreviewHtml(name, color, font, bio, avatar, banner) {
   const avBg = avatar ? 'transparent' : color;
   const avCnt = avatar ? '<img src="' + avatar + '" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%">' : (name || '?')[0].toUpperCase();
   const fStyle = 'font-family:\'' + font + '\',sans-serif';
-  const hasBanner = !!(banner || ME.banner);
-  const bannerVal = banner || ME.banner || '';
+  const bannerVal = (banner !== undefined) ? banner : ME.banner;
+  const hasBanner = !!bannerVal;
   if (hasBanner) {
     return '<div class="npw has-banner">'
       + '<div class="prof-banner" style="background:' + bannerVal + '"></div>'
@@ -6332,6 +6333,7 @@ const APP_THEMES = [
 ];
 
 function profPremium() {
+  checkSub(); // vždy zkontroluj expiraci
   const isPluOrPro = ME.sub === 'plus' || ME.sub === 'pro';
   const isPro = ME.sub === 'pro';
   let html = '<div class="ptitle">⚡ Prémiové funkce</div>';
@@ -6395,10 +6397,14 @@ function previewBanner(val) {
     if (idx >= 0) document.getElementById('bopt-' + idx)?.classList.add('sel');
   }
   ME.banner = val;
+  // Re-render preview using proper DOM replacement
   const cont = document.getElementById('profcontent');
   if (cont) {
-    const previewEl = cont.querySelector('.npw, .npw.has-banner');
-    if (previewEl) previewEl.outerHTML = profPreviewHtml(ME.name, ME.color, ME.font, ME.bio, ME.avatar, val);
+    const previewEl = cont.querySelector('.npw');
+    if (previewEl) {
+      previewEl.insertAdjacentHTML('afterend', profPreviewHtml(ME.name, ME.color, ME.font, ME.bio, ME.avatar, val));
+      previewEl.remove();
+    }
   }
 }
 
@@ -6440,8 +6446,12 @@ function cancelPremium() {
 }
 
 function savePremium() {
-  ME.banner = _prevBanner;
-  ME.appTheme = _prevAppTheme;
+  checkSub();
+  const isPluOrPro = ME.sub === 'plus' || ME.sub === 'pro';
+  const isPro = ME.sub === 'pro';
+  // Bannery jen pro plus/pro, app theme jen pro pro
+  ME.banner = isPluOrPro ? _prevBanner : '';
+  ME.appTheme = isPro ? _prevAppTheme : '';
   lss('nx_banner', ME.banner);
   lss('nx_app_theme', ME.appTheme);
   applyAppTheme(ME.appTheme);
@@ -8081,13 +8091,32 @@ function mentionKeydown(e, inp) {
 
 // ── SUBSCRIPTION ──────────────────────────────────────────────────────
 
-// Check expiry on load
-(function() {
+// Vždy zkontroluj expiraci před použitím sub funkcí
+function checkSub() {
   if (ME.subExpires && ME.subExpires < Date.now()) {
-    ME.sub = 'free'; ME.subExpires = 0;
+    ME.sub = 'free'; ME.subExpires = 0; ME.subBoostSrv = null;
     lss('nx_sub', 'free'); lss('nx_sub_expires', 0); lss('nx_sub_boost_srv', null);
+    // Odeber banner a app theme
+    if (ME.banner) { ME.banner = ''; lss('nx_banner', ''); }
+    if (ME.appTheme) {
+      ME.appTheme = ''; lss('nx_app_theme', '');
+      applyAppTheme(''); // Reset barev
+    }
+    applySubBadge();
   }
-})();
+  return ME.sub;
+}
+
+// Check expiry on load
+(function() { checkSub(); })();
+
+// Periodická kontrola každou minutu (pro případ vypršení během sezení)
+setInterval(() => {
+  if (ME.subExpires && ME.subExpires < Date.now()) {
+    checkSub();
+    toast('⚠️ Předplatné vypršelo. Funkce byly deaktivovány.', 'er', 6000);
+  }
+}, 60000);
 
 function applySubBadge() {
   const nameEl = document.getElementById('myname');
