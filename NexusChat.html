@@ -1019,11 +1019,14 @@ body.light .sub-badge.pro  { background: rgba(91,79,207,.1);  color: #5b4fcf; bo
 .banner-opt.sel { border-color: var(--acc); }
 .banner-opt.none { background: var(--bg4); display: flex; align-items: center; justify-content: center; color: var(--t3); font-size: 11px; }
 
-/* ── APP THEME (Pro only) ── */
-.theme-grid { display: grid; grid-template-columns: repeat(5,1fr); gap: 8px; margin-bottom: 10px; }
-.theme-opt { height: 36px; border-radius: var(--r); cursor: pointer; border: 2px solid transparent; display: flex; align-items: center; justify-content: center; font-size: 18px; }
-.theme-opt:hover { border-color: rgba(255,255,255,.3); }
-.theme-opt.sel { border-color: var(--t1); }
+/* ── APP THEME PRESETS (Pro only) ── */
+.theme-presets-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; margin-bottom: 10px; }
+@media(max-width:480px) { .theme-presets-grid { grid-template-columns: repeat(2,1fr); } }
+.theme-preset { border-radius: var(--r); border: 2px solid var(--bd); cursor: pointer; overflow: hidden; transition: none; }
+.theme-preset:hover { border-color: var(--bd2); }
+.theme-preset.sel { border-color: var(--acc); }
+.theme-preset-preview { height: 36px; display: flex; }
+.theme-preset-label { font-size: 10px; color: var(--t2); text-align: center; padding: 4px 2px; background: var(--bg3); }
 
 /* ── SERVER BANNER (Pro) ── */
 #srvhdr.has-banner { background-size: cover; background-position: center; min-height: 64px; align-items: flex-end; padding-bottom: 8px; border-radius: 0; }
@@ -6227,17 +6230,81 @@ const BANNERS = [
   { id: 'linear-gradient(135deg,#f7971e,#ffd200)',  label: 'Zlatá' },
 ];
 
+// ── APP THEMES — plné motivy (Pro only) ──────────────────────────────
 const APP_THEMES = [
-  { id: '',         acc: '#4fffb0', label: 'Výchozí',   emoji: '🟢' },
-  { id: 'blue',     acc: '#60a5fa', label: 'Modrá',      emoji: '🔵' },
-  { id: 'purple',   acc: '#a78bfa', label: 'Fialová',    emoji: '🟣' },
-  { id: 'red',      acc: '#f87171', label: 'Červená',    emoji: '🔴' },
-  { id: 'orange',   acc: '#fb923c', label: 'Oranžová',   emoji: '🟠' },
-  { id: 'yellow',   acc: '#fbbf24', label: 'Žlutá',      emoji: '🟡' },
-  { id: 'pink',     acc: '#f472b6', label: 'Růžová',     emoji: '🩷' },
-  { id: 'cyan',     acc: '#22d3ee', label: 'Azurová',    emoji: '🩵' },
-  { id: 'white',    acc: '#e2eaf4', label: 'Bílá',       emoji: '⚪' },
-  { id: 'gold',     acc: '#f5c542', label: 'Zlatá',      emoji: '🌟' },
+  // id, label, náhled (2 barvy pro preview čtvereček), CSS vars
+  {
+    id: '',
+    label: 'Výchozí',
+    preview: ['#080b10','#4fffb0'],
+    vars: {}   // prázdné = reset na výchozí
+  },
+  {
+    id: 'midnight',
+    label: 'Midnight',
+    preview: ['#0a0a1a','#7c6aff'],
+    vars: { '--bg0':'#06060f','--bg1':'#0a0a1a','--bg2':'#0e0e22','--bg3':'#13132a','--bg4':'#181832','--bg5':'#1e1e3c','--bd':'#1e1e3a','--bd2':'#26265a','--acc':'#7c6aff','--acc-d':'rgba(124,106,255,.15)','--acc2':'#a78bfa','--acc2-d':'rgba(167,139,250,.13)' }
+  },
+  {
+    id: 'aurora',
+    label: 'Aurora',
+    preview: ['#050f12','#00e5ff'],
+    vars: { '--bg0':'#050f12','--bg1':'#071419','--bg2':'#091820','--bg3':'#0c1e27','--bg4':'#0f2530','--bg5':'#132d3a','--bd':'#112030','--bd2':'#163848','--acc':'#00e5ff','--acc-d':'rgba(0,229,255,.13)','--acc2':'#00bcd4','--acc2-d':'rgba(0,188,212,.13)' }
+  },
+  {
+    id: 'rose',
+    label: 'Rose',
+    preview: ['#120810','#ff6b9d'],
+    vars: { '--bg0':'#120810','--bg1':'#180b15','--bg2':'#1e0f1a','--bg3':'#241320','--bg4':'#2a1726','--bg5':'#301b2c','--bd':'#2a1525','--bd2':'#381d32','--acc':'#ff6b9d','--acc-d':'rgba(255,107,157,.13)','--acc2':'#f472b6','--acc2-d':'rgba(244,114,182,.13)' }
+  },
+  {
+    id: 'forest',
+    label: 'Forest',
+    preview: ['#081208','#4caf50'],
+    vars: { '--bg0':'#060e06','--bg1':'#091209','--bg2':'#0d180d','--bg3':'#111e11','--bg4':'#152515','--bg5':'#192c19','--bd':'#132013','--bd2':'#1a2e1a','--acc':'#4caf50','--acc-d':'rgba(76,175,80,.13)','--acc2':'#66bb6a','--acc2-d':'rgba(102,187,106,.13)' }
+  },
+  {
+    id: 'sunset',
+    label: 'Sunset',
+    preview: ['#ff6b35','#f7931e'],
+    vars: { '--bg0':'#120a06','--bg1':'#180d08','--bg2':'#1e110b','--bg3':'#25150d','--bg4':'#2c1910','--bg5':'#331d13','--bd':'#2a1510','--bd2':'#3a1e15','--acc':'#ff6b35','--acc-d':'rgba(255,107,53,.13)','--acc2':'#f7931e','--acc2-d':'rgba(247,147,30,.13)' }
+  },
+  {
+    id: 'galaxy',
+    label: 'Galaxy',
+    preview: ['#0d0620','#c084fc'],
+    vars: { '--bg0':'#0d0620','--bg1':'#110828','--bg2':'#150a30','--bg3':'#1a0d38','--bg4':'#1f1042','--bg5':'#25134c','--bd':'#1e0e3a','--bd2':'#2a1550','--acc':'#c084fc','--acc-d':'rgba(192,132,252,.13)','--acc2':'#a855f7','--acc2-d':'rgba(168,85,247,.13)' }
+  },
+  {
+    id: 'ocean',
+    label: 'Ocean',
+    preview: ['#060d18','#38bdf8'],
+    vars: { '--bg0':'#060d18','--bg1':'#091220','--bg2':'#0c1828','--bg3':'#101e30','--bg4':'#13253a','--bg5':'#172c44','--bd':'#122030','--bd2':'#182a3e','--acc':'#38bdf8','--acc-d':'rgba(56,189,248,.13)','--acc2':'#0ea5e9','--acc2-d':'rgba(14,165,233,.13)' }
+  },
+  {
+    id: 'cherry',
+    label: 'Cherry',
+    preview: ['#1a0608','#ef4444'],
+    vars: { '--bg0':'#1a0608','--bg1':'#220909','--bg2':'#290c0c','--bg3':'#300f0f','--bg4':'#381212','--bg5':'#401515','--bd':'#350f0f','--bd2':'#441515','--acc':'#ef4444','--acc-d':'rgba(239,68,68,.13)','--acc2':'#f87171','--acc2-d':'rgba(248,113,113,.13)' }
+  },
+  {
+    id: 'gold',
+    label: 'Gold',
+    preview: ['#100e04','#f5c542'],
+    vars: { '--bg0':'#100e04','--bg1':'#161208','--bg2':'#1c170a','--bg3':'#221c0c','--bg4':'#28210f','--bg5':'#2e2612','--bd':'#261f0e','--bd2':'#342b14','--acc':'#f5c542','--acc-d':'rgba(245,197,66,.13)','--acc2':'#eab308','--acc2-d':'rgba(234,179,8,.13)' }
+  },
+  {
+    id: 'light',
+    label: 'Světlý',
+    preview: ['#f0f2f5','#00a86b'],
+    vars: { '--bg0':'#f0f2f5','--bg1':'#e8eaed','--bg2':'#f5f6f8','--bg3':'#eaecef','--bg4':'#dde0e4','--bg5':'#c8ccd2','--bd':'#d1d5db','--bd2':'#c0c5ce','--acc':'#00a86b','--acc-d':'#d4f0e7','--acc2':'#5b4fcf','--acc2-d':'rgba(91,79,207,.12)','--t1':'#1a202c','--t2':'#4a5568','--t3':'#a0aec0' }
+  },
+  {
+    id: 'amoled',
+    label: 'AMOLED',
+    preview: ['#000000','#4fffb0'],
+    vars: { '--bg0':'#000000','--bg1':'#050505','--bg2':'#080808','--bg3':'#0c0c0c','--bg4':'#111111','--bg5':'#161616','--bd':'#1a1a1a','--bd2':'#222222','--acc':'#4fffb0','--acc-d':'rgba(79,255,176,.12)' }
+  },
 ];
 
 function profPremium() {
@@ -6252,7 +6319,7 @@ function profPremium() {
     html += '<div class="banner-grid">';
     for (const b of BANNERS) {
       if (b.id === '') {
-        html += '<div class="banner-opt none sel" id="bopt-none" onclick="previewBanner(\'\')">❌ Žádný</div>';
+        html += '<div class="banner-opt none' + (!ME.banner ? ' sel' : '') + '" id="bopt-none" onclick="previewBanner(\'\')">❌ Žádný</div>';
       } else {
         html += '<div class="banner-opt' + (ME.banner === b.id ? ' sel' : '') + '" id="bopt-' + BANNERS.indexOf(b) + '" style="background:' + b.id + '" title="' + b.label + '" onclick="previewBanner(\'' + b.id.replace(/'/g, "\\'") + '\')"></div>';
       }
@@ -6263,22 +6330,30 @@ function profPremium() {
   }
   html += '</div>';
 
-  // ── VLASTNÍ VZHLED APLIKACE (Pro only) ──
-  html += '<div class="psec"><h3>Vlastní barva aplikace</h3>';
+  // ── MOTIV APLIKACE (Pro only) ──
+  html += '<div class="psec"><h3>Motiv aplikace</h3>';
   if (isPro) {
-    html += '<div class="theme-grid">';
+    html += '<div style="font-size:11px;color:var(--t3);margin-bottom:12px">Kompletně změní barvy celé aplikace — pozadí, zvýraznění i akcenty.</div>';
+    html += '<div class="theme-presets-grid">';
     for (const th of APP_THEMES) {
-      html += '<div class="theme-opt' + (ME.appTheme === th.id ? ' sel' : '') + '" id="thopt-' + th.id + '" title="' + th.label + '" style="background:' + th.acc + '22;border-color:' + (ME.appTheme === th.id ? th.acc : 'transparent') + '" onclick="previewAppTheme(\'' + th.id + '\')">' + th.emoji + '</div>';
+      const isSel = ME.appTheme === th.id;
+      html += '<div class="theme-preset' + (isSel ? ' sel' : '') + '" id="thopt-' + th.id + '" title="' + th.label + '" onclick="previewAppTheme(\'' + th.id + '\')">'
+        + '<div class="theme-preset-preview">'
+        + '<div style="flex:1;background:' + th.preview[0] + ';border-radius:4px 0 0 4px"></div>'
+        + '<div style="flex:1;background:' + th.preview[1] + ';border-radius:0 4px 4px 0"></div>'
+        + '</div>'
+        + '<div class="theme-preset-label">' + th.label + (isSel ? ' ✓' : '') + '</div>'
+        + '</div>';
     }
-    html += '</div><div style="font-size:11px;color:var(--t3)">Změní accent barvu celé aplikace (tlačítka, linky, zvýraznění).</div>';
+    html += '</div>';
   } else {
-    html += '<div class="upsell-block"><div class="ub-title">🎨 Nexus Pro funkce</div><div class="ub-desc">Změň barvu celé aplikace — tlačítka, zvýraznění, aktivní prvky.</div><button onclick="closeProf();openShop()">Získat Nexus Pro →</button></div>';
+    html += '<div class="upsell-block"><div class="ub-title">🎨 Nexus Pro funkce</div><div class="ub-desc">Vyber si z 12 připravených motivů — každý mění kompletní barevné schéma aplikace.</div><button onclick="closeProf();openShop()">Získat Nexus Pro →</button></div>';
   }
   html += '</div>';
 
   if (isPluOrPro) {
     html += '<div style="display:flex;gap:8px;margin-top:4px">'
-      + '<button class="mbtn mbtn-g" style="flex:1" onclick="closeProf()">Zrušit</button>'
+      + '<button class="mbtn mbtn-g" style="flex:1" onclick="cancelPremium()">Zrušit</button>'
       + '<button class="mbtn mbtn-p" style="flex:2" onclick="savePremium()">💾 Uložit</button></div>';
   }
   return html;
@@ -6289,49 +6364,55 @@ let _prevAppTheme = ME.appTheme;
 
 function previewBanner(val) {
   _prevBanner = val;
-  // Highlight selected
   document.querySelectorAll('.banner-opt').forEach(el => el.classList.remove('sel'));
   if (val === '') { document.getElementById('bopt-none')?.classList.add('sel'); }
   else {
     const idx = BANNERS.findIndex(b => b.id === val);
     if (idx >= 0) document.getElementById('bopt-' + idx)?.classList.add('sel');
   }
-  // Live preview
   ME.banner = val;
-  const prev = document.querySelector('#profcontent .npw, #profcontent .npw.has-banner');
-  if (prev) prev.outerHTML; // force re-render of preview block
   const cont = document.getElementById('profcontent');
   if (cont) {
-    const previewDiv = cont.querySelector('.psec');
-    if (previewDiv) {
-      const previewEl = previewDiv.querySelector('.npw, [class*="has-banner"]');
-      if (previewEl) previewEl.outerHTML = profPreviewHtml(ME.name, ME.color, ME.font, ME.bio, ME.avatar, val);
-    }
+    const previewEl = cont.querySelector('.npw, .npw.has-banner');
+    if (previewEl) previewEl.outerHTML = profPreviewHtml(ME.name, ME.color, ME.font, ME.bio, ME.avatar, val);
   }
-  ME.banner = val; // keep updated
 }
 
 function previewAppTheme(id) {
   _prevAppTheme = id;
-  document.querySelectorAll('.theme-opt').forEach(el => el.classList.remove('sel'));
-  const th = APP_THEMES.find(t => t.id === id);
+  document.querySelectorAll('.theme-preset').forEach(el => {
+    el.classList.remove('sel');
+    const lbl = el.querySelector('.theme-preset-label');
+    if (lbl) lbl.textContent = lbl.textContent.replace(' ✓','');
+  });
   const el = document.getElementById('thopt-' + id);
-  if (el && th) { el.classList.add('sel'); el.style.borderColor = th.acc; }
+  if (el) {
+    el.classList.add('sel');
+    const lbl = el.querySelector('.theme-preset-label');
+    if (lbl && !lbl.textContent.includes('✓')) lbl.textContent += ' ✓';
+  }
   applyAppTheme(id);
 }
 
 function applyAppTheme(id) {
-  const th = APP_THEMES.find(t => t.id === id) || APP_THEMES[0];
-  const acc = th.acc;
-  // Override CSS variables
+  const th = APP_THEMES.find(t => t.id === id);
   const root = document.documentElement;
-  if (id === '') {
-    root.style.removeProperty('--acc');
-    root.style.removeProperty('--acc-d');
-  } else {
-    root.style.setProperty('--acc', acc);
-    root.style.setProperty('--acc-d', acc + '22');
-  }
+  // Reset all overrides first
+  ['--bg0','--bg1','--bg2','--bg3','--bg4','--bg5','--bd','--bd2',
+   '--acc','--acc-d','--acc2','--acc2-d','--t1','--t2','--t3'].forEach(v => root.style.removeProperty(v));
+  // Also remove light class that might conflict
+  if (id !== 'light') document.body.classList.remove('light');
+  if (!th || !th.vars || Object.keys(th.vars).length === 0) return;
+  // Apply light class if needed
+  if (id === 'light') document.body.classList.add('light');
+  // Apply all vars
+  for (const [k, v] of Object.entries(th.vars)) root.style.setProperty(k, v);
+}
+
+function cancelPremium() {
+  // Restore original theme if user clicks cancel
+  applyAppTheme(ME.appTheme);
+  closeProf();
 }
 
 function savePremium() {
