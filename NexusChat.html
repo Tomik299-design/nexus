@@ -945,14 +945,37 @@ textarea { -webkit-user-select: text; user-select: text; }
 /* ── SUBSCRIPTION BADGES ── */
 .sub-badge {
   display: inline-flex; align-items: center; gap: 3px;
-  font-size: 9px; font-weight: 700; letter-spacing: .04em;
-  padding: 1px 6px; border-radius: 10px; flex-shrink: 0;
-  vertical-align: middle; margin-left: 4px;
+  font-size: 10px; font-weight: 700; letter-spacing: .05em;
+  padding: 2px 8px; border-radius: 12px; flex-shrink: 0;
+  vertical-align: middle; margin-left: 5px; line-height: 1.4;
 }
-.sub-badge.plus { background: rgba(79,255,176,.15); color: var(--acc); border: 1px solid rgba(79,255,176,.35); }
-.sub-badge.pro  { background: rgba(124,106,255,.15); color: #a89cff; border: 1px solid rgba(124,106,255,.45); }
-body.light .sub-badge.plus { background: rgba(0,168,107,.12); color: #00875a; border-color: rgba(0,168,107,.3); }
-body.light .sub-badge.pro  { background: rgba(91,79,207,.1);  color: #5b4fcf; border-color: rgba(91,79,207,.3); }
+.sub-badge.plus {
+  background: rgba(79,255,176,.15);
+  color: #4fffb0;
+  border: 1.5px solid rgba(79,255,176,.5);
+}
+.sub-badge.pro {
+  background: linear-gradient(135deg, rgba(79,255,176,.2), rgba(96,165,250,.2));
+  color: transparent;
+  border: 1.5px solid transparent;
+  background-clip: padding-box;
+  position: relative;
+}
+.sub-badge.pro::before {
+  content: '';
+  position: absolute; inset: -1.5px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #4fffb0, #60a5fa);
+  z-index: -1;
+}
+.sub-badge.pro .sb-inner {
+  background: linear-gradient(135deg, #4fffb0, #60a5fa);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+body.light .sub-badge.plus { background: rgba(0,168,107,.12); color: #00875a; border-color: rgba(0,168,107,.4); }
+body.light .sub-badge.pro::before { background: linear-gradient(135deg, #00a86b, #3b82f6); }
 
 /* ── SHOP OVERLAY ── */
 #shopov { position: fixed; inset: 0; background: rgba(0,0,0,.8); z-index: 700; display: none; align-items: center; justify-content: center; }
@@ -3385,12 +3408,20 @@ function renderMsgs(scrollDown = true) {
     const col = m.color || '#888';
     const fontStyle = m.font && m.font !== 'Inter' ? 'font-family:\'' + m.font + '\',sans-serif' : '';
     const avContent = m.avatar ? '<img src="' + m.avatar + '" alt="">' : (m.author || '?')[0];
+    // Sub name style
+    let nameStyle = 'color:' + col + ';' + fontStyle;
+    let nameInner = m.author || '?';
+    if (m.sub === 'pro') {
+      nameStyle = fontStyle + 'background:linear-gradient(90deg,#4fffb0,#60a5fa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text';
+    } else if (m.sub === 'plus') {
+      nameStyle = 'color:#4fffb0;' + fontStyle;
+    }
     const avBg = m.avatar ? 'transparent' : col;
     const role = getRole(curSrv, m.authorId || '');
     if (!same) {
       row.innerHTML = '<div class="avw"><div class="mav" style="background:' + avBg + '">' + avContent + '</div></div>'
         + '<div class="mw">'
-        + '<div class="mmeta"><span class="mau" style="color:' + col + ';' + fontStyle + '">' + (m.author || '?') + '</span>'
+        + '<div class="mmeta"><span class="mau" style="' + nameStyle + '">' + nameInner + '</span>'
         + subBadgeHtml(m.sub)
         + roleBadge(role)
         + '<span class="mts">' + fmtTs(m.ts) + '</span></div>'
@@ -3420,7 +3451,7 @@ function renderMsgs(scrollDown = true) {
 }
 
 function subBadgeHtml(sub) {
-  if (sub === 'pro')  return '<span class="sub-badge pro">⚡ PRO</span>';
+  if (sub === 'pro')  return '<span class="sub-badge pro"><span class="sb-inner">⚡ PRO</span></span>';
   if (sub === 'plus') return '<span class="sub-badge plus">★ PLUS</span>';
   return '';
 }
@@ -3550,9 +3581,16 @@ function renderDmMsgs(userId) {
     const col = msg.color || '#888';
     const avCnt = msg.avatar ? '<img src="' + msg.avatar + '" alt="">' : (msg.author || '?')[0];
     const avBg  = msg.avatar ? 'transparent' : col;
+    let dmNameStyle = 'color:' + col;
+    let dmNameInner = msg.author || '?';
+    if (msg.sub === 'pro') {
+      dmNameStyle = 'background:linear-gradient(90deg,#4fffb0,#60a5fa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text';
+    } else if (msg.sub === 'plus') {
+      dmNameStyle = 'color:#4fffb0';
+    }
     if (!same) {
       row.innerHTML = '<div class="avw"><div class="mav" style="background:' + avBg + '">' + avCnt + '</div></div>'
-        + '<div class="mw"><div class="mmeta"><span class="mau" style="color:' + col + '">' + (msg.author || '?') + '</span>'
+        + '<div class="mw"><div class="mmeta"><span class="mau" style="' + dmNameStyle + '">' + dmNameInner + '</span>'
         + subBadgeHtml(msg.sub)
         + '<span class="mts">' + fmtTs(msg.ts) + '</span></div>'
         + '<div class="mt">' + fmt(msg.text) + '</div></div>';
@@ -8066,36 +8104,51 @@ function mentionKeydown(e, inp) {
 })();
 
 function applySubBadge() {
-  // Badge in user bar next to name
   const nameEl = document.getElementById('myname');
   if (nameEl) {
     let badge = nameEl.parentElement.querySelector('.sub-badge');
     if (ME.sub === 'plus' || ME.sub === 'pro') {
-      if (!badge) { badge = document.createElement('span'); badge.className = 'sub-badge'; nameEl.parentElement.appendChild(badge); }
-      badge.className = 'sub-badge ' + ME.sub;
-      badge.textContent = ME.sub === 'pro' ? '⚡ PRO' : '★ PLUS';
+      if (!badge) { badge = document.createElement('span'); nameEl.parentElement.appendChild(badge); }
+      if (ME.sub === 'pro') {
+        badge.className = 'sub-badge pro';
+        badge.innerHTML = '<span class="sb-inner">⚡ PRO</span>';
+      } else {
+        badge.className = 'sub-badge plus';
+        badge.textContent = '★ PLUS';
+      }
     } else if (badge) {
       badge.remove();
     }
   }
-  // Name color bonus
-  if (ME.sub === 'pro' && ME.name) {
-    const n = document.getElementById('myname');
-    if (n) n.style.background = 'linear-gradient(90deg,#a89cff,#4fffb0)';
-    if (n) { n.style.webkitBackgroundClip = 'text'; n.style.webkitTextFillColor = 'transparent'; }
-  } else if (ME.sub === 'plus') {
-    const n = document.getElementById('myname');
-    if (n) { n.style.color = 'var(--acc)'; n.style.background = ''; n.style.webkitBackgroundClip = ''; n.style.webkitTextFillColor = ''; }
-  } else {
-    const n = document.getElementById('myname');
-    if (n) { n.style.color = ''; n.style.background = ''; n.style.webkitBackgroundClip = ''; n.style.webkitTextFillColor = ''; }
+  // Jméno — Plus = zelené, Pro = zeleno-modrý gradient
+  const n = document.getElementById('myname');
+  if (n) {
+    if (ME.sub === 'pro') {
+      n.style.background = 'linear-gradient(90deg, #4fffb0, #60a5fa)';
+      n.style.webkitBackgroundClip = 'text';
+      n.style.webkitTextFillColor = 'transparent';
+      n.style.backgroundClip = 'text';
+      n.style.color = '';
+    } else if (ME.sub === 'plus') {
+      n.style.color = '#4fffb0';
+      n.style.background = '';
+      n.style.webkitBackgroundClip = '';
+      n.style.webkitTextFillColor = '';
+      n.style.backgroundClip = '';
+    } else {
+      n.style.color = '';
+      n.style.background = '';
+      n.style.webkitBackgroundClip = '';
+      n.style.webkitTextFillColor = '';
+      n.style.backgroundClip = '';
+    }
   }
-  // Header button glow when active
+  // Header ⚡ button glow
   const hdrBtn = document.getElementById('shop-hdr-btn');
   if (hdrBtn) {
-    if (ME.sub === 'pro') { hdrBtn.style.color = '#a89cff'; }
-    else if (ME.sub === 'plus') { hdrBtn.style.color = 'var(--acc)'; }
-    else { hdrBtn.style.color = ''; }
+    if (ME.sub === 'pro') hdrBtn.style.color = '#60a5fa';
+    else if (ME.sub === 'plus') hdrBtn.style.color = '#4fffb0';
+    else hdrBtn.style.color = '';
   }
 }
 
