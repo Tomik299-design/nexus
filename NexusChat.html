@@ -941,6 +941,72 @@ textarea { -webkit-user-select: text; user-select: text; }
 #vcchatbtn.act { background: var(--acc-d); color: var(--acc); border-color: var(--acc); }
 /* ── Auth overlay mobile ── */
 @media (max-width:600px){#auth-overlay [style*="grid-template-columns:1fr 1fr"]{grid-template-columns:1fr!important}#auth-overlay [style*="border-right"]{display:none!important}}
+
+/* ── SUBSCRIPTION BADGES ── */
+.sub-badge {
+  display: inline-flex; align-items: center; gap: 3px;
+  font-size: 9px; font-weight: 700; letter-spacing: .04em;
+  padding: 1px 6px; border-radius: 10px; flex-shrink: 0;
+  vertical-align: middle; margin-left: 4px;
+}
+.sub-badge.plus { background: rgba(79,255,176,.15); color: var(--acc); border: 1px solid rgba(79,255,176,.35); }
+.sub-badge.pro  { background: rgba(124,106,255,.15); color: #a89cff; border: 1px solid rgba(124,106,255,.45); }
+body.light .sub-badge.plus { background: rgba(0,168,107,.12); color: #00875a; border-color: rgba(0,168,107,.3); }
+body.light .sub-badge.pro  { background: rgba(91,79,207,.1);  color: #5b4fcf; border-color: rgba(91,79,207,.3); }
+
+/* ── SHOP OVERLAY ── */
+#shopov { position: fixed; inset: 0; background: rgba(0,0,0,.8); z-index: 700; display: none; align-items: center; justify-content: center; }
+#shopov.open { display: flex; }
+#shoppanel {
+  width: min(860px, 98vw); max-height: 92vh; overflow-y: auto;
+  background: var(--bg2); border: 1px solid var(--bd); border-radius: var(--rl);
+  padding: 32px 28px; position: relative;
+  scrollbar-width: thin; scrollbar-color: var(--bg5) transparent;
+}
+#shopclose { position: absolute; top: 14px; right: 16px; width: 28px; height: 28px; border-radius: 50%; border: none; background: var(--bg4); color: var(--t2); font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+#shopclose:hover { background: var(--red-d); color: var(--red); }
+.shop-title { font-size: 22px; font-weight: 700; color: var(--t1); margin-bottom: 4px; }
+.shop-sub { font-size: 13px; color: var(--t2); margin-bottom: 24px; }
+.shop-tabs { display: flex; gap: 4px; margin-bottom: 24px; border-bottom: 1px solid var(--bd); }
+.shop-tab { padding: 8px 16px; border-radius: 6px 6px 0 0; font-size: 13px; cursor: pointer; color: var(--t3); border: none; background: transparent; font-family: var(--f); transition: none; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+.shop-tab:hover { color: var(--t2); }
+.shop-tab.act { color: var(--t1); border-bottom-color: var(--acc); font-weight: 500; }
+.shop-section { display: none; }
+.shop-section.act { display: block; }
+.plans-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 16px; }
+@media(max-width:600px) { .plans-grid { grid-template-columns: 1fr; } }
+.plan-card { border-radius: var(--rl); padding: 22px 20px; position: relative; border: 1.5px solid var(--bd); background: var(--bg3); }
+.plan-card.popular { border-color: rgba(79,255,176,.5); background: linear-gradient(160deg,var(--bg3),rgba(79,255,176,.04)); }
+.plan-card .pop-badge { position:absolute;top:-10px;left:50%;transform:translateX(-50%);background:var(--acc);color:var(--bg0);font-size:10px;font-weight:700;padding:2px 10px;border-radius:10px;white-space:nowrap; }
+.plan-name { font-size: 16px; font-weight: 700; color: var(--t1); margin-bottom: 4px; }
+.plan-price { font-size: 28px; font-weight: 700; color: var(--acc); margin: 10px 0 4px; }
+.plan-price span { font-size: 13px; font-weight: 400; color: var(--t3); }
+.plan-price.pro-c { color: #a89cff; }
+.plan-desc { font-size: 12px; color: var(--t2); margin-bottom: 16px; line-height: 1.5; }
+.plan-features { list-style: none; margin-bottom: 20px; }
+.plan-features li { font-size: 12px; color: var(--t2); padding: 4px 0; display: flex; align-items: flex-start; gap: 7px; }
+.plan-features li .pfi { flex-shrink: 0; }
+.plan-features li.dis { color: var(--t3); }
+.plan-btn { width: 100%; padding: 9px; border-radius: var(--r); border: none; font-size: 13px; font-weight: 600; cursor: pointer; font-family: var(--f); }
+.plan-btn.plus-btn { background: var(--acc); color: var(--bg0); }
+.plan-btn.plus-btn:hover { filter: brightness(1.1); }
+.plan-btn.pro-btn { background: linear-gradient(135deg,#7c6aff,#a89cff); color: #fff; }
+.plan-btn.pro-btn:hover { filter: brightness(1.1); }
+.plan-btn.cur-btn { background: transparent; border: 1px solid var(--bd); color: var(--t3); cursor: default; }
+.plan-btn.free-btn { background: var(--bg5); color: var(--t2); }
+.shop-info-bar { background: var(--acc-d); border: 1px solid rgba(79,255,176,.3); border-radius: var(--r); padding: 12px 16px; margin-bottom: 20px; font-size: 13px; color: var(--acc); display: none; align-items: center; gap: 10px; }
+.shop-info-bar.show { display: flex; }
+.boost-grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(220px,1fr)); gap: 12px; margin-top: 8px; }
+.boost-card { border: 1.5px solid var(--bd); border-radius: var(--rl); padding: 18px; background: var(--bg3); cursor: pointer; }
+.boost-card:hover { border-color: var(--acc2); background: var(--acc2-d); }
+.boost-srv-name { font-size: 14px; font-weight: 600; color: var(--t1); margin-bottom: 4px; }
+.boost-tier { display: flex; gap: 6px; margin-bottom: 10px; flex-wrap: wrap; }
+.boost-tier span { font-size: 10px; padding: 2px 7px; border-radius: 8px; font-weight: 600; }
+.bt-plus { background: rgba(79,255,176,.15); color: var(--acc); border: 1px solid rgba(79,255,176,.3); }
+.bt-pro  { background: rgba(124,106,255,.15); color: #a89cff; border: 1px solid rgba(124,106,255,.3); }
+.boost-price { font-size: 18px; font-weight: 700; color: var(--acc2); }
+.boost-price span { font-size: 11px; color: var(--t3); font-weight: 400; }
+.boost-btn { width: 100%; padding: 7px; border-radius: var(--r); border: none; background: var(--acc2); color: #fff; font-size: 12px; font-weight: 600; cursor: pointer; margin-top: 10px; font-family: var(--f); }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiI+CiAgPHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiByeD0iOCIgZmlsbD0iIzBhMGMwZiIvPgogIDxyZWN0IHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiIgcng9IjgiIGZpbGw9InVybCgjZykiLz4KICA8ZGVmcz4KICAgIDxsaW5lYXJHcmFkaWVudCBpZD0iZyIgeDE9IjAiIHkxPSIwIiB4Mj0iMSIgeTI9IjEiPgogICAgICA8c3RvcCBvZmZzZXQ9IjAlIiBzdG9wLWNvbG9yPSIjMGQxYTE0Ii8+CiAgICAgIDxzdG9wIG9mZnNldD0iMTAwJSIgc3RvcC1jb2xvcj0iIzBkMTAyNCIvPgogICAgPC9saW5lYXJHcmFkaWVudD4KICA8L2RlZnM+CiAgPHRleHQgeD0iMTYiIHk9IjIzIiBmb250LWZhbWlseT0iQXJpYWwgQmxhY2ssIHNhbnMtc2VyaWYiIGZvbnQtd2VpZ2h0PSI5MDAiCiAgICAgICAgZm9udC1zaXplPSIyMCIgZmlsbD0iIzRmZmZiMCIgdGV4dC1hbmNob3I9Im1pZGRsZSI+TjwvdGV4dD4KPC9zdmc+">
@@ -1004,6 +1070,7 @@ textarea { -webkit-user-select: text; user-select: text; }
         <button class="hb" onclick="openSupport()" title="Podpora & Nápady">💡</button>
         <button class="hb" onclick="openHelp()">❓</button>
         <button id="theme-toggle" onclick="toggleTheme()" title="Přepnout světlý/tmavý režim">🌙</button>
+        <button class="hb" onclick="openShop()" title="Nexus Premium" id="shop-hdr-btn">⚡</button>
       </div>
     </div>
 
@@ -1179,7 +1246,97 @@ textarea { -webkit-user-select: text; user-select: text; }
   </div>
 </div>
 
-<script>
+<!-- SHOP OVERLAY -->
+<div id="shopov" onclick="if(event.target===this)closeShop()">
+  <div id="shoppanel">
+    <button id="shopclose" onclick="closeShop()">✕</button>
+    <div class="shop-title">⚡ Nexus Premium</div>
+    <div class="shop-sub">Odemkni prémiové funkce — osobně nebo boost serverem</div>
+
+    <!-- Current sub info bar -->
+    <div class="shop-info-bar" id="shop-info-bar"></div>
+
+    <!-- Tabs -->
+    <div class="shop-tabs">
+      <button class="shop-tab act" onclick="shopTab(this,'personal')">👤 Osobní plány</button>
+      <button class="shop-tab" onclick="shopTab(this,'boost')">🚀 Boost serveru</button>
+    </div>
+
+    <!-- Personal plans -->
+    <div class="shop-section act" id="shop-personal">
+      <div class="plans-grid">
+        <!-- Free -->
+        <div class="plan-card" id="plan-free">
+          <div class="plan-name">Free</div>
+          <div class="plan-price">0 Kč<span> / měsíc</span></div>
+          <div class="plan-desc">Základní NexusChat — pro všechny zdarma</div>
+          <ul class="plan-features">
+            <li><span class="pfi">✅</span> Neomezené servery</li>
+            <li><span class="pfi">✅</span> Neomezená historie zpráv</li>
+            <li><span class="pfi">✅</span> Upload do 10 MB</li>
+            <li><span class="pfi">✅</span> Voice & video hovory</li>
+            <li class="dis"><span class="pfi">—</span> Vlastní emotikony</li>
+            <li class="dis"><span class="pfi">—</span> Profilový banner</li>
+            <li class="dis"><span class="pfi">—</span> Animovaný avatar</li>
+            <li class="dis"><span class="pfi">—</span> Badge u jména</li>
+          </ul>
+          <button class="plan-btn free-btn cur-btn" id="plan-free-btn" disabled>Aktuální plán</button>
+        </div>
+        <!-- Nexus+ -->
+        <div class="plan-card popular" id="plan-plus">
+          <div class="pop-badge">✨ Nejoblíbenější</div>
+          <div class="plan-name">Nexus+</div>
+          <div class="plan-price">49 Kč<span> / měsíc</span></div>
+          <div class="plan-desc">Pro aktivní uživatele kteří chtějí se odlišit</div>
+          <ul class="plan-features">
+            <li><span class="pfi">✅</span> Vše z Free</li>
+            <li><span class="pfi">✅</span> Upload do 500 MB</li>
+            <li><span class="pfi">✅</span> 50 vlastních emotikonů</li>
+            <li><span class="pfi">✅</span> Profilový banner</li>
+            <li><span class="pfi">✅</span> Animovaný avatar</li>
+            <li><span class="pfi">✅</span> Zelené jméno</li>
+            <li><span class="pfi">✅</span> Badge ★ PLUS</li>
+            <li class="dis"><span class="pfi">—</span> Vlastní vzhled aplikace</li>
+          </ul>
+          <button class="plan-btn plus-btn" id="plan-plus-btn" onclick="shopBuy('plus')">Koupit Nexus+ — 49 Kč/měs</button>
+        </div>
+        <!-- Nexus Pro -->
+        <div class="plan-card" id="plan-pro">
+          <div class="plan-name">Nexus Pro</div>
+          <div class="plan-price pro-c">129 Kč<span> / měsíc</span></div>
+          <div class="plan-desc">Maximální výhody pro nejvyhraněnější uživatele</div>
+          <ul class="plan-features">
+            <li><span class="pfi">✅</span> Vše z Nexus+</li>
+            <li><span class="pfi">✅</span> Neomezený upload</li>
+            <li><span class="pfi">✅</span> Neomezené emotikony</li>
+            <li><span class="pfi">✅</span> Gradientní jméno</li>
+            <li><span class="pfi">✅</span> Badge ⚡ PRO</li>
+            <li><span class="pfi">✅</span> Vlastní vzhled aplikace</li>
+            <li><span class="pfi">✅</span> Vlastní bannery serverů</li>
+            <li><span class="pfi">✅</span> Prioritní podpora 24/7</li>
+          </ul>
+          <button class="plan-btn pro-btn" id="plan-pro-btn" onclick="shopBuy('pro')">Koupit Nexus Pro — 129 Kč/měs</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Boost section -->
+    <div class="shop-section" id="shop-boost">
+      <div style="font-size:13px;color:var(--t2);margin-bottom:16px;line-height:1.6">
+        🚀 <strong style="color:var(--t1)">Boost serveru</strong> odemkne prémiové funkce pro celý server (bannery, vlastní emotikony)
+        a ty jako booster automaticky získáš výhody odpovídající danému plánu — bez nutnosti kupovat předplatné samostatně.
+      </div>
+      <div id="boost-srv-list" class="boost-grid"><!-- rendered dynamically --></div>
+    </div>
+
+    <div style="margin-top:24px;padding-top:16px;border-top:1px solid var(--bd);font-size:11px;color:var(--t3);line-height:1.7">
+      💡 Platby jsou ručně aktivovány administrátorem po přijetí platby. Kontaktuj nás na podporu.
+      Předplatné lze kdykoli zrušit — funkce zůstanou aktivní do konce zaplaceného období.
+    </div>
+  </div>
+</div>
+
+
 'use strict';
 function buildInviteLink(srvName, wssUrl, desc, total, online, srvId) {
   const base = 'https://nexus-g7k4.onrender.com/invite';
@@ -1220,6 +1377,10 @@ const ME = {
   avatar: ls('nx_avatar', ''),
   status: ls('nx_status', 'online'),
   bio:    ls('nx_bio',    ''),
+  // ── Subscription (read-only from server, cached locally) ──
+  sub:        ls('nx_sub', 'free'),          // 'free' | 'plus' | 'pro'
+  subExpires: ls('nx_sub_expires', 0),       // timestamp ms or 0 = never
+  subBoostSrv: null,                         // srvId this sub is tied to (boost case)
 };
 lss('nx_id', ME.id);
 lss('nx_tag', ME.tag);
@@ -1949,6 +2110,8 @@ function connectWS(url) {
       }
       // Request saved account data from server
       if (ME.id) bcast({ type: 'account_req', userId: ME.id, name: ME.name });
+      // Request subscription status from server
+      if (ME.id) bcast({ type: 'sub_req', userId: ME.id });
       // Request full ban list from server
       bcast({ type: 'get_bans', srvId: curSrv });
       // Request current vc state from everyone
@@ -2264,6 +2427,21 @@ function handleNet(d) {
     if (!d.account) return;
     let changed = false;
 
+    // ── Subscription ──
+    if (d.account.subscription) {
+      const sub = d.account.subscription;
+      if (!sub.expires || sub.expires > Date.now()) {
+        ME.sub = sub.plan || 'free';
+        ME.subExpires = sub.expires || 0;
+        ME.subBoostSrv = sub.boostSrvId || null;
+      } else {
+        ME.sub = 'free'; ME.subExpires = 0; ME.subBoostSrv = null;
+      }
+      lss('nx_sub', ME.sub);
+      lss('nx_sub_expires', ME.subExpires);
+      applySubBadge();
+    }
+
     // Restore profile (avatar, color, font etc.)
     if (d.account.profile && d.account.profile.name === ME.name) {
       const p = d.account.profile;
@@ -2308,6 +2486,22 @@ function handleNet(d) {
       toast('✅ Účet synchronizován', 'inf');
     } else if (d.notFound) {
       toast('ℹ️ Účet nenalezen na serveru — poprvé na tomto zařízení?', 'inf');
+    }
+  } else if (d.type === 'sub_data') {
+    // Real-time subscription update from server
+    if (d.sub) {
+      const sub = d.sub;
+      if (!sub.expires || sub.expires > Date.now()) {
+        ME.sub = sub.plan || 'free';
+        ME.subExpires = sub.expires || 0;
+        ME.subBoostSrv = sub.boostSrvId || null;
+      } else {
+        ME.sub = 'free'; ME.subExpires = 0; ME.subBoostSrv = null;
+      }
+      lss('nx_sub', ME.sub);
+      lss('nx_sub_expires', ME.subExpires);
+      applySubBadge();
+      if (sub.plan !== 'free') toast('🎉 Předplatné ' + (sub.plan === 'pro' ? 'Nexus Pro' : 'Nexus+') + ' aktivováno!', 'ok', 5000);
     }
   } else if (d.type === 'servers_sync') {
     // Server sent all known server structures — apply to servers I'm in
@@ -6040,6 +6234,7 @@ function applyProfile() {
   }
   const colors = { online: '#4fffb0', idle: '#ffcb6b', dnd: '#ff5370', offline: '#3a4654' };
   const sd = document.querySelector('#myav .sd'); if (sd) sd.style.background = colors[ME.status] || '#4fffb0';
+  applySubBadge();
   // Also update mobile UI
   if (typeof applyMobProfile === 'function') applyMobProfile();
 }
@@ -7533,6 +7728,156 @@ function mentionKeydown(e, inp) {
     }
   }
 })();
+
+// ── SUBSCRIPTION ──────────────────────────────────────────────────────
+
+// Check expiry on load
+(function() {
+  if (ME.subExpires && ME.subExpires < Date.now()) {
+    ME.sub = 'free'; ME.subExpires = 0;
+    lss('nx_sub', 'free'); lss('nx_sub_expires', 0);
+  }
+})();
+
+function applySubBadge() {
+  // Badge in user bar next to name
+  const nameEl = document.getElementById('myname');
+  if (nameEl) {
+    let badge = nameEl.parentElement.querySelector('.sub-badge');
+    if (ME.sub === 'plus' || ME.sub === 'pro') {
+      if (!badge) { badge = document.createElement('span'); badge.className = 'sub-badge'; nameEl.parentElement.appendChild(badge); }
+      badge.className = 'sub-badge ' + ME.sub;
+      badge.textContent = ME.sub === 'pro' ? '⚡ PRO' : '★ PLUS';
+    } else if (badge) {
+      badge.remove();
+    }
+  }
+  // Name color bonus
+  if (ME.sub === 'pro' && ME.name) {
+    const n = document.getElementById('myname');
+    if (n) n.style.background = 'linear-gradient(90deg,#a89cff,#4fffb0)';
+    if (n) { n.style.webkitBackgroundClip = 'text'; n.style.webkitTextFillColor = 'transparent'; }
+  } else if (ME.sub === 'plus') {
+    const n = document.getElementById('myname');
+    if (n) { n.style.color = 'var(--acc)'; n.style.background = ''; n.style.webkitBackgroundClip = ''; n.style.webkitTextFillColor = ''; }
+  } else {
+    const n = document.getElementById('myname');
+    if (n) { n.style.color = ''; n.style.background = ''; n.style.webkitBackgroundClip = ''; n.style.webkitTextFillColor = ''; }
+  }
+  // Header button glow when active
+  const hdrBtn = document.getElementById('shop-hdr-btn');
+  if (hdrBtn) {
+    if (ME.sub === 'pro') { hdrBtn.style.color = '#a89cff'; }
+    else if (ME.sub === 'plus') { hdrBtn.style.color = 'var(--acc)'; }
+    else { hdrBtn.style.color = ''; }
+  }
+}
+
+function openShop() {
+  const ov = document.getElementById('shopov');
+  if (!ov) return;
+  ov.classList.add('open');
+  _renderShopState();
+  _renderBoostList();
+}
+function closeShop() {
+  document.getElementById('shopov')?.classList.remove('open');
+}
+function shopTab(el, id) {
+  document.querySelectorAll('.shop-tab').forEach(t => t.classList.remove('act'));
+  document.querySelectorAll('.shop-section').forEach(s => s.classList.remove('act'));
+  el.classList.add('act');
+  document.getElementById('shop-' + id)?.classList.add('act');
+  if (id === 'boost') _renderBoostList();
+}
+
+function _renderShopState() {
+  const ibar = document.getElementById('shop-info-bar');
+  const sub = ME.sub;
+  if (sub !== 'free' && ibar) {
+    const label = sub === 'pro' ? '⚡ Nexus Pro' : '★ Nexus+';
+    const expTxt = ME.subExpires ? ' · platí do ' + new Date(ME.subExpires).toLocaleDateString('cs') : ' · bez expiry';
+    ibar.innerHTML = label + ' je aktivní' + expTxt;
+    ibar.classList.add('show');
+  } else if (ibar) { ibar.classList.remove('show'); }
+  // Update buttons
+  const plans = ['free','plus','pro'];
+  plans.forEach(p => {
+    const btn = document.getElementById('plan-' + p + '-btn');
+    if (!btn) return;
+    if (p === sub) {
+      btn.className = 'plan-btn cur-btn'; btn.textContent = 'Aktuální plán'; btn.disabled = true;
+    } else {
+      btn.disabled = false;
+      if (p === 'free') { btn.className = 'plan-btn free-btn'; btn.textContent = 'Downgrade na Free'; btn.onclick = () => shopBuy('free'); }
+      if (p === 'plus') { btn.className = 'plan-btn plus-btn'; btn.textContent = 'Koupit Nexus+ — 49 Kč/měs'; btn.onclick = () => shopBuy('plus'); }
+      if (p === 'pro')  { btn.className = 'plan-btn pro-btn';  btn.textContent = 'Koupit Nexus Pro — 129 Kč/měs'; btn.onclick = () => shopBuy('pro'); }
+    }
+  });
+}
+
+function _renderBoostList() {
+  const list = document.getElementById('boost-srv-list');
+  if (!list) return;
+  const srvs = Object.values(SERVERS);
+  if (!srvs.length) { list.innerHTML = '<div style="color:var(--t3);font-size:13px">Nejsi na žádném serveru.</div>'; return; }
+  list.innerHTML = srvs.map(srv => {
+    const isOwner = srv.ownerId === ME.id;
+    return '<div class="boost-card">'
+      + '<div class="boost-srv-name">' + (srv.name || 'Server') + '</div>'
+      + '<div style="font-size:11px;color:var(--t3);margin-bottom:10px">' + (isOwner ? '👑 Tvůj server' : 'Člen') + '</div>'
+      + '<div class="boost-tier"><span class="bt-plus">Nexus+ boost — 79 Kč/měs</span></div>'
+      + '<div style="font-size:11px;color:var(--t2);margin-bottom:8px;line-height:1.5">Server dostane: vlastní emotikony, profilové bannery členů. Ty získáš výhody Nexus+.</div>'
+      + '<button class="boost-btn" onclick="shopBoostSrv(\'' + srv.id + '\',\'plus\')">🚀 Boost Nexus+</button>'
+      + '<div class="boost-tier" style="margin-top:10px"><span class="bt-pro">Nexus Pro boost — 159 Kč/měs</span></div>'
+      + '<div style="font-size:11px;color:var(--t2);margin-bottom:8px;line-height:1.5">Server dostane vše + vlastní bannery serverů. Ty získáš výhody Nexus Pro.</div>'
+      + '<button class="boost-btn" style="background:linear-gradient(135deg,#7c6aff,#a89cff)" onclick="shopBoostSrv(\'' + srv.id + '\',\'pro\')">⚡ Boost Nexus Pro</button>'
+      + '</div>';
+  }).join('');
+}
+
+function shopBuy(plan) {
+  closeShop();
+  const labels = { plus: 'Nexus+ (49 Kč/měs)', pro: 'Nexus Pro (129 Kč/měs)', free: 'zrušení předplatného' };
+  openModal('<h2>⚡ ' + (plan === 'free' ? 'Zrušit předplatné' : 'Koupit ' + labels[plan]) + '</h2>'
+    + '<div class="ibox" style="margin-bottom:14px;line-height:1.7">'
+    + (plan === 'free'
+      ? 'Opravdu chceš zrušit předplatné? Funkce zůstanou aktivní do konce zaplaceného období.'
+      : 'Platby jsou zpracovávány ručně administrátorem.<br>'
+      + '<strong style="color:var(--acc)">Jak zaplatit:</strong><br>'
+      + '1. Kontaktuj nás přes podporu nebo email<br>'
+      + '2. Pošli platbu a svůj User ID<br>'
+      + '3. Předplatné aktivujeme do 24 hodin'
+    )
+    + '</div>'
+    + '<div class="ibox" style="font-size:12px;margin-bottom:14px">'
+    + 'Tvůj User ID: <span style="font-family:var(--fm);color:var(--acc);font-size:11px;word-break:break-all">' + ME.id + '</span>'
+    + '<button onclick="navigator.clipboard.writeText(\'' + ME.id + '\').then(()=>toast(\'ID zkopírováno\',\'ok\'))" style="margin-left:8px;background:var(--bg4);border:1px solid var(--bd);border-radius:5px;padding:2px 8px;color:var(--t2);cursor:pointer;font-size:11px">📋 Kopírovat</button>'
+    + '</div>'
+    + '<div class="mbtns"><button class="mbtn mbtn-g" onclick="closeModal()">Zavřít</button>'
+    + '<button class="mbtn mbtn-p" onclick="openSupport();closeModal()">📨 Kontaktovat podporu</button></div>'
+  );
+}
+function shopBoostSrv(srvId, plan) {
+  closeShop();
+  const srv = SERVERS[srvId];
+  const labels = { plus: 'Nexus+ boost (79 Kč/měs)', pro: 'Nexus Pro boost (159 Kč/měs)' };
+  openModal('<h2>🚀 Boost serveru "' + (srv?.name || srvId) + '"</h2>'
+    + '<div class="ibox" style="margin-bottom:14px;line-height:1.7">'
+    + 'Platby jsou zpracovávány ručně administrátorem.<br>'
+    + '<strong style="color:var(--acc)">Jak zaplatit:</strong><br>'
+    + '1. Kontaktuj nás přes podporu nebo email<br>'
+    + '2. Pošli platbu, svůj User ID a ID serveru<br>'
+    + '3. Boost aktivujeme do 24 hodin'
+    + '</div>'
+    + '<div class="ibox" style="font-size:12px;margin-bottom:14px">'
+    + 'Tvůj User ID: <span style="font-family:var(--fm);color:var(--acc);font-size:11px;word-break:break-all">' + ME.id + '</span><br>'
+    + 'Server ID: <span style="font-family:var(--fm);color:var(--acc2);font-size:11px;word-break:break-all">' + srvId + '</span>'
+    + '</div>'
+    + '<div class="mbtns"><button class="mbtn mbtn-g" onclick="closeModal()">Zavřít</button>'
+    + '<button class="mbtn mbtn-p" onclick="openSupport();closeModal()">📨 Kontaktovat podporu</button></div>'
+  );
+}
 
 // ── THEME TOGGLE ──
 function toggleTheme() {

@@ -1354,8 +1354,68 @@ setTimeout(() => location.reload(), 30000);
     return;
   }
 
+  // ── SUBSCRIPTION ADMIN API ──────────────────────────────────────────
+  // POST /api/sub/grant  { key, userId, plan, months, boostSrvId? }
+  // POST /api/sub/revoke { key, userId }
+  // GET  /api/sub/check?userId=...
+  const ADMIN_KEY = process.env.ADMIN_KEY || 'nexus-admin-secret';
+
+  if (urlPath === '/api/sub/grant' && req.method === 'POST') {
+    let body = ''; req.on('data', d => { body += d; if (body.length > 4096) req.destroy(); });
+    req.on('end', () => {
+      let p; try { p = JSON.parse(body); } catch { res.writeHead(400,'',{'Content-Type':'application/json'}); res.end('{"ok":false,"error":"invalid json"}'); return; }
+      if (p.key !== ADMIN_KEY) { res.writeHead(403,'',{'Content-Type':'application/json'}); res.end('{"ok":false,"error":"unauthorized"}'); return; }
+      const { userId, plan, months, boostSrvId } = p;
+      if (!userId || !plan || !['plus','pro'].includes(plan)) { res.writeHead(400,'',{'Content-Type':'application/json'}); res.end('{"ok":false,"error":"userId a plan (plus/pro) jsou povinné"}'); return; }
+      if (!accounts[userId]) accounts[userId] = {};
+      const expires = months ? Date.now() + (months * 30 * 24 * 3600 * 1000) : 0;
+      accounts[userId].subscription = { plan, expires, boostSrvId: boostSrvId || null, grantedAt: Date.now() };
+      saveOneAccount(userId);
+      // Notify user if online
+      for (const [client, info] of clients) {
+        if (info.id === userId && client.readyState === 1) {
+          try { client.send(JSON.stringify({ type: 'sub_data', sub: accounts[userId].subscription })); } catch {}
+        }
+      }
+      res.writeHead(200,'',{'Content-Type':'application/json'});
+      res.end(JSON.stringify({ ok: true, userId, plan, expires, boostSrvId: boostSrvId || null }));
+    });
+    return;
+  }
+
+  if (urlPath === '/api/sub/revoke' && req.method === 'POST') {
+    let body = ''; req.on('data', d => { body += d; if (body.length > 4096) req.destroy(); });
+    req.on('end', () => {
+      let p; try { p = JSON.parse(body); } catch { res.writeHead(400,'',{'Content-Type':'application/json'}); res.end('{"ok":false,"error":"invalid json"}'); return; }
+      if (p.key !== ADMIN_KEY) { res.writeHead(403,'',{'Content-Type':'application/json'}); res.end('{"ok":false,"error":"unauthorized"}'); return; }
+      if (!p.userId || !accounts[p.userId]) { res.writeHead(404,'',{'Content-Type':'application/json'}); res.end('{"ok":false,"error":"uživatel nenalezen"}'); return; }
+      accounts[p.userId].subscription = { plan: 'free', expires: 0, boostSrvId: null };
+      saveOneAccount(p.userId);
+      for (const [client, info] of clients) {
+        if (info.id === p.userId && client.readyState === 1) {
+          try { client.send(JSON.stringify({ type: 'sub_data', sub: accounts[p.userId].subscription })); } catch {}
+        }
+      }
+      res.writeHead(200,'',{'Content-Type':'application/json'});
+      res.end('{"ok":true}');
+    });
+    return;
+  }
+
+  if (urlPath === '/api/sub/check' && req.method === 'GET') {
+    const params = new URL('http://x' + req.url).searchParams;
+    const userId = params.get('userId') || '';
+    const key    = params.get('key')    || '';
+    if (key !== ADMIN_KEY) { res.writeHead(403,'',{'Content-Type':'application/json'}); res.end('{"ok":false,"error":"unauthorized"}'); return; }
+    const acc = accounts[userId] || {};
+    const sub = acc.subscription || { plan: 'free', expires: 0 };
+    if (sub.expires && sub.expires < Date.now()) sub.plan = 'free';
+    res.writeHead(200,'',{'Content-Type':'application/json'});
+    res.end(JSON.stringify({ ok: true, userId, sub }));
+    return;
+  }
+
   res.writeHead(404); res.end('404');
-});
 
 // ── WebSocket server ──
 const wss     = new WebSocket.Server({ server: httpServer });
@@ -1635,14 +1695,33 @@ wss.on('connection', (ws, req) => {
           // Always overwrite profile including empty avatar (intentional deletion)
           accounts[msg.userId].profile = msg.profile;
         }
+        // NEVER overwrite subscription from client — only server sets it
         accounts[msg.userId].ts = Date.now();
         saveOneAccount(msg.userId);
       }
     }
 
+    // ── Subscription status request ──
+    if (msg.type === 'sub_req' && msg.userId) {
+      const acc = accounts[msg.userId] || {};
+      const sub = acc.subscription || { plan: 'free', expires: 0, boostSrvId: null };
+      // Check expiry
+      if (sub.expires && sub.expires < Date.now()) {
+        sub.plan = 'free'; sub.expires = 0;
+        if (accounts[msg.userId]) accounts[msg.userId].subscription = sub;
+        saveOneAccount(msg.userId);
+      }
+      try { ws.send(JSON.stringify({ type: 'sub_data', sub })); } catch {}
+    }
+
     if (msg.type === 'account_req' && msg.userId) {
       const acc = accounts[msg.userId];
       if (acc && (acc.servers || acc.profile)) {
+        // Check sub expiry before sending
+        if (acc.subscription && acc.subscription.expires && acc.subscription.expires < Date.now()) {
+          acc.subscription = { plan: 'free', expires: 0, boostSrvId: null };
+          saveOneAccount(msg.userId);
+        }
         try { ws.send(JSON.stringify({ type: 'account_data', account: acc })); } catch {}
       } else {
         sbGet('accounts', 'user_id', msg.userId, (err, row) => {
