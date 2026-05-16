@@ -944,7 +944,7 @@ textarea { -webkit-user-select: text; user-select: text; }
 
 /* ── SUBSCRIPTION BADGES ── */
 .sub-badge {
-  display: inline-flex; align-items: center; gap: 3px;
+  display: inline-flex; align-items: center;
   font-size: 10px; font-weight: 700; letter-spacing: .05em;
   padding: 2px 8px; border-radius: 12px; flex-shrink: 0;
   vertical-align: middle; margin-left: 5px; line-height: 1.4;
@@ -952,30 +952,25 @@ textarea { -webkit-user-select: text; user-select: text; }
 .sub-badge.plus {
   background: rgba(79,255,176,.15);
   color: #4fffb0;
-  border: 1.5px solid rgba(79,255,176,.5);
+  border: 1.5px solid #4fffb0;
 }
 .sub-badge.pro {
-  background: linear-gradient(135deg, rgba(79,255,176,.2), rgba(96,165,250,.2));
-  color: transparent;
-  border: 1.5px solid transparent;
-  background-clip: padding-box;
-  position: relative;
-}
-.sub-badge.pro::before {
-  content: '';
-  position: absolute; inset: -1.5px;
-  border-radius: 12px;
-  background: linear-gradient(135deg, #4fffb0, #60a5fa);
-  z-index: -1;
+  background: rgba(0,0,0,.3);
+  border: 1.5px solid #4fffb0;
+  padding: 0;
 }
 .sub-badge.pro .sb-inner {
-  background: linear-gradient(135deg, #4fffb0, #60a5fa);
+  display: inline-flex; align-items: center;
+  padding: 2px 8px;
+  border-radius: 11px;
+  background: linear-gradient(90deg, #4fffb0, #60a5fa);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+  color: transparent;
 }
-body.light .sub-badge.plus { background: rgba(0,168,107,.12); color: #00875a; border-color: rgba(0,168,107,.4); }
-body.light .sub-badge.pro::before { background: linear-gradient(135deg, #00a86b, #3b82f6); }
+body.light .sub-badge.plus { background: rgba(0,168,107,.12); color: #00875a; border-color: #00875a; }
+body.light .sub-badge.pro { border-color: #00875a; }
 
 /* ── SHOP OVERLAY ── */
 #shopov { position: fixed; inset: 0; background: rgba(0,0,0,.8); z-index: 700; display: none; align-items: center; justify-content: center; }
@@ -2809,17 +2804,9 @@ function renderRail() {
   for (const [id, srv] of Object.entries(SERVERS)) {
     const el = document.createElement('div');
     el.className = 'si' + (id === curSrv ? ' act' : '');
-    el.title = srv.name + (ME.subBoostSrv === id ? ' ⚡ Boostováno' : '');
-    el.style.position = 'relative';
+    el.title = srv.name;
     el.textContent = srv.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
     el.onclick = () => switchSrv(id);
-    // Boost indicator — malá ⚡ tečka v rohu ikony
-    if (ME.subBoostSrv === id) {
-      const dot = document.createElement('span');
-      dot.style.cssText = 'position:absolute;bottom:-2px;right:-2px;width:16px;height:16px;border-radius:50%;background:#0d1117;display:flex;align-items:center;justify-content:center;font-size:9px;line-height:1;border:1.5px solid #0d1117;filter:drop-shadow(0 0 3px #4fffb0)';
-      dot.textContent = '⚡';
-      el.appendChild(dot);
-    }
     wrap.appendChild(el);
   }
 }
@@ -2828,20 +2815,7 @@ function renderRail() {
 function renderChs() {
   if (document.hidden) { _chsDirty = true; return; }
   const srv = SERVERS[curSrv]; if (!srv) return;
-  const isBoosted = ME.subBoostSrv === curSrv;
-  const srvNameEl = document.getElementById('srvname');
-  srvNameEl.textContent = srv.name;
-  // Boost badge vedle jména serveru
-  const existingBoostBadge = document.getElementById('srv-boost-badge');
-  if (existingBoostBadge) existingBoostBadge.remove();
-  if (isBoosted) {
-    const bb = document.createElement('span');
-    bb.id = 'srv-boost-badge';
-    bb.title = 'Ty boostuješ tento server';
-    bb.style.cssText = 'font-size:13px;margin-left:5px;vertical-align:middle;filter:drop-shadow(0 0 4px #4fffb0)';
-    bb.textContent = '⚡';
-    srvNameEl.parentElement.insertBefore(bb, srvNameEl.nextSibling);
-  }
+  document.getElementById('srvname').textContent = srv.name;
   const list = document.getElementById('chlist');
   const frag = document.createDocumentFragment();
 
@@ -3433,7 +3407,7 @@ function renderMsgs(scrollDown = true) {
     let nameStyle = 'color:' + col + ';' + fontStyle;
     let nameInner = m.author || '?';
     if (m.sub === 'pro') {
-      nameStyle = fontStyle + 'background:linear-gradient(90deg,#4fffb0,#60a5fa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text';
+      nameStyle = fontStyle + 'background:linear-gradient(90deg,#4fffb0,#60a5fa);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:#4fffb0';
     } else if (m.sub === 'plus') {
       nameStyle = 'color:#4fffb0;' + fontStyle;
     }
@@ -3605,7 +3579,7 @@ function renderDmMsgs(userId) {
     let dmNameStyle = 'color:' + col;
     let dmNameInner = msg.author || '?';
     if (msg.sub === 'pro') {
-      dmNameStyle = 'background:linear-gradient(90deg,#4fffb0,#60a5fa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text';
+      dmNameStyle = 'background:linear-gradient(90deg,#4fffb0,#60a5fa);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:#4fffb0';
     } else if (msg.sub === 'plus') {
       dmNameStyle = 'color:#4fffb0';
     }
@@ -8145,23 +8119,11 @@ function applySubBadge() {
   const n = document.getElementById('myname');
   if (n) {
     if (ME.sub === 'pro') {
-      n.style.background = 'linear-gradient(90deg, #4fffb0, #60a5fa)';
-      n.style.webkitBackgroundClip = 'text';
-      n.style.webkitTextFillColor = 'transparent';
-      n.style.backgroundClip = 'text';
-      n.style.color = '';
+      n.style.cssText = 'background:linear-gradient(90deg,#4fffb0,#60a5fa);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:#4fffb0';
     } else if (ME.sub === 'plus') {
-      n.style.color = '#4fffb0';
-      n.style.background = '';
-      n.style.webkitBackgroundClip = '';
-      n.style.webkitTextFillColor = '';
-      n.style.backgroundClip = '';
+      n.style.cssText = 'color:#4fffb0';
     } else {
-      n.style.color = '';
-      n.style.background = '';
-      n.style.webkitBackgroundClip = '';
-      n.style.webkitTextFillColor = '';
-      n.style.backgroundClip = '';
+      n.style.cssText = '';
     }
   }
   // Header ⚡ button glow
