@@ -3357,6 +3357,7 @@ function renderMsgs(scrollDown = true) {
       row.innerHTML = '<div class="avw"><div class="mav" style="background:' + avBg + '">' + avContent + '</div></div>'
         + '<div class="mw">'
         + '<div class="mmeta"><span class="mau" style="color:' + col + ';' + fontStyle + '">' + (m.author || '?') + '</span>'
+        + subBadgeHtml(m.sub)
         + roleBadge(role)
         + '<span class="mts">' + fmtTs(m.ts) + '</span></div>'
         + '<div class="mt" style="' + fontStyle + '">' + fmt(m.text) + '</div>'
@@ -3384,6 +3385,11 @@ function renderMsgs(scrollDown = true) {
   if (scrollDown) scrollBot();
 }
 
+function subBadgeHtml(sub) {
+  if (sub === 'pro')  return '<span class="sub-badge pro">⚡ PRO</span>';
+  if (sub === 'plus') return '<span class="sub-badge plus">★ PLUS</span>';
+  return '';
+}
 function rRxns(rxns, idx, mid) {
   return '<div class="mrxns">' + rxns.map((r, ri) => {
     return '<span class="rxn' + (r.a ? ' on' : '') + '" onclick="toggleRxn(' + idx + ',' + ri + ',\'' + mid + '\')">'
@@ -3513,6 +3519,7 @@ function renderDmMsgs(userId) {
     if (!same) {
       row.innerHTML = '<div class="avw"><div class="mav" style="background:' + avBg + '">' + avCnt + '</div></div>'
         + '<div class="mw"><div class="mmeta"><span class="mau" style="color:' + col + '">' + (msg.author || '?') + '</span>'
+        + subBadgeHtml(msg.sub)
         + '<span class="mts">' + fmtTs(msg.ts) + '</span></div>'
         + '<div class="mt">' + fmt(msg.text) + '</div></div>';
     } else {
@@ -3540,7 +3547,7 @@ function sendDm() {
   const txt = inp.value.trim(); if (!txt) return;
   const msg = {
     mid: gid(), authorId: ME.id, author: ME.name, color: ME.color,
-    avatar: ME.avatar, text: txt, ts: Date.now(), toId: curDm
+    avatar: ME.avatar, sub: ME.sub || 'free', text: txt, ts: Date.now(), toId: curDm
   };
   if (!dmConvs[curDm]) dmConvs[curDm] = [];
   dmConvs[curDm].push(msg); saveDms();
@@ -3808,7 +3815,7 @@ function sendMsg() {
       }
     }
   }
-  const msg = { mid: gid(), authorId: ME.id, author: ME.name, color: ME.color, font: ME.font, avatar: ME.avatar, text: txt, ts: Date.now(), reactions: [] };
+  const msg = { mid: gid(), authorId: ME.id, author: ME.name, color: ME.color, font: ME.font, avatar: ME.avatar, sub: ME.sub || 'free', text: txt, ts: Date.now(), reactions: [] };
   if (!MESSAGES[curCh]) MESSAGES[curCh] = [];
   MESSAGES[curCh].push(msg); saveMsgs();
   bcast({ type: 'chat', ch: curCh, msg });
