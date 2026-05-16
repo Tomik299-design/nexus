@@ -1007,6 +1007,33 @@ body.light .sub-badge.pro  { background: rgba(91,79,207,.1);  color: #5b4fcf; bo
 .boost-price { font-size: 18px; font-weight: 700; color: var(--acc2); }
 .boost-price span { font-size: 11px; color: var(--t3); font-weight: 400; }
 .boost-btn { width: 100%; padding: 7px; border-radius: var(--r); border: none; background: var(--acc2); color: #fff; font-size: 12px; font-weight: 600; cursor: pointer; margin-top: 10px; font-family: var(--f); }
+
+/* ── PROFILE BANNER (Nexus+ / Pro) ── */
+.npw.has-banner { padding: 0; overflow: hidden; }
+.npw.has-banner .prof-banner { height: 64px; border-radius: var(--r) var(--r) 0 0; flex-shrink: 0; }
+.npw.has-banner .prof-banner-body { display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px 12px; }
+.npw.has-banner .npwav { margin-top: -22px; border: 3px solid var(--bg3); border-radius: 50%; }
+.banner-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 8px; margin-bottom: 10px; }
+.banner-opt { height: 38px; border-radius: var(--r); cursor: pointer; border: 2px solid transparent; transition: none; }
+.banner-opt:hover { border-color: rgba(255,255,255,.3); }
+.banner-opt.sel { border-color: var(--acc); }
+.banner-opt.none { background: var(--bg4); display: flex; align-items: center; justify-content: center; color: var(--t3); font-size: 11px; }
+
+/* ── APP THEME (Pro only) ── */
+.theme-grid { display: grid; grid-template-columns: repeat(5,1fr); gap: 8px; margin-bottom: 10px; }
+.theme-opt { height: 36px; border-radius: var(--r); cursor: pointer; border: 2px solid transparent; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+.theme-opt:hover { border-color: rgba(255,255,255,.3); }
+.theme-opt.sel { border-color: var(--t1); }
+
+/* ── SERVER BANNER (Pro) ── */
+#srvhdr.has-banner { background-size: cover; background-position: center; min-height: 64px; align-items: flex-end; padding-bottom: 8px; border-radius: 0; }
+#srvhdr.has-banner .sn { text-shadow: 0 1px 6px rgba(0,0,0,.8); }
+
+/* ── UPSELL BLOCK ── */
+.upsell-block { background: linear-gradient(135deg, var(--bg3), rgba(124,106,255,.08)); border: 1px solid rgba(124,106,255,.25); border-radius: var(--r); padding: 14px; text-align: center; }
+.upsell-block .ub-title { font-size: 13px; font-weight: 600; color: var(--t1); margin-bottom: 4px; }
+.upsell-block .ub-desc  { font-size: 12px; color: var(--t2); margin-bottom: 10px; line-height: 1.5; }
+.upsell-block button { background: linear-gradient(135deg,#7c6aff,#a89cff); color: #fff; border: none; border-radius: var(--r); padding: 7px 18px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: var(--f); }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiI+CiAgPHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiByeD0iOCIgZmlsbD0iIzBhMGMwZiIvPgogIDxyZWN0IHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiIgcng9IjgiIGZpbGw9InVybCgjZykiLz4KICA8ZGVmcz4KICAgIDxsaW5lYXJHcmFkaWVudCBpZD0iZyIgeDE9IjAiIHkxPSIwIiB4Mj0iMSIgeTI9IjEiPgogICAgICA8c3RvcCBvZmZzZXQ9IjAlIiBzdG9wLWNvbG9yPSIjMGQxYTE0Ii8+CiAgICAgIDxzdG9wIG9mZnNldD0iMTAwJSIgc3RvcC1jb2xvcj0iIzBkMTAyNCIvPgogICAgPC9saW5lYXJHcmFkaWVudD4KICA8L2RlZnM+CiAgPHRleHQgeD0iMTYiIHk9IjIzIiBmb250LWZhbWlseT0iQXJpYWwgQmxhY2ssIHNhbnMtc2VyaWYiIGZvbnQtd2VpZ2h0PSI5MDAiCiAgICAgICAgZm9udC1zaXplPSIyMCIgZmlsbD0iIzRmZmZiMCIgdGV4dC1hbmNob3I9Im1pZGRsZSI+TjwvdGV4dD4KPC9zdmc+">
@@ -1222,6 +1249,7 @@ body.light .sub-badge.pro  { background: rgba(91,79,207,.1);  color: #5b4fcf; bo
       <div class="ptab" id="pt-account" onclick="profTab('account')"><span class="ptab-ico">🔑</span>Účet</div>
       <div class="ptab" id="pt-audio" onclick="profTab('audio')"><span class="ptab-ico">🎙️</span>Audio</div>
       <div class="ptab" id="pt-lang" onclick="profTab('lang')"><span class="ptab-ico">🌐</span>Jazyk</div>
+      <div class="ptab" id="pt-premium" onclick="profTab('premium')"><span class="ptab-ico">⚡</span>Prémiové</div>
     </div>
     <div id="profcontent"></div>
   </div>
@@ -1381,6 +1409,9 @@ const ME = {
   sub:        ls('nx_sub', 'free'),          // 'free' | 'plus' | 'pro'
   subExpires: ls('nx_sub_expires', 0),       // timestamp ms or 0 = never
   subBoostSrv: null,                         // srvId this sub is tied to (boost case)
+  // ── Premium features ──
+  banner:     ls('nx_banner', ''),           // gradient string or '' — Nexus+ / Pro
+  appTheme:   ls('nx_app_theme', ''),        // custom accent color — Pro only
 };
 lss('nx_id', ME.id);
 lss('nx_tag', ME.tag);
@@ -4716,9 +4747,10 @@ function switchSrv(id) {
   renderMbrs();
   for (const cat of (SERVERS[id] ? SERVERS[id].cats : [])) {
     const tc = cat.chs.find(c => c.type === 'text');
-    if (tc) { switchCh(tc); return; }
+    if (tc) { switchCh(tc); applyServerBannerHdr(); return; }
   }
   renderChs();
+  applyServerBannerHdr();
 }
 function switchChSilent(ch) {
   if (!ch) return;
@@ -5018,17 +5050,53 @@ function ssOverview() {
   const srv = SERVERS[curSrv];
   const r = myRole(); const canEdit = r.id === 'owner' || r.id === 'admin';
   const totalChs = srv.cats.reduce((a, c) => a + c.chs.length, 0);
+  const isPro = ME.sub === 'pro';
+  const hasSrvBanner = !!(srv.banner);
+
+  let bannerSection = '';
+  if (isPro && canEdit) {
+    bannerSection = '<div class="sssec"><h3>🎨 Banner serveru <span class="sub-badge pro" style="vertical-align:middle">⚡ PRO</span></h3>'
+      + '<div class="banner-grid" style="margin-bottom:8px">';
+    for (const b of BANNERS) {
+      if (b.id === '') {
+        bannerSection += '<div class="banner-opt none' + (!srv.banner ? ' sel' : '') + '" onclick="setSrvBanner(\'\')">❌ Žádný</div>';
+      } else {
+        bannerSection += '<div class="banner-opt' + (srv.banner === b.id ? ' sel' : '') + '" style="background:' + b.id + '" title="' + b.label + '" onclick="setSrvBanner(\'' + b.id.replace(/'/g, "\\'") + '\')"></div>';
+      }
+    }
+    bannerSection += '</div></div>';
+  } else if (!isPro && canEdit) {
+    bannerSection = '<div class="sssec"><div class="upsell-block"><div class="ub-title">🎨 Banner serveru</div><div class="ub-desc">Přidej gradient banner do záhlaví kanálů. Dostupné s Nexus Pro.</div><button onclick="closeSS();openShop()">Získat Nexus Pro →</button></div></div>';
+  }
+
   return '<div class="sstitle">' + t('overview') + '</div>'
     + '<div class="sssec"><h3>Název serveru</h3>'
     + '<div style="display:flex;gap:8px">'
     + '<input class="ssinp" style="flex:1" id="srvren" value="' + srv.name + '" maxlength="40"' + (canEdit ? '' : ' disabled') + '>'
     + (canEdit ? '<button class="ssbtn p" onclick="renameSrv()">Uložit</button>' : '')
     + '</div></div>'
+    + bannerSection
     + '<div class="sssec"><h3>Info</h3>'
     + '<div class="ssrow"><div class="sri"><div class="srn">Tvoje role</div></div>' + roleBadge(r) + '</div>'
     + '<div class="ssrow"><div class="sri"><div class="srn">Počet kanálů</div></div><span style="color:var(--acc);font-family:var(--fm);font-size:13px">' + totalChs + '</span></div>'
     + '<div class="ssrow"><div class="sri"><div class="srn">Online členů</div></div><span style="color:var(--acc);font-family:var(--fm);font-size:13px">' + (Object.keys(onlineMbrs).length + 1) + '</span></div>'
     + '</div>';
+}
+
+function setSrvBanner(val) {
+  if (!SERVERS[curSrv]) return;
+  SERVERS[curSrv].banner = val;
+  saveSrvs(); broadcastSrv();
+  applyServerBannerHdr();
+  // Re-render overview to update selection
+  document.querySelectorAll('#sscont .banner-opt').forEach(el => el.classList.remove('sel'));
+  const allOpts = document.querySelectorAll('#sscont .banner-opt');
+  allOpts.forEach(el => {
+    const bg = el.style.background;
+    if (val === '' && el.classList.contains('none')) el.classList.add('sel');
+    else if (bg === val) el.classList.add('sel');
+  });
+  toast(val ? '✅ Banner nastaven!' : '✅ Banner odebrán', 'ok');
 }
 function renameSrv() {
   const n = (document.getElementById('srvren') ? document.getElementById('srvren').value : '').trim();
@@ -5650,13 +5718,27 @@ function profTab(tab) {
   else if (tab === 'account') cont.innerHTML = profAccount();
   else if (tab === 'audio')   cont.innerHTML = profAudio();
   else if (tab === 'lang')    cont.innerHTML = profLang();
+  else if (tab === 'premium') cont.innerHTML = profPremium();
   if (tab === 'identity') setTimeout(() => document.getElementById('prof-name') && document.getElementById('prof-name').focus(), 80);
 }
 
-function profPreviewHtml(name, color, font, bio, avatar) {
+function profPreviewHtml(name, color, font, bio, avatar, banner) {
   const avBg = avatar ? 'transparent' : color;
   const avCnt = avatar ? '<img src="' + avatar + '" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%">' : (name || '?')[0].toUpperCase();
   const fStyle = 'font-family:\'' + font + '\',sans-serif';
+  const hasBanner = !!(banner || ME.banner);
+  const bannerVal = banner || ME.banner || '';
+  if (hasBanner) {
+    return '<div class="npw has-banner">'
+      + '<div class="prof-banner" style="background:' + bannerVal + '"></div>'
+      + '<div class="prof-banner-body">'
+      + '<div class="npwav" style="background:' + avBg + ';' + fStyle + '">' + avCnt + '</div>'
+      + '<div class="npwb">'
+      + '<div class="npwm"><span class="npwn" id="ppwn" style="color:' + color + ';' + fStyle + '">' + (name || 'Přezdívka') + '</span><span class="npwt">' + ME.tag + '</span></div>'
+      + (bio ? '<div style="font-size:11px;color:var(--t2);margin-bottom:3px">' + bio + '</div>' : '')
+      + '<div class="npwtxt" style="' + fStyle + '">Takhle vypadá tvoje zpráva v chatu</div>'
+      + '</div></div></div>';
+  }
   return '<div class="npw">'
     + '<div class="npwav" style="background:' + avBg + ';' + fStyle + '">' + avCnt + '</div>'
     + '<div class="npwb">'
@@ -6127,6 +6209,162 @@ function profLang() {
       + '</div>').join('')
     + '</div></div>';
 }
+
+// ── PREMIUM PROFILE SETTINGS ──────────────────────────────────────────
+
+const BANNERS = [
+  { id: '',            label: 'Žádný' },
+  { id: 'linear-gradient(135deg,#0d1f14,#1a3a2a)',  label: 'Temný les' },
+  { id: 'linear-gradient(135deg,#1a0d2e,#2d1b4e)',  label: 'Fialová noc' },
+  { id: 'linear-gradient(135deg,#0d1a2e,#1a2d4e)',  label: 'Hluboká modrá' },
+  { id: 'linear-gradient(135deg,#2e0d0d,#4e1a1a)',  label: 'Krvavý západ' },
+  { id: 'linear-gradient(135deg,#0d2e2e,#1a4e4e)',  label: 'Tyrkysový oceán' },
+  { id: 'linear-gradient(135deg,#2e2a0d,#4e421a)',  label: 'Zlatá poušť' },
+  { id: 'linear-gradient(135deg,#4fffb0,#7c6aff)',  label: 'Nexus' },
+  { id: 'linear-gradient(135deg,#ff6b6b,#ffa726)',  label: 'Západ slunce' },
+  { id: 'linear-gradient(135deg,#667eea,#764ba2)',  label: 'Purpurový sen' },
+  { id: 'linear-gradient(135deg,#11998e,#38ef7d)',  label: 'Smaragd' },
+  { id: 'linear-gradient(135deg,#f7971e,#ffd200)',  label: 'Zlatá' },
+];
+
+const APP_THEMES = [
+  { id: '',         acc: '#4fffb0', label: 'Výchozí',   emoji: '🟢' },
+  { id: 'blue',     acc: '#60a5fa', label: 'Modrá',      emoji: '🔵' },
+  { id: 'purple',   acc: '#a78bfa', label: 'Fialová',    emoji: '🟣' },
+  { id: 'red',      acc: '#f87171', label: 'Červená',    emoji: '🔴' },
+  { id: 'orange',   acc: '#fb923c', label: 'Oranžová',   emoji: '🟠' },
+  { id: 'yellow',   acc: '#fbbf24', label: 'Žlutá',      emoji: '🟡' },
+  { id: 'pink',     acc: '#f472b6', label: 'Růžová',     emoji: '🩷' },
+  { id: 'cyan',     acc: '#22d3ee', label: 'Azurová',    emoji: '🩵' },
+  { id: 'white',    acc: '#e2eaf4', label: 'Bílá',       emoji: '⚪' },
+  { id: 'gold',     acc: '#f5c542', label: 'Zlatá',      emoji: '🌟' },
+];
+
+function profPremium() {
+  const isPluOrPro = ME.sub === 'plus' || ME.sub === 'pro';
+  const isPro = ME.sub === 'pro';
+  let html = '<div class="ptitle">⚡ Prémiové funkce</div>';
+
+  // ── PROFILOVÝ BANNER (Plus + Pro) ──
+  html += '<div class="psec"><h3>Profilový banner</h3>';
+  if (isPluOrPro) {
+    html += '<div style="margin-bottom:10px">' + profPreviewHtml(ME.name, ME.color, ME.font, ME.bio, ME.avatar, ME.banner) + '</div>';
+    html += '<div class="banner-grid">';
+    for (const b of BANNERS) {
+      if (b.id === '') {
+        html += '<div class="banner-opt none sel" id="bopt-none" onclick="previewBanner(\'\')">❌ Žádný</div>';
+      } else {
+        html += '<div class="banner-opt' + (ME.banner === b.id ? ' sel' : '') + '" id="bopt-' + BANNERS.indexOf(b) + '" style="background:' + b.id + '" title="' + b.label + '" onclick="previewBanner(\'' + b.id.replace(/'/g, "\\'") + '\')"></div>';
+      }
+    }
+    html += '</div>';
+  } else {
+    html += '<div class="upsell-block"><div class="ub-title">🎨 Nexus+ funkce</div><div class="ub-desc">Profilový banner ti umožní přidat barevný gradient za tvůj avatar — odliš se od ostatních.</div><button onclick="closeProf();openShop()">Získat Nexus+ →</button></div>';
+  }
+  html += '</div>';
+
+  // ── VLASTNÍ VZHLED APLIKACE (Pro only) ──
+  html += '<div class="psec"><h3>Vlastní barva aplikace</h3>';
+  if (isPro) {
+    html += '<div class="theme-grid">';
+    for (const th of APP_THEMES) {
+      html += '<div class="theme-opt' + (ME.appTheme === th.id ? ' sel' : '') + '" id="thopt-' + th.id + '" title="' + th.label + '" style="background:' + th.acc + '22;border-color:' + (ME.appTheme === th.id ? th.acc : 'transparent') + '" onclick="previewAppTheme(\'' + th.id + '\')">' + th.emoji + '</div>';
+    }
+    html += '</div><div style="font-size:11px;color:var(--t3)">Změní accent barvu celé aplikace (tlačítka, linky, zvýraznění).</div>';
+  } else {
+    html += '<div class="upsell-block"><div class="ub-title">🎨 Nexus Pro funkce</div><div class="ub-desc">Změň barvu celé aplikace — tlačítka, zvýraznění, aktivní prvky.</div><button onclick="closeProf();openShop()">Získat Nexus Pro →</button></div>';
+  }
+  html += '</div>';
+
+  if (isPluOrPro) {
+    html += '<div style="display:flex;gap:8px;margin-top:4px">'
+      + '<button class="mbtn mbtn-g" style="flex:1" onclick="closeProf()">Zrušit</button>'
+      + '<button class="mbtn mbtn-p" style="flex:2" onclick="savePremium()">💾 Uložit</button></div>';
+  }
+  return html;
+}
+
+let _prevBanner = ME.banner;
+let _prevAppTheme = ME.appTheme;
+
+function previewBanner(val) {
+  _prevBanner = val;
+  // Highlight selected
+  document.querySelectorAll('.banner-opt').forEach(el => el.classList.remove('sel'));
+  if (val === '') { document.getElementById('bopt-none')?.classList.add('sel'); }
+  else {
+    const idx = BANNERS.findIndex(b => b.id === val);
+    if (idx >= 0) document.getElementById('bopt-' + idx)?.classList.add('sel');
+  }
+  // Live preview
+  ME.banner = val;
+  const prev = document.querySelector('#profcontent .npw, #profcontent .npw.has-banner');
+  if (prev) prev.outerHTML; // force re-render of preview block
+  const cont = document.getElementById('profcontent');
+  if (cont) {
+    const previewDiv = cont.querySelector('.psec');
+    if (previewDiv) {
+      const previewEl = previewDiv.querySelector('.npw, [class*="has-banner"]');
+      if (previewEl) previewEl.outerHTML = profPreviewHtml(ME.name, ME.color, ME.font, ME.bio, ME.avatar, val);
+    }
+  }
+  ME.banner = val; // keep updated
+}
+
+function previewAppTheme(id) {
+  _prevAppTheme = id;
+  document.querySelectorAll('.theme-opt').forEach(el => el.classList.remove('sel'));
+  const th = APP_THEMES.find(t => t.id === id);
+  const el = document.getElementById('thopt-' + id);
+  if (el && th) { el.classList.add('sel'); el.style.borderColor = th.acc; }
+  applyAppTheme(id);
+}
+
+function applyAppTheme(id) {
+  const th = APP_THEMES.find(t => t.id === id) || APP_THEMES[0];
+  const acc = th.acc;
+  // Override CSS variables
+  const root = document.documentElement;
+  if (id === '') {
+    root.style.removeProperty('--acc');
+    root.style.removeProperty('--acc-d');
+  } else {
+    root.style.setProperty('--acc', acc);
+    root.style.setProperty('--acc-d', acc + '22');
+  }
+}
+
+function savePremium() {
+  ME.banner = _prevBanner;
+  ME.appTheme = _prevAppTheme;
+  lss('nx_banner', ME.banner);
+  lss('nx_app_theme', ME.appTheme);
+  applyAppTheme(ME.appTheme);
+  applyServerBannerHdr();
+  bcast({ type: 'presence', m: myInfo() });
+  toast('✅ Prémiové nastavení uloženo!', 'ok');
+  closeProf();
+}
+
+function applyServerBannerHdr() {
+  // Server banner in channel header — Pro only, per-server setting
+  const srv = SERVERS[curSrv];
+  const hdr = document.getElementById('srvhdr');
+  if (!hdr) return;
+  const srvBanner = srv?.banner || '';
+  if (srvBanner && ME.sub === 'pro') {
+    hdr.classList.add('has-banner');
+    hdr.style.backgroundImage = srvBanner.startsWith('linear') ? srvBanner : 'url(' + srvBanner + ')';
+  } else {
+    hdr.classList.remove('has-banner');
+    hdr.style.backgroundImage = '';
+  }
+}
+
+// Apply theme on load
+(function() {
+  if (ME.appTheme && (ME.sub === 'pro')) applyAppTheme(ME.appTheme);
+})();
 
 function profAccount() {
   var idVal   = ME.id || '';
