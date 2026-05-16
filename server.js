@@ -1416,6 +1416,7 @@ setTimeout(() => location.reload(), 30000);
   }
 
   res.writeHead(404); res.end('404');
+});
 
 // ── WebSocket server ──
 const wss     = new WebSocket.Server({ server: httpServer });
