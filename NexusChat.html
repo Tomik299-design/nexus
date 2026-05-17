@@ -3164,39 +3164,47 @@ function showUserCard(e, m, isOffline) {
   const avCnt = m.avatar
     ? '<img src="' + m.avatar + '" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%">'
     : (m.name || '?')[0].toUpperCase();
-  let subBadge = '', nameColor = m.color || '#888';
-  if (m.sub === 'pro') { subBadge = '<span style="background:linear-gradient(90deg,#4fffb0,#7c6aff);color:#000;font-size:9px;font-weight:700;padding:1px 6px;border-radius:8px;margin-left:5px">⚡ PRO</span>'; nameColor = '#7ee8c8'; }
-  else if (m.sub === 'plus') { subBadge = '<span style="background:#4fffb0;color:#000;font-size:9px;font-weight:700;padding:1px 6px;border-radius:8px;margin-left:5px">★ PLUS</span>'; nameColor = '#4fffb0'; }
+  let subBadge = '', nameColor = '#fff';
+  if (m.sub === 'pro') subBadge = '<span style="background:rgba(0,0,0,.3);color:#fff;font-size:9px;font-weight:700;padding:1px 6px;border-radius:8px;margin-left:5px">⚡ PRO</span>';
+  else if (m.sub === 'plus') subBadge = '<span style="background:rgba(0,0,0,.3);color:#fff;font-size:9px;font-weight:700;padding:1px 6px;border-radius:8px;margin-left:5px">★ PLUS</span>';
   const card = document.createElement('div');
   card.id = 'user-card-popup';
   card.style.cssText = 'position:fixed;z-index:9999;background:var(--bg2);border:1px solid var(--bd);border-radius:12px;width:240px;box-shadow:0 8px 32px rgba(0,0,0,.5);overflow:hidden';
   let html = '';
   if (m.banner) {
-    html += '<div style="height:70px;background:' + m.banner + ';width:100%"></div>';
-    html += '<div style="padding:0 12px 12px;margin-top:-26px">';
-    html += '<div style="width:48px;height:48px;border-radius:50%;border:3px solid var(--bg2);background:' + avBg + ';display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;color:#fff;overflow:hidden;margin-bottom:8px">' + avCnt + '</div>';
+    html += '<div style="background:' + m.banner + ';padding:12px 12px 30px;width:100%;box-sizing:border-box">';
+    html += '<div style="font-size:14px;font-weight:700;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.4);display:flex;align-items:center;gap:4px">';
+    html += (m.name || '?') + subBadge + '</div>';
+    html += '<div style="font-size:11px;color:rgba(255,255,255,.75);margin-top:2px">' + (targetR.name || 'Člen') + (isOffline ? ' · offline' : '') + '</div>';
+    html += '</div>';
+    html += '<div style="padding:0 12px 12px;margin-top:-22px;display:flex;align-items:flex-start;gap:10px">';
+    html += '<div style="width:44px;height:44px;border-radius:50%;border:3px solid var(--bg2);background:' + avBg + ';display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:#fff;overflow:hidden;flex-shrink:0">' + avCnt + '</div>';
+    if (m.bio) html += '<div style="font-size:11px;color:var(--t2);margin-top:26px;line-height:1.4">' + m.bio + '</div>';
+    html += '</div>';
   } else {
-    html += '<div style="padding:14px 12px 6px">';
-    html += '<div style="width:48px;height:48px;border-radius:50%;background:' + avBg + ';display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;color:#fff;overflow:hidden;margin-bottom:8px">' + avCnt + '</div>';
+    html += '<div style="padding:14px 12px 8px">';
+    html += '<div style="width:44px;height:44px;border-radius:50%;background:' + avBg + ';display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:#fff;overflow:hidden;margin-bottom:8px">' + avCnt + '</div>';
+    const nc = m.sub === 'pro' ? '#7ee8c8' : m.sub === 'plus' ? '#4fffb0' : (m.color || '#888');
+    html += '<div style="font-size:14px;font-weight:700;color:' + nc + ';display:flex;align-items:center;gap:4px;margin-bottom:2px">' + (m.name || '?');
+    if (m.sub === 'pro') html += '<span style="background:linear-gradient(90deg,#4fffb0,#7c6aff);color:#000;font-size:9px;font-weight:700;padding:1px 6px;border-radius:8px">⚡ PRO</span>';
+    else if (m.sub === 'plus') html += '<span style="background:#4fffb0;color:#000;font-size:9px;font-weight:700;padding:1px 6px;border-radius:8px">★ PLUS</span>';
+    html += '</div>';
+    html += '<div style="font-size:11px;color:' + roleColor + ';margin-bottom:' + (m.bio ? '6' : '4') + 'px">' + (targetR.name || 'Člen') + (isOffline ? ' · offline' : '') + '</div>';
+    if (m.bio) html += '<div style="font-size:11px;color:var(--t2);margin-bottom:6px;line-height:1.4">' + m.bio + '</div>';
+    html += '</div>';
   }
-  html += '<div style="display:flex;align-items:center;flex-wrap:wrap;gap:3px;margin-bottom:3px">';
-  html += '<span style="font-size:14px;font-weight:700;color:' + nameColor + '">' + (m.name || '?') + '</span>' + subBadge;
-  html += '</div>';
-  html += '<div style="font-size:11px;color:' + roleColor + ';margin-bottom:' + (m.bio ? '6' : '8') + 'px">' + (targetR.name || 'Člen') + (isOffline ? ' · offline' : '') + '</div>';
-  if (m.bio) html += '<div style="font-size:11px;color:var(--t2);margin-bottom:8px;line-height:1.4">' + m.bio + '</div>';
-  html += '</div>';
   html += '<div style="border-top:1px solid var(--bd);padding:8px 12px;display:flex;gap:6px">';
   html += '<button id="ucard-dm" style="flex:1;background:var(--acc);color:#000;border:none;border-radius:7px;padding:6px;font-size:12px;font-weight:700;cursor:pointer">💬 Zpráva</button>';
   html += '<button id="ucard-more" style="background:var(--bg4);color:var(--t2);border:1px solid var(--bd);border-radius:7px;padding:6px 10px;font-size:12px;cursor:pointer">⋯</button>';
   html += '</div>';
   card.innerHTML = html;
   document.body.appendChild(card);
-  card.querySelector('#ucard-dm').onclick = function(ev) { ev.stopPropagation(); document.getElementById('user-card-popup')?.remove(); openDm(m.id); };
-  card.querySelector('#ucard-more').onclick = function(ev) { ev.stopPropagation(); document.getElementById('user-card-popup')?.remove(); showMbrMenu(ev, m, isOffline); };
+  card.querySelector('#ucard-dm').onclick = ev => { ev.stopPropagation(); document.getElementById('user-card-popup')?.remove(); openDm(m.id); };
+  card.querySelector('#ucard-more').onclick = ev => { ev.stopPropagation(); document.getElementById('user-card-popup')?.remove(); showMbrMenu(ev, m, isOffline); };
   const vw = window.innerWidth, vh = window.innerHeight;
   let x = e.clientX + 10, y = e.clientY - 10;
   if (x + 260 > vw) x = e.clientX - 260;
-  if (y + 340 > vh) y = vh - 340;
+  if (y + 360 > vh) y = vh - 360;
   card.style.left = Math.max(4, x) + 'px';
   card.style.top = Math.max(4, y) + 'px';
   setTimeout(() => document.addEventListener('click', function _c() { document.getElementById('user-card-popup')?.remove(); document.removeEventListener('click', _c); }), 50);
@@ -5801,17 +5809,17 @@ function profTab(tab) {
 function profPreviewHtml(name, color, font, bio, avatar, banner) {
   const avBg = avatar ? 'transparent' : color;
   const avCnt = avatar ? '<img src="' + avatar + '" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%">' : (name || '?')[0].toUpperCase();
-  const fStyle = 'font-family:\'' + font + '\',sans-serif';
+  const fStyle = "font-family:'" + (font||'Inter') + "',sans-serif";
   const bannerVal = (banner !== undefined) ? banner : ME.banner;
-  const hasBanner = !!bannerVal;
-  if (hasBanner) {
+  if (bannerVal) {
     return '<div class="npw" style="padding:0;overflow:hidden;flex-direction:column">'
-      + '<div style="height:64px;background:' + bannerVal + ';width:100%;flex-shrink:0;border-radius:var(--r) var(--r) 0 0"></div>'
+      + '<div style="background:' + bannerVal + ';width:100%;padding:10px 12px 28px;border-radius:var(--r) var(--r) 0 0">'
+      + '<div class="npwm"><span class="npwn" id="ppwn" style="color:#fff;' + fStyle + ';text-shadow:0 1px 3px rgba(0,0,0,.4)">' + (name || 'Přezdívka') + '</span><span class="npwt" style="opacity:.8">' + ME.tag + '</span></div>'
+      + (bio ? '<div style="font-size:11px;color:rgba(255,255,255,.8);margin-top:2px">' + bio + '</div>' : '')
+      + '</div>'
       + '<div style="display:flex;align-items:flex-start;gap:10px;padding:0 12px 12px;margin-top:-22px">'
       + '<div class="npwav" style="background:' + avBg + ';' + fStyle + ';border:3px solid var(--bg3);flex-shrink:0">' + avCnt + '</div>'
-      + '<div class="npwb" style="min-width:0;flex:1">'
-      + '<div class="npwm"><span class="npwn" id="ppwn" style="color:' + color + ';' + fStyle + '">' + (name || 'Přezdívka') + '</span><span class="npwt">' + ME.tag + '</span></div>'
-      + (bio ? '<div style="font-size:11px;color:var(--t2);margin-bottom:3px">' + bio + '</div>' : '')
+      + '<div class="npwb" style="min-width:0;flex:1;margin-top:24px">'
       + '<div class="npwtxt" style="' + fStyle + '">Takhle vypadá tvoje zpráva v chatu</div>'
       + '</div></div></div>';
   }
