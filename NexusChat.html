@@ -2797,15 +2797,7 @@ function renderRail() {
     const el = document.createElement('div');
     el.className = 'si' + (id === curSrv ? ' act' : '');
     el.title = srv.name;
-    el.style.position = 'relative';
     el.textContent = srv.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
-    // Boost tečka — pokud boostuješ tento server
-    if (ME.subBoostSrv === id) {
-      const dot = document.createElement('span');
-      dot.title = 'Boostuješ tento server';
-      dot.style.cssText = 'position:absolute;bottom:2px;right:2px;width:10px;height:10px;background:linear-gradient(135deg,#4fffb0,#7c6aff);border-radius:50%;border:2px solid var(--bg1);font-size:0';
-      el.appendChild(dot);
-    }
     el.onclick = () => switchSrv(id);
     wrap.appendChild(el);
   }
@@ -2815,19 +2807,7 @@ function renderRail() {
 function renderChs() {
   if (document.hidden) { _chsDirty = true; return; }
   const srv = SERVERS[curSrv]; if (!srv) return;
-  const srvnameEl = document.getElementById('srvname');
-  srvnameEl.textContent = srv.name;
-  // Zobraz ⚡ vedle názvu pokud boostuješ tento server
-  const existingBoostIcon = srvnameEl.parentElement.querySelector('.srv-boost-icon');
-  if (existingBoostIcon) existingBoostIcon.remove();
-  if (ME.subBoostSrv === curSrv) {
-    const icon = document.createElement('span');
-    icon.className = 'srv-boost-icon';
-    icon.title = 'Boostuješ tento server';
-    icon.style.cssText = 'font-size:12px;margin-left:4px;vertical-align:middle;filter:drop-shadow(0 0 4px #4fffb0)';
-    icon.textContent = '⚡';
-    srvnameEl.insertAdjacentElement('afterend', icon);
-  }
+  document.getElementById('srvname').textContent = srv.name;
   const list = document.getElementById('chlist');
   const frag = document.createDocumentFragment();
 
@@ -5128,6 +5108,7 @@ function ssOverview() {
     + '<div class="ssrow"><div class="sri"><div class="srn">Tvoje role</div></div>' + roleBadge(r) + '</div>'
     + '<div class="ssrow"><div class="sri"><div class="srn">Počet kanálů</div></div><span style="color:var(--acc);font-family:var(--fm);font-size:13px">' + totalChs + '</span></div>'
     + '<div class="ssrow"><div class="sri"><div class="srn">Online členů</div></div><span style="color:var(--acc);font-family:var(--fm);font-size:13px">' + (Object.keys(onlineMbrs).length + 1) + '</span></div>'
+    + '<div class="ssrow" style="align-items:flex-start;flex-direction:column;gap:4px"><div style="display:flex;align-items:center;justify-content:space-between;width:100%"><div class="srn">Server ID</div><button onclick="navigator.clipboard.writeText(\'' + curSrv + '\').then(()=>toast(\'Server ID zkopírováno ✓\',\'ok\'))" style="background:var(--bg4);border:1px solid var(--bd);border-radius:6px;padding:3px 9px;color:var(--t2);cursor:pointer;font-size:11px">📋 Kopírovat</button></div><div style="font-family:var(--fm);font-size:11px;color:var(--t3);word-break:break-all;margin-top:2px">' + curSrv + '</div></div>'
     + '</div>';
 }
 
@@ -8227,18 +8208,17 @@ function _renderBoostList() {
   if (!list) return;
   const srvs = Object.values(SERVERS);
   if (!srvs.length) { list.innerHTML = '<div style="color:var(--t3);font-size:13px">Nejsi na žádném serveru.</div>'; return; }
-  list.innerHTML = Object.entries(SERVERS).map(([srvId, srv]) => {
+  list.innerHTML = srvs.map(srv => {
     const isOwner = srv.ownerId === ME.id;
-    const isBoosted = ME.subBoostSrv === srvId;
     return '<div class="boost-card">'
-      + '<div class="boost-srv-name">' + (srv.name || 'Server') + (isBoosted ? ' ⚡' : '') + '</div>'
-      + '<div style="font-size:11px;color:var(--t3);margin-bottom:10px">' + (isOwner ? '👑 Tvůj server' : 'Člen') + (isBoosted ? ' · <span style="color:#4fffb0">Aktivní boost</span>' : '') + '</div>'
+      + '<div class="boost-srv-name">' + (srv.name || 'Server') + '</div>'
+      + '<div style="font-size:11px;color:var(--t3);margin-bottom:10px">' + (isOwner ? '👑 Tvůj server' : 'Člen') + '</div>'
       + '<div class="boost-tier"><span class="bt-plus">Nexus+ boost — 79 Kč/měs</span></div>'
       + '<div style="font-size:11px;color:var(--t2);margin-bottom:8px;line-height:1.5">Server dostane: vlastní emotikony, profilové bannery členů. Ty získáš výhody Nexus+.</div>'
-      + '<button class="boost-btn" onclick="shopBoostSrv(\'' + srvId + '\',\'plus\')">🚀 Boost Nexus+</button>'
+      + '<button class="boost-btn" onclick="shopBoostSrv(\'' + srv.id + '\',\'plus\')">🚀 Boost Nexus+</button>'
       + '<div class="boost-tier" style="margin-top:10px"><span class="bt-pro">Nexus Pro boost — 159 Kč/měs</span></div>'
       + '<div style="font-size:11px;color:var(--t2);margin-bottom:8px;line-height:1.5">Server dostane vše + vlastní bannery serverů. Ty získáš výhody Nexus Pro.</div>'
-      + '<button class="boost-btn" style="background:linear-gradient(135deg,#7c6aff,#a89cff)" onclick="shopBoostSrv(\'' + srvId + '\',\'pro\')">⚡ Boost Nexus Pro</button>'
+      + '<button class="boost-btn" style="background:linear-gradient(135deg,#7c6aff,#a89cff)" onclick="shopBoostSrv(\'' + srv.id + '\',\'pro\')">⚡ Boost Nexus Pro</button>'
       + '</div>';
   }).join('');
 }
