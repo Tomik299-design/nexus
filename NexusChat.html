@@ -2138,14 +2138,12 @@ function connectWS(url) {
       setTimeout(() => {
         if (wsConn && wsConn.readyState === 1 && ME.id && ME.name) {
           try {
-            const _p = { name: ME.name, color: ME.color, tag: ME.tag, font: ME.font, status: ME.status };
-            if (ME.avatar) _p.avatar = ME.avatar;
             wsConn.send(JSON.stringify({
               type: 'account_save',
               userId: ME.id,
               servers: SERVERS,
               roles: MBROLES,
-              profile: _p
+              profile: { name: ME.name, color: ME.color, tag: ME.tag, avatar: ME.avatar, font: ME.font, status: ME.status }
             }));
           } catch {}
         }
@@ -2800,13 +2798,7 @@ function renderRail() {
     const el = document.createElement('div');
     el.className = 'si' + (id === curSrv ? ' act' : '');
     el.title = srv.name;
-    el.style.position = 'relative';
     el.textContent = srv.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
-    if (ME.subBoostSrv === id) {
-      const dot = document.createElement('span');
-      dot.style.cssText = 'position:absolute;bottom:2px;right:2px;width:10px;height:10px;background:linear-gradient(135deg,#4fffb0,#7c6aff);border-radius:50%;border:2px solid var(--bg1)';
-      el.appendChild(dot);
-    }
     el.onclick = () => switchSrv(id);
     wrap.appendChild(el);
   }
@@ -2816,17 +2808,7 @@ function renderRail() {
 function renderChs() {
   if (document.hidden) { _chsDirty = true; return; }
   const srv = SERVERS[curSrv]; if (!srv) return;
-  const _sne = document.getElementById('srvname');
-  _sne.textContent = srv.name;
-  _sne.parentElement.querySelector('.srv-boost-icon')?.remove();
-  if (ME.subBoostSrv === curSrv) {
-    const _bi = document.createElement('span');
-    _bi.className = 'srv-boost-icon';
-    _bi.title = 'Boostuješ tuto komunitu';
-    _bi.style.cssText = 'font-size:12px;margin-left:5px;vertical-align:middle';
-    _bi.textContent = '⚡';
-    _sne.insertAdjacentElement('afterend', _bi);
-  }
+  document.getElementById('srvname').textContent = srv.name;
   const list = document.getElementById('chlist');
   const frag = document.createDocumentFragment();
 
@@ -5812,25 +5794,34 @@ function profTab(tab) {
   else if (tab === 'account') cont.innerHTML = profAccount();
   else if (tab === 'audio')   cont.innerHTML = profAudio();
   else if (tab === 'lang')    cont.innerHTML = profLang();
-  else if (tab === 'premium') { _prevBanner = ME.banner; _prevAppTheme = ME.appTheme; cont.innerHTML = profPremium(); }
+  else if (tab === 'premium') cont.innerHTML = profPremium();
   if (tab === 'identity') setTimeout(() => document.getElementById('prof-name') && document.getElementById('prof-name').focus(), 80);
 }
 
 function profPreviewHtml(name, color, font, bio, avatar, banner) {
   const avBg = avatar ? 'transparent' : color;
   const avCnt = avatar ? '<img src="' + avatar + '" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%">' : (name || '?')[0].toUpperCase();
-  const fStyle = "font-family:'" + (font||'Inter') + "',sans-serif";
+  const fStyle = 'font-family:\'' + font + '\',sans-serif';
   const bannerVal = (banner !== undefined) ? banner : ME.banner;
-  return '<div class="npw" style="' + (bannerVal ? 'padding:0;overflow:hidden' : '') + '">'
-    + (bannerVal ? '<div style="height:52px;background:' + bannerVal + ';width:100%;flex-shrink:0"></div><div style="display:flex;align-items:flex-start;gap:10px;padding:8px 12px 12px">' : '')
-    + '<div class="npwav" style="background:' + avBg + ';' + fStyle + (bannerVal ? ';margin-top:-24px;border:3px solid var(--bg3)' : '') + '">' + avCnt + '</div>'
+  const hasBanner = !!bannerVal;
+  if (hasBanner) {
+    return '<div class="npw" style="padding:0;overflow:hidden;flex-direction:column">'
+      + '<div style="height:64px;background:' + bannerVal + ';width:100%;flex-shrink:0;border-radius:var(--r) var(--r) 0 0"></div>'
+      + '<div style="display:flex;align-items:flex-start;gap:10px;padding:0 12px 12px;margin-top:-22px">'
+      + '<div class="npwav" style="background:' + avBg + ';' + fStyle + ';border:3px solid var(--bg3);flex-shrink:0">' + avCnt + '</div>'
+      + '<div class="npwb" style="min-width:0;flex:1">'
+      + '<div class="npwm"><span class="npwn" id="ppwn" style="color:' + color + ';' + fStyle + '">' + (name || 'Přezdívka') + '</span><span class="npwt">' + ME.tag + '</span></div>'
+      + (bio ? '<div style="font-size:11px;color:var(--t2);margin-bottom:3px">' + bio + '</div>' : '')
+      + '<div class="npwtxt" style="' + fStyle + '">Takhle vypadá tvoje zpráva v chatu</div>'
+      + '</div></div></div>';
+  }
+  return '<div class="npw">'
+    + '<div class="npwav" style="background:' + avBg + ';' + fStyle + '">' + avCnt + '</div>'
     + '<div class="npwb">'
     + '<div class="npwm"><span class="npwn" id="ppwn" style="color:' + color + ';' + fStyle + '">' + (name || 'Přezdívka') + '</span><span class="npwt">' + ME.tag + '</span></div>'
     + (bio ? '<div style="font-size:11px;color:var(--t2);margin-bottom:3px">' + bio + '</div>' : '')
     + '<div class="npwtxt" style="' + fStyle + '">Takhle vypadá tvoje zpráva v chatu</div>'
-    + '</div>'
-    + (bannerVal ? '</div>' : '')
-    + '</div>';
+    + '</div></div>';
 }
 
 function profIdentity() {
@@ -5921,21 +5912,11 @@ function profAvatar() {
     + '<div class="eigrid">' + ICONS.map(ic => '<div class="eiopt" onclick="setEmojiAv(\'' + ic + '\')">' + ic + '</div>').join('') + '</div></div>';
 }
 
-function syncAvatarToServer() {
-  if (wsConn && wsConn.readyState === 1 && ME.id) {
-    try {
-      const p = { name: ME.name, color: ME.color, tag: ME.tag, font: ME.font, status: ME.status };
-      if (ME.avatar) p.avatar = ME.avatar;
-      wsConn.send(JSON.stringify({ type: 'account_save', userId: ME.id, profile: p }));
-    } catch {}
-  }
-}
-
 function handleAv(input) {
   const file = input.files[0]; if (!file) return;
   if (file.size > 2 * 1024 * 1024) { toast('Soubor je příliš velký (max 2 MB)', 'er'); return; }
   const reader = new FileReader();
-  reader.onload = e => { ME.avatar = e.target.result; lss('nx_avatar', ME.avatar); applyProfile(); syncAvatarToServer(); toast(t('avatarUploaded'), 'ok'); profTab('avatar'); };
+  reader.onload = e => { ME.avatar = e.target.result; lss('nx_avatar', ME.avatar); applyProfile(); toast(t('avatarUploaded'), 'ok'); profTab('avatar'); };
   reader.readAsDataURL(file);
 }
 function setEmojiAv(emoji) {
@@ -5944,7 +5925,7 @@ function setEmojiAv(emoji) {
   ctx.fillStyle = ME.color + '33'; ctx.fillRect(0, 0, 128, 128);
   ctx.font = '72px serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.fillText(emoji, 64, 68);
-  ME.avatar = canvas.toDataURL(); lss('nx_avatar', ME.avatar); applyProfile(); syncAvatarToServer(); toast('Avatar nastaven ✓', 'ok'); profTab('avatar');
+  ME.avatar = canvas.toDataURL(); lss('nx_avatar', ME.avatar); applyProfile(); toast('Avatar nastaven ✓', 'ok'); profTab('avatar');
 }
 function removeAv() {
   ME.avatar = '';
@@ -6456,7 +6437,7 @@ let _prevBanner = ME.banner;
 let _prevAppTheme = ME.appTheme;
 
 function previewBanner(val) {
-  // _prevBanner se nastavuje při otevření záložky, ne zde
+  _prevBanner = val;
   document.querySelectorAll('.banner-opt').forEach(el => el.classList.remove('sel'));
   if (val === '') { document.getElementById('bopt-none')?.classList.add('sel'); }
   else {
@@ -6507,8 +6488,7 @@ function applyAppTheme(id) {
 }
 
 function cancelPremium() {
-  ME.banner = _prevBanner;
-  ME.appTheme = _prevAppTheme;
+  // Restore original theme if user clicks cancel
   applyAppTheme(ME.appTheme);
   closeProf();
 }
@@ -6518,7 +6498,7 @@ function savePremium() {
   const isPluOrPro = ME.sub === 'plus' || ME.sub === 'pro';
   const isPro = ME.sub === 'pro';
   // Bannery jen pro plus/pro, app theme jen pro pro
-  ME.banner = isPluOrPro ? ME.banner : '';
+  ME.banner = isPluOrPro ? _prevBanner : '';
   ME.appTheme = isPro ? _prevAppTheme : '';
   lss('nx_banner', ME.banner);
   lss('nx_app_theme', ME.appTheme);
