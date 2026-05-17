@@ -2088,7 +2088,8 @@ function myInfo() {
   return {
     id: ME.id, name: ME.name, color: ME.color, tag: ME.tag,
     avatar: ME.avatar, font: ME.font, status: ME.status,
-    servers: Object.keys(SERVERS), // which servers I'm in
+    banner: ME.banner || '',
+    servers: Object.keys(SERVERS),
   };
 }
 
@@ -2137,12 +2138,14 @@ function connectWS(url) {
       setTimeout(() => {
         if (wsConn && wsConn.readyState === 1 && ME.id && ME.name) {
           try {
+            const _p = { name: ME.name, color: ME.color, tag: ME.tag, font: ME.font, status: ME.status };
+            if (ME.avatar) _p.avatar = ME.avatar;
             wsConn.send(JSON.stringify({
               type: 'account_save',
               userId: ME.id,
               servers: SERVERS,
               roles: MBROLES,
-              profile: { name: ME.name, color: ME.color, tag: ME.tag, avatar: ME.avatar, font: ME.font, status: ME.status }
+              profile: _p
             }));
           } catch {}
         }
@@ -2797,7 +2800,13 @@ function renderRail() {
     const el = document.createElement('div');
     el.className = 'si' + (id === curSrv ? ' act' : '');
     el.title = srv.name;
+    el.style.position = 'relative';
     el.textContent = srv.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+    if (ME.subBoostSrv === id) {
+      const dot = document.createElement('span');
+      dot.style.cssText = 'position:absolute;bottom:2px;right:2px;width:10px;height:10px;background:linear-gradient(135deg,#4fffb0,#7c6aff);border-radius:50%;border:2px solid var(--bg1)';
+      el.appendChild(dot);
+    }
     el.onclick = () => switchSrv(id);
     wrap.appendChild(el);
   }
@@ -2807,7 +2816,17 @@ function renderRail() {
 function renderChs() {
   if (document.hidden) { _chsDirty = true; return; }
   const srv = SERVERS[curSrv]; if (!srv) return;
-  document.getElementById('srvname').textContent = srv.name;
+  const _sne = document.getElementById('srvname');
+  _sne.textContent = srv.name;
+  _sne.parentElement.querySelector('.srv-boost-icon')?.remove();
+  if (ME.subBoostSrv === curSrv) {
+    const _bi = document.createElement('span');
+    _bi.className = 'srv-boost-icon';
+    _bi.title = 'Boostuješ tuto komunitu';
+    _bi.style.cssText = 'font-size:12px;margin-left:5px;vertical-align:middle';
+    _bi.textContent = '⚡';
+    _sne.insertAdjacentElement('afterend', _bi);
+  }
   const list = document.getElementById('chlist');
   const frag = document.createDocumentFragment();
 
@@ -3154,6 +3173,53 @@ function onCatDrop(e, targetCatId) {
 
 // ── RENDER MEMBERS ──
 // ── Member context menu ──
+function showUserCard(e, m, isOffline) {
+  e.stopPropagation();
+  document.getElementById('user-card-popup')?.remove();
+  const targetR = getRole(curSrv, m.id);
+  const roleColor = targetR.color || 'var(--t3)';
+  const avBg = m.avatar ? 'transparent' : (m.color || '#888');
+  const avCnt = m.avatar
+    ? '<img src="' + m.avatar + '" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%">'
+    : (m.name || '?')[0].toUpperCase();
+  let subBadge = '', nameColor = m.color || '#888';
+  if (m.sub === 'pro') { subBadge = '<span style="background:linear-gradient(90deg,#4fffb0,#7c6aff);color:#000;font-size:9px;font-weight:700;padding:1px 6px;border-radius:8px;margin-left:5px">⚡ PRO</span>'; nameColor = '#7ee8c8'; }
+  else if (m.sub === 'plus') { subBadge = '<span style="background:#4fffb0;color:#000;font-size:9px;font-weight:700;padding:1px 6px;border-radius:8px;margin-left:5px">★ PLUS</span>'; nameColor = '#4fffb0'; }
+  const card = document.createElement('div');
+  card.id = 'user-card-popup';
+  card.style.cssText = 'position:fixed;z-index:9999;background:var(--bg2);border:1px solid var(--bd);border-radius:12px;width:240px;box-shadow:0 8px 32px rgba(0,0,0,.5);overflow:hidden';
+  let html = '';
+  if (m.banner) {
+    html += '<div style="height:70px;background:' + m.banner + ';width:100%"></div>';
+    html += '<div style="padding:0 12px 12px;margin-top:-26px">';
+    html += '<div style="width:48px;height:48px;border-radius:50%;border:3px solid var(--bg2);background:' + avBg + ';display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;color:#fff;overflow:hidden;margin-bottom:8px">' + avCnt + '</div>';
+  } else {
+    html += '<div style="padding:14px 12px 6px">';
+    html += '<div style="width:48px;height:48px;border-radius:50%;background:' + avBg + ';display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;color:#fff;overflow:hidden;margin-bottom:8px">' + avCnt + '</div>';
+  }
+  html += '<div style="display:flex;align-items:center;flex-wrap:wrap;gap:3px;margin-bottom:3px">';
+  html += '<span style="font-size:14px;font-weight:700;color:' + nameColor + '">' + (m.name || '?') + '</span>' + subBadge;
+  html += '</div>';
+  html += '<div style="font-size:11px;color:' + roleColor + ';margin-bottom:' + (m.bio ? '6' : '8') + 'px">' + (targetR.name || 'Člen') + (isOffline ? ' · offline' : '') + '</div>';
+  if (m.bio) html += '<div style="font-size:11px;color:var(--t2);margin-bottom:8px;line-height:1.4">' + m.bio + '</div>';
+  html += '</div>';
+  html += '<div style="border-top:1px solid var(--bd);padding:8px 12px;display:flex;gap:6px">';
+  html += '<button id="ucard-dm" style="flex:1;background:var(--acc);color:#000;border:none;border-radius:7px;padding:6px;font-size:12px;font-weight:700;cursor:pointer">💬 Zpráva</button>';
+  html += '<button id="ucard-more" style="background:var(--bg4);color:var(--t2);border:1px solid var(--bd);border-radius:7px;padding:6px 10px;font-size:12px;cursor:pointer">⋯</button>';
+  html += '</div>';
+  card.innerHTML = html;
+  document.body.appendChild(card);
+  card.querySelector('#ucard-dm').onclick = function(ev) { ev.stopPropagation(); document.getElementById('user-card-popup')?.remove(); openDm(m.id); };
+  card.querySelector('#ucard-more').onclick = function(ev) { ev.stopPropagation(); document.getElementById('user-card-popup')?.remove(); showMbrMenu(ev, m, isOffline); };
+  const vw = window.innerWidth, vh = window.innerHeight;
+  let x = e.clientX + 10, y = e.clientY - 10;
+  if (x + 260 > vw) x = e.clientX - 260;
+  if (y + 340 > vh) y = vh - 340;
+  card.style.left = Math.max(4, x) + 'px';
+  card.style.top = Math.max(4, y) + 'px';
+  setTimeout(() => document.addEventListener('click', function _c() { document.getElementById('user-card-popup')?.remove(); document.removeEventListener('click', _c); }), 50);
+}
+
 function showMbrMenu(e, m, isOffline) {
   e.stopPropagation();
   const srv = SERVERS[curSrv] || {};
@@ -3279,7 +3345,7 @@ function renderMbrs() {
         + '<button style="width:22px;height:22px;border-radius:4px;border:none;background:transparent;color:var(--t3);font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center" '
         + 'onclick="event.stopPropagation();openDm(\'' + m.id + '\')">💬</button></div>' : '');
     if (!isMe) {
-      el.onclick = e => showMbrMenu(e, m, isOffline);
+      el.onclick = e => showUserCard(e, m, isOffline);
     }
     frag.appendChild(el);
   };
@@ -3408,7 +3474,7 @@ function renderMsgs(scrollDown = true) {
     if (!same) {
       row.innerHTML = '<div class="avw"><div class="mav" style="background:' + avBg + '">' + avContent + '</div></div>'
         + '<div class="mw">'
-        + '<div class="mmeta"' + (m.banner ? ' style="background:' + m.banner + ';border-radius:6px 6px 0 0;padding:3px 8px 3px 0;margin:-2px -4px 2px -4px"' : '') + '><span class="mau" style="' + nameStyle + '">' + nameInner + '</span>'
+        + '<div class="mmeta"><span class="mau" style="' + nameStyle + '">' + nameInner + '</span>'
         + subBadgeHtml(m.sub)
         + roleBadge(role)
         + '<span class="mts">' + fmtTs(m.ts) + '</span></div>'
@@ -3808,7 +3874,7 @@ function sendImageMsg(dataUrl) {
   if (!ME.name) { toast('Nastav si jméno (⚙️)', 'er'); return; }
   if (!curCh && !curDm) { toast('Vyber kanál', 'er'); return; }
   const mid = gid();
-  const msg = { mid, author: ME.name, authorId: ME.id, color: ME.color, banner: ME.banner || '',
+  const msg = { mid, author: ME.name, authorId: ME.id, color: ME.color,
     avatar: ME.avatar, font: ME.font, text: '__IMG__' + dataUrl,
     ts: Date.now(), reactions: [] };
 
@@ -3874,7 +3940,7 @@ function sendMsg() {
       }
     }
   }
-  const msg = { mid: gid(), authorId: ME.id, author: ME.name, color: ME.color, font: ME.font, avatar: ME.avatar, sub: ME.sub || 'free', banner: ME.banner || '', text: txt, ts: Date.now(), reactions: [] };
+  const msg = { mid: gid(), authorId: ME.id, author: ME.name, color: ME.color, font: ME.font, avatar: ME.avatar, sub: ME.sub || 'free', text: txt, ts: Date.now(), reactions: [] };
   if (!MESSAGES[curCh]) MESSAGES[curCh] = [];
   MESSAGES[curCh].push(msg); saveMsgs();
   bcast({ type: 'chat', ch: curCh, msg });
@@ -5746,23 +5812,25 @@ function profTab(tab) {
   else if (tab === 'account') cont.innerHTML = profAccount();
   else if (tab === 'audio')   cont.innerHTML = profAudio();
   else if (tab === 'lang')    cont.innerHTML = profLang();
-  else if (tab === 'premium') cont.innerHTML = profPremium();
+  else if (tab === 'premium') { _prevBanner = ME.banner; _prevAppTheme = ME.appTheme; cont.innerHTML = profPremium(); }
   if (tab === 'identity') setTimeout(() => document.getElementById('prof-name') && document.getElementById('prof-name').focus(), 80);
 }
 
 function profPreviewHtml(name, color, font, bio, avatar, banner) {
   const avBg = avatar ? 'transparent' : color;
   const avCnt = avatar ? '<img src="' + avatar + '" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%">' : (name || '?')[0].toUpperCase();
-  const fStyle = 'font-family:\'' + (font||'Inter') + '\',sans-serif';
+  const fStyle = "font-family:'" + (font||'Inter') + "',sans-serif";
   const bannerVal = (banner !== undefined) ? banner : ME.banner;
-  const metaStyle = bannerVal ? 'background:' + bannerVal + ';border-radius:6px 6px 0 0;padding:3px 8px 3px 0;margin:-2px -4px 2px -4px' : '';
-  return '<div class="npw">'
-    + '<div class="npwav" style="background:' + avBg + ';' + fStyle + '">' + avCnt + '</div>'
+  return '<div class="npw" style="' + (bannerVal ? 'padding:0;overflow:hidden' : '') + '">'
+    + (bannerVal ? '<div style="height:52px;background:' + bannerVal + ';width:100%;flex-shrink:0"></div><div style="display:flex;align-items:flex-start;gap:10px;padding:8px 12px 12px">' : '')
+    + '<div class="npwav" style="background:' + avBg + ';' + fStyle + (bannerVal ? ';margin-top:-24px;border:3px solid var(--bg3)' : '') + '">' + avCnt + '</div>'
     + '<div class="npwb">'
-    + '<div class="npwm"' + (metaStyle ? ' style="' + metaStyle + '"' : '') + '><span class="npwn" id="ppwn" style="color:' + color + ';' + fStyle + '">' + (name || 'Přezdívka') + '</span><span class="npwt">' + ME.tag + '</span></div>'
+    + '<div class="npwm"><span class="npwn" id="ppwn" style="color:' + color + ';' + fStyle + '">' + (name || 'Přezdívka') + '</span><span class="npwt">' + ME.tag + '</span></div>'
     + (bio ? '<div style="font-size:11px;color:var(--t2);margin-bottom:3px">' + bio + '</div>' : '')
     + '<div class="npwtxt" style="' + fStyle + '">Takhle vypadá tvoje zpráva v chatu</div>'
-    + '</div></div>';
+    + '</div>'
+    + (bannerVal ? '</div>' : '')
+    + '</div>';
 }
 
 function profIdentity() {
@@ -5853,11 +5921,21 @@ function profAvatar() {
     + '<div class="eigrid">' + ICONS.map(ic => '<div class="eiopt" onclick="setEmojiAv(\'' + ic + '\')">' + ic + '</div>').join('') + '</div></div>';
 }
 
+function syncAvatarToServer() {
+  if (wsConn && wsConn.readyState === 1 && ME.id) {
+    try {
+      const p = { name: ME.name, color: ME.color, tag: ME.tag, font: ME.font, status: ME.status };
+      if (ME.avatar) p.avatar = ME.avatar;
+      wsConn.send(JSON.stringify({ type: 'account_save', userId: ME.id, profile: p }));
+    } catch {}
+  }
+}
+
 function handleAv(input) {
   const file = input.files[0]; if (!file) return;
   if (file.size > 2 * 1024 * 1024) { toast('Soubor je příliš velký (max 2 MB)', 'er'); return; }
   const reader = new FileReader();
-  reader.onload = e => { ME.avatar = e.target.result; lss('nx_avatar', ME.avatar); applyProfile(); toast(t('avatarUploaded'), 'ok'); profTab('avatar'); };
+  reader.onload = e => { ME.avatar = e.target.result; lss('nx_avatar', ME.avatar); applyProfile(); syncAvatarToServer(); toast(t('avatarUploaded'), 'ok'); profTab('avatar'); };
   reader.readAsDataURL(file);
 }
 function setEmojiAv(emoji) {
@@ -5866,7 +5944,7 @@ function setEmojiAv(emoji) {
   ctx.fillStyle = ME.color + '33'; ctx.fillRect(0, 0, 128, 128);
   ctx.font = '72px serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.fillText(emoji, 64, 68);
-  ME.avatar = canvas.toDataURL(); lss('nx_avatar', ME.avatar); applyProfile(); toast('Avatar nastaven ✓', 'ok'); profTab('avatar');
+  ME.avatar = canvas.toDataURL(); lss('nx_avatar', ME.avatar); applyProfile(); syncAvatarToServer(); toast('Avatar nastaven ✓', 'ok'); profTab('avatar');
 }
 function removeAv() {
   ME.avatar = '';
@@ -6378,7 +6456,7 @@ let _prevBanner = ME.banner;
 let _prevAppTheme = ME.appTheme;
 
 function previewBanner(val) {
-  _prevBanner = val;
+  // _prevBanner se nastavuje při otevření záložky, ne zde
   document.querySelectorAll('.banner-opt').forEach(el => el.classList.remove('sel'));
   if (val === '') { document.getElementById('bopt-none')?.classList.add('sel'); }
   else {
@@ -6429,7 +6507,8 @@ function applyAppTheme(id) {
 }
 
 function cancelPremium() {
-  // Restore original theme if user clicks cancel
+  ME.banner = _prevBanner;
+  ME.appTheme = _prevAppTheme;
   applyAppTheme(ME.appTheme);
   closeProf();
 }
@@ -6439,7 +6518,7 @@ function savePremium() {
   const isPluOrPro = ME.sub === 'plus' || ME.sub === 'pro';
   const isPro = ME.sub === 'pro';
   // Bannery jen pro plus/pro, app theme jen pro pro
-  ME.banner = isPluOrPro ? _prevBanner : '';
+  ME.banner = isPluOrPro ? ME.banner : '';
   ME.appTheme = isPro ? _prevAppTheme : '';
   lss('nx_banner', ME.banner);
   lss('nx_app_theme', ME.appTheme);
