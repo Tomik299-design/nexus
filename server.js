@@ -1693,8 +1693,13 @@ wss.on('connection', (ws, req) => {
         if (msg.servers) accounts[msg.userId].servers = msg.servers;
         if (msg.roles)   accounts[msg.userId].roles   = msg.roles;
         if (msg.profile) {
-          // Always overwrite profile including empty avatar (intentional deletion)
+          // Preserve existing avatar if client sends empty and server has one
+          // (empty avatar is only intentional via avatar_delete message)
+          const existingAvatar = accounts[msg.userId].profile?.avatar;
           accounts[msg.userId].profile = msg.profile;
+          if (!msg.profile.avatar && existingAvatar && !accounts[msg.userId].profile.avatarDeleted) {
+            accounts[msg.userId].profile.avatar = existingAvatar;
+          }
         }
         // NEVER overwrite subscription from client — only server sets it
         accounts[msg.userId].ts = Date.now();

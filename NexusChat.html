@@ -2133,16 +2133,19 @@ function connectWS(url) {
       if (ME.name && ME.name !== '?') {
         bcast({ type: 'presence', m: myInfo() });
       }
-      // Save full profile to cloud
+      // Save full profile to cloud — avatar se posílá jen pokud ho máme,
+      // jinak by přepsal fotku nastavenou z jiného zařízení
       setTimeout(() => {
         if (wsConn && wsConn.readyState === 1 && ME.id && ME.name) {
           try {
+            const profileToSave = { name: ME.name, color: ME.color, tag: ME.tag, font: ME.font, status: ME.status };
+            if (ME.avatar) profileToSave.avatar = ME.avatar; // jen pokud máme fotku
             wsConn.send(JSON.stringify({
               type: 'account_save',
               userId: ME.id,
               servers: SERVERS,
               roles: MBROLES,
-              profile: { name: ME.name, color: ME.color, tag: ME.tag, avatar: ME.avatar, font: ME.font, status: ME.status }
+              profile: profileToSave
             }));
           } catch {}
         }
@@ -2487,18 +2490,14 @@ function handleNet(d) {
     }
 
     // Restore profile (avatar, color, font etc.)
-    if (d.account.profile && d.account.profile.name === ME.name) {
+    if (d.account.profile) {
       const p = d.account.profile;
-      // Avatar: server is source of truth
-      // If server has avatar and we don't → restore it
-      // If server has empty avatar (deleted) → clear it too
-      if (p.avatar !== undefined) {
-        if (p.avatar !== ME.avatar) {
-          ME.avatar = p.avatar;
-          lss('nx_avatar', p.avatar);
-          lss('nx_avatar_deleted', p.avatar ? 0 : Date.now());
-          changed = true;
-        }
+      // Avatar: server je source of truth — vždy načteme ze serveru
+      if (p.avatar !== undefined && p.avatar !== ME.avatar) {
+        ME.avatar = p.avatar;
+        lss('nx_avatar', p.avatar);
+        lss('nx_avatar_deleted', p.avatar ? 0 : Date.now());
+        changed = true;
       }
       if (p.color  && ME.color === '#7c6aff') { ME.color  = p.color;  lss('nx_color',  p.color);  }
       if (p.font   && !ME.font)  { ME.font   = p.font;   lss('nx_font',   p.font);   }
