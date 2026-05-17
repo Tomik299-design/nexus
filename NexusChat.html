@@ -5864,11 +5864,22 @@ function profAvatar() {
     + '<div class="eigrid">' + ICONS.map(ic => '<div class="eiopt" onclick="setEmojiAv(\'' + ic + '\')">' + ic + '</div>').join('') + '</div></div>';
 }
 
+function syncAvatarToServer() {
+  if (wsConn && wsConn.readyState === 1 && ME.id) {
+    try {
+      wsConn.send(JSON.stringify({
+        type: 'account_save', userId: ME.id,
+        profile: { name: ME.name, color: ME.color, tag: ME.tag, avatar: ME.avatar, font: ME.font, status: ME.status }
+      }));
+    } catch {}
+  }
+}
+
 function handleAv(input) {
   const file = input.files[0]; if (!file) return;
   if (file.size > 2 * 1024 * 1024) { toast('Soubor je příliš velký (max 2 MB)', 'er'); return; }
   const reader = new FileReader();
-  reader.onload = e => { ME.avatar = e.target.result; lss('nx_avatar', ME.avatar); applyProfile(); toast(t('avatarUploaded'), 'ok'); profTab('avatar'); };
+  reader.onload = e => { ME.avatar = e.target.result; lss('nx_avatar', ME.avatar); applyProfile(); syncAvatarToServer(); toast(t('avatarUploaded'), 'ok'); profTab('avatar'); };
   reader.readAsDataURL(file);
 }
 function setEmojiAv(emoji) {
@@ -5877,7 +5888,7 @@ function setEmojiAv(emoji) {
   ctx.fillStyle = ME.color + '33'; ctx.fillRect(0, 0, 128, 128);
   ctx.font = '72px serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.fillText(emoji, 64, 68);
-  ME.avatar = canvas.toDataURL(); lss('nx_avatar', ME.avatar); applyProfile(); toast('Avatar nastaven ✓', 'ok'); profTab('avatar');
+  ME.avatar = canvas.toDataURL(); lss('nx_avatar', ME.avatar); applyProfile(); syncAvatarToServer(); toast('Avatar nastaven ✓', 'ok'); profTab('avatar');
 }
 function removeAv() {
   ME.avatar = '';
