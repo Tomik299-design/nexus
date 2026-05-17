@@ -2088,6 +2088,7 @@ function myInfo() {
   return {
     id: ME.id, name: ME.name, color: ME.color, tag: ME.tag,
     avatar: ME.avatar, font: ME.font, status: ME.status,
+    banner: ME.banner || '',   // profilový banner — sdílíme ostatním
     servers: Object.keys(SERVERS), // which servers I'm in
   };
 }
@@ -3154,6 +3155,82 @@ function onCatDrop(e, targetCatId) {
 
 // ── RENDER MEMBERS ──
 // ── Member context menu ──
+function showUserCard(e, m, isOffline) {
+  e.stopPropagation();
+  document.getElementById('user-card-popup')?.remove();
+
+  const srv = SERVERS[curSrv] || {};
+  const targetR = getRole(curSrv, m.id);
+  const roleColor = targetR.color || 'var(--t3)';
+  const avBg = m.avatar ? 'transparent' : (m.color || '#888');
+  const avCnt = m.avatar
+    ? '<img src="' + m.avatar + '" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%">'
+    : (m.name || '?')[0].toUpperCase();
+  const hasBanner = !!m.banner;
+
+  let subBadge = '';
+  let nameColor = m.color || '#888';
+  if (m.sub === 'pro') {
+    subBadge = '<span style="background:linear-gradient(90deg,#4fffb0,#7c6aff);color:#000;font-size:9px;font-weight:700;padding:1px 6px;border-radius:8px;margin-left:5px">⚡ PRO</span>';
+    nameColor = '#7ee8c8';
+  } else if (m.sub === 'plus') {
+    subBadge = '<span style="background:#4fffb0;color:#000;font-size:9px;font-weight:700;padding:1px 6px;border-radius:8px;margin-left:5px">★ PLUS</span>';
+    nameColor = '#4fffb0';
+  }
+
+  const card = document.createElement('div');
+  card.id = 'user-card-popup';
+  card.style.cssText = 'position:fixed;z-index:9999;background:var(--bg2);border:1px solid var(--bd);border-radius:12px;width:240px;box-shadow:0 8px 32px rgba(0,0,0,.5);overflow:hidden';
+
+  let html = '';
+  if (hasBanner) {
+    html += '<div style="height:60px;background:' + m.banner + '"></div>';
+    html += '<div style="padding:0 12px 12px;margin-top:-22px">';
+    html += '<div style="width:44px;height:44px;border-radius:50%;border:3px solid var(--bg2);background:' + avBg + ';display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:#fff;overflow:hidden;margin-bottom:6px">' + avCnt + '</div>';
+  } else {
+    html += '<div style="padding:12px 12px 6px">';
+    html += '<div style="width:44px;height:44px;border-radius:50%;background:' + avBg + ';display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:#fff;overflow:hidden;margin-bottom:6px">' + avCnt + '</div>';
+  }
+  html += '<div style="display:flex;align-items:center;flex-wrap:wrap;gap:3px;margin-bottom:2px">';
+  html += '<span style="font-size:14px;font-weight:700;color:' + nameColor + '">' + (m.name || '?') + '</span>';
+  html += subBadge;
+  html += '</div>';
+  html += '<div style="font-size:11px;color:' + roleColor + ';margin-bottom:' + (isOffline ? '6' : '8') + 'px">' + (targetR.name || 'Člen') + (isOffline ? ' · offline' : '') + '</div>';
+  if (m.bio) html += '<div style="font-size:11px;color:var(--t2);margin-bottom:8px;line-height:1.4">' + m.bio + '</div>';
+  html += '</div>';
+  html += '<div style="border-top:1px solid var(--bd);padding:8px 12px;display:flex;gap:6px">';
+  html += '<button id="ucard-dm" style="flex:1;background:var(--acc);color:#000;border:none;border-radius:7px;padding:6px;font-size:12px;font-weight:700;cursor:pointer">💬 Zpráva</button>';
+  html += '<button id="ucard-more" style="background:var(--bg4);color:var(--t2);border:1px solid var(--bd);border-radius:7px;padding:6px 10px;font-size:12px;cursor:pointer">⋯</button>';
+  html += '</div>';
+
+  card.innerHTML = html;
+  document.body.appendChild(card);
+
+  card.querySelector('#ucard-dm').onclick = function(ev) {
+    ev.stopPropagation();
+    document.getElementById('user-card-popup')?.remove();
+    openDm(m.id);
+  };
+  card.querySelector('#ucard-more').onclick = function(ev) {
+    ev.stopPropagation();
+    document.getElementById('user-card-popup')?.remove();
+    showMbrMenu(ev, m, isOffline);
+  };
+
+  // Pozicování
+  const vw = window.innerWidth, vh = window.innerHeight;
+  let x = e.clientX + 10, y = e.clientY - 10;
+  if (x + 260 > vw) x = e.clientX - 260;
+  if (y + 340 > vh) y = vh - 340;
+  card.style.left = Math.max(4, x) + 'px';
+  card.style.top  = Math.max(4, y) + 'px';
+
+  setTimeout(() => document.addEventListener('click', function _close() {
+    document.getElementById('user-card-popup')?.remove();
+    document.removeEventListener('click', _close);
+  }), 50);
+}
+
 function showMbrMenu(e, m, isOffline) {
   e.stopPropagation();
   const srv = SERVERS[curSrv] || {};
@@ -3279,7 +3356,7 @@ function renderMbrs() {
         + '<button style="width:22px;height:22px;border-radius:4px;border:none;background:transparent;color:var(--t3);font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center" '
         + 'onclick="event.stopPropagation();openDm(\'' + m.id + '\')">💬</button></div>' : '');
     if (!isMe) {
-      el.onclick = e => showMbrMenu(e, m, isOffline);
+      el.onclick = e => showUserCard(e, m, isOffline);
     }
     frag.appendChild(el);
   };
@@ -5108,7 +5185,6 @@ function ssOverview() {
     + '<div class="ssrow"><div class="sri"><div class="srn">Tvoje role</div></div>' + roleBadge(r) + '</div>'
     + '<div class="ssrow"><div class="sri"><div class="srn">Počet kanálů</div></div><span style="color:var(--acc);font-family:var(--fm);font-size:13px">' + totalChs + '</span></div>'
     + '<div class="ssrow"><div class="sri"><div class="srn">Online členů</div></div><span style="color:var(--acc);font-family:var(--fm);font-size:13px">' + (Object.keys(onlineMbrs).length + 1) + '</span></div>'
-    + '<div class="ssrow" style="align-items:flex-start;flex-direction:column;gap:4px"><div style="display:flex;align-items:center;justify-content:space-between;width:100%"><div class="srn">Server ID</div><button onclick="navigator.clipboard.writeText(\'' + curSrv + '\').then(()=>toast(\'Server ID zkopírováno ✓\',\'ok\'))" style="background:var(--bg4);border:1px solid var(--bd);border-radius:6px;padding:3px 9px;color:var(--t2);cursor:pointer;font-size:11px">📋 Kopírovat</button></div><div style="font-family:var(--fm);font-size:11px;color:var(--t3);word-break:break-all;margin-top:2px">' + curSrv + '</div></div>'
     + '</div>';
 }
 
@@ -5747,7 +5823,7 @@ function profTab(tab) {
   else if (tab === 'account') cont.innerHTML = profAccount();
   else if (tab === 'audio')   cont.innerHTML = profAudio();
   else if (tab === 'lang')    cont.innerHTML = profLang();
-  else if (tab === 'premium') cont.innerHTML = profPremium();
+  else if (tab === 'premium') { _prevBanner = ME.banner; _prevAppTheme = ME.appTheme; cont.innerHTML = profPremium(); }
   if (tab === 'identity') setTimeout(() => document.getElementById('prof-name') && document.getElementById('prof-name').focus(), 80);
 }
 
@@ -6390,7 +6466,7 @@ let _prevBanner = ME.banner;
 let _prevAppTheme = ME.appTheme;
 
 function previewBanner(val) {
-  _prevBanner = val;
+  // _prevBanner drží původní hodnotu před otevřením záložky — nenastavuj ho zde
   document.querySelectorAll('.banner-opt').forEach(el => el.classList.remove('sel'));
   if (val === '') { document.getElementById('bopt-none')?.classList.add('sel'); }
   else {
@@ -6441,7 +6517,9 @@ function applyAppTheme(id) {
 }
 
 function cancelPremium() {
-  // Restore original theme if user clicks cancel
+  // Obnov původní banner a motiv před otevřením záložky
+  ME.banner = _prevBanner;
+  ME.appTheme = _prevAppTheme;
   applyAppTheme(ME.appTheme);
   closeProf();
 }
@@ -6451,8 +6529,8 @@ function savePremium() {
   const isPluOrPro = ME.sub === 'plus' || ME.sub === 'pro';
   const isPro = ME.sub === 'pro';
   // Bannery jen pro plus/pro, app theme jen pro pro
-  ME.banner = isPluOrPro ? _prevBanner : '';
-  ME.appTheme = isPro ? _prevAppTheme : '';
+  ME.banner = isPluOrPro ? ME.banner : '';
+  ME.appTheme = isPro ? ME.appTheme : '';
   lss('nx_banner', ME.banner);
   lss('nx_app_theme', ME.appTheme);
   applyAppTheme(ME.appTheme);
