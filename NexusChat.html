@@ -1047,6 +1047,55 @@ body.light .sub-badge.pro  { background: rgba(59,130,246,.1); color: #1d6fa0; bo
 .upsell-block .ub-title { font-size: 13px; font-weight: 600; color: var(--t1); margin-bottom: 4px; }
 .upsell-block .ub-desc  { font-size: 12px; color: var(--t2); margin-bottom: 10px; line-height: 1.5; }
 .upsell-block button { background: linear-gradient(135deg,#7c6aff,#a89cff); color: #fff; border: none; border-radius: var(--r); padding: 7px 18px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: var(--f); }
+
+/* ── RAIL OPRAVA ── */
+#rail { width: 64px !important; min-width: 64px !important; padding: 8px 0 10px !important; gap: 0 !important; }
+#rail-icons { gap: 2px !important; padding: 0 4px !important; }
+.si { width: 56px !important; height: auto !important; min-height: 40px !important; border-radius: 10px !important;
+  flex-direction: column !important; gap: 3px !important; padding: 6px 4px !important; font-size: 14px !important; box-sizing: border-box !important; }
+.si:hover { border-radius: 10px !important; }
+.si.act { border-radius: 10px !important; }
+.si.act::after { height: 24px !important; }
+.si-lbl { font-size: 9px; font-weight: 400; color: var(--t3); line-height: 1; text-align: center; max-width: 52px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.radd { width: 40px !important; height: 40px !important; font-size: 18px !important; margin-top: 4px !important; }
+
+/* ── SIDEBAR TABS ── */
+#sb-tabs { display:flex; border-bottom:1px solid var(--bd); flex-shrink:0; }
+.sb-tab { flex:1; text-align:center; padding:7px 0; font-size:10px; font-weight:600; letter-spacing:.04em; color:var(--t3); cursor:pointer; border-bottom:2px solid transparent; }
+.sb-tab:hover { color:var(--t2); }
+.sb-tab.act { color:var(--acc); border-bottom-color:var(--acc); }
+
+/* ── NÁSTĚNKA ── */
+#nastenna { flex:1; overflow-y:auto; padding:10px 8px; display:none; flex-direction:column; gap:8px; scrollbar-width:thin; scrollbar-color:var(--bg5) transparent; }
+#nastenna.vis { display:flex; }
+.nb { background:var(--bg2); border:1px solid var(--bd); border-radius:8px; padding:10px 12px; }
+.nb-title { font-size:10px; font-weight:700; letter-spacing:.06em; color:var(--t3); margin-bottom:8px; text-transform:uppercase; }
+.nb-empty { font-size:11px; color:var(--t3); font-style:italic; }
+.ev-item { display:flex; align-items:center; gap:8px; padding:5px 0; border-bottom:1px solid var(--bd); }
+.ev-item:last-child { border-bottom:none; }
+.ev-dot { width:8px; height:8px; border-radius:50%; background:var(--acc); flex-shrink:0; }
+.ev-name { font-size:12px; color:var(--t1); flex:1; }
+.ev-time { font-size:10px; color:var(--t3); white-space:nowrap; }
+.ev-add-btn { width:100%; margin-top:6px; padding:5px; background:var(--bg3); border:1px dashed var(--bd); border-radius:6px; color:var(--t3); font-size:11px; cursor:pointer; text-align:center; box-sizing:border-box; }
+.ev-add-btn:hover { border-color:var(--acc); color:var(--acc); }
+.pin-item { padding:6px 0; border-bottom:1px solid var(--bd); }
+.pin-item:last-child { border-bottom:none; }
+.pin-author { font-size:10px; color:var(--t3); margin-bottom:2px; }
+.pin-text { font-size:12px; color:var(--t2); line-height:1.4; }
+
+/* ── ANKETY ── */
+.poll-wrap { margin:4px 0; }
+.poll-question { font-size:13px; font-weight:600; color:var(--t1); margin-bottom:8px; }
+.poll-opt { position:relative; background:var(--bg3); border:1px solid var(--bd); border-radius:6px; padding:7px 10px; margin-bottom:5px; cursor:pointer; overflow:hidden; }
+.poll-opt:hover { border-color:var(--acc); }
+.poll-opt.voted { border-color:var(--acc); cursor:default; }
+.poll-opt.my-vote { border-color:var(--acc2); }
+.poll-bar-fill { position:absolute; left:0; top:0; height:100%; background:var(--acc); opacity:.15; border-radius:6px; transition:width .4s; pointer-events:none; }
+.poll-opt-text { position:relative; font-size:12px; color:var(--t1); display:flex; justify-content:space-between; align-items:center; }
+.poll-pct { font-size:11px; color:var(--t2); font-weight:600; }
+.poll-meta { font-size:10px; color:var(--t3); margin-top:6px; }
+.msg-poll { background:var(--bg2); border:1px solid var(--bd); border-radius:8px; padding:12px; margin-top:4px; max-width:400px; }
+
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiI+CiAgPHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiByeD0iOCIgZmlsbD0iIzBhMGMwZiIvPgogIDxyZWN0IHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiIgcng9IjgiIGZpbGw9InVybCgjZykiLz4KICA8ZGVmcz4KICAgIDxsaW5lYXJHcmFkaWVudCBpZD0iZyIgeDE9IjAiIHkxPSIwIiB4Mj0iMSIgeTI9IjEiPgogICAgICA8c3RvcCBvZmZzZXQ9IjAlIiBzdG9wLWNvbG9yPSIjMGQxYTE0Ii8+CiAgICAgIDxzdG9wIG9mZnNldD0iMTAwJSIgc3RvcC1jb2xvcj0iIzBkMTAyNCIvPgogICAgPC9saW5lYXJHcmFkaWVudD4KICA8L2RlZnM+CiAgPHRleHQgeD0iMTYiIHk9IjIzIiBmb250LWZhbWlseT0iQXJpYWwgQmxhY2ssIHNhbnMtc2VyaWYiIGZvbnQtd2VpZ2h0PSI5MDAiCiAgICAgICAgZm9udC1zaXplPSIyMCIgZmlsbD0iIzRmZmZiMCIgdGV4dC1hbmNob3I9Im1pZGRsZSI+TjwvdGV4dD4KPC9zdmc+">
@@ -1070,7 +1119,12 @@ body.light .sub-badge.pro  { background: rgba(59,130,246,.1); color: #1d6fa0; bo
       <span class="sn" id="srvname">NexusChat</span>
       <span class="sa">▾</span>
     </div>
+    <div id="sb-tabs">
+      <div class="sb-tab act" onclick="sbTab('channels')" id="sbt-channels">📋 Kanály</div>
+      <div class="sb-tab" onclick="sbTab('board')" id="sbt-board">📌 Nástěnka</div>
+    </div>
     <div id="chlist"></div>
+    <div id="nastenna"></div>
     <!-- DM sekce -->
     <div id="dm-section" style="display:none;flex-direction:column;border-top:1px solid var(--bd);flex-shrink:0;max-height:200px">
       <div style="padding:8px 10px 4px;font-size:10px;font-weight:600;letter-spacing:.9px;text-transform:uppercase;color:var(--t3);display:flex;align-items:center;justify-content:space-between">
@@ -1182,6 +1236,8 @@ body.light .sub-badge.pro  { background: rgba(59,130,246,.1); color: #1d6fa0; bo
         <input type="file" id="imgup" accept="image/*" style="display:none" onchange="handleImageUpload(this)">
         <textarea id="msginp" placeholder="Zpráva..." rows="1" onkeydown="if(mentionKeydown(event,this))return;onKey(event)" oninput="autoR(this);onTyping();onMentionInput(this)" onblur="setTimeout(hideMention,200)" onfocus="checkMsgMode()" onpaste="handlePaste(event)"></textarea>
         <button class="ib" id="emobtn" onclick="toggleEmo()">😊</button>
+        <button class="ib" onclick="openCreatePoll()" title="Vytvořit anketu" style="font-size:14px">📊</button>
+        <button class="ib" onclick="openCreateEvent()" title="Přidat událost" style="font-size:14px">📅</button>
         <button id="sndbtn" onclick="sendMsg()">➤</button>
       </div>
     </div>
@@ -1458,7 +1514,7 @@ function roleBadge(role) {
 function mkSrv() {
   const cw = gid(), c1 = gid(), c2 = gid(), c3 = gid(), v1 = gid();
   const sid = gid();
-  return { [sid]: { name: 'Nexus Hub', ownerId: ME.id, cats: [
+  return { [sid]: { name: 'Nexus Hub', ownerId: ME.id, polls: [], events: [], cats: [
     { id: gid(), name: 'Obecné', chs: [
       { id: cw, name: 'vítej',    type: 'text',  desc: 'Kdo přišel a kdo odešel', welcome: true, readOnly: true },
       { id: c1, name: 'obecný',   type: 'text',  desc: 'Hlavní chat' },
@@ -1998,6 +2054,7 @@ function saveMsgs() { lss('nx_msgs', MESSAGES); }
 // ── STATE ──
 let curSrv = Object.keys(SERVERS)[0] || null;
 let curCh  = null;
+let curSbTab = 'channels';
 let inVc   = false;
 let vcChId    = null;   // voice channel ID (separate from curCh)
 let vcChatOpen = false;  // is voice chat panel open
@@ -2633,6 +2690,8 @@ function handleNet(d) {
     return;
 
   } else if (d.type === 'srv_update') {
+    if (d.srv) { if (!d.srv.polls) d.srv.polls = []; if (!d.srv.events) d.srv.events = []; }
+    setTimeout(() => { if (curSbTab === 'board') renderNastenna(); }, 50);
     // Someone updated server structure — apply if I'm on that server
     if (d.srvId && d.srv && SERVERS[d.srvId]) {
       SERVERS[d.srvId] = d.srv;
@@ -2798,7 +2857,19 @@ function renderRail() {
     const el = document.createElement('div');
     el.className = 'si' + (id === curSrv ? ' act' : '');
     el.title = srv.name;
-    el.textContent = srv.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+    const initials = srv.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+    const icoSpan = document.createElement('span');
+    icoSpan.textContent = initials;
+    const lbl = document.createElement('span');
+    lbl.className = 'si-lbl';
+    lbl.textContent = srv.name.length > 7 ? srv.name.slice(0, 6) + '…' : srv.name;
+    if (ME.subBoostSrv === id) {
+      const dot = document.createElement('span');
+      dot.style.cssText = 'position:absolute;top:3px;right:3px;width:8px;height:8px;background:linear-gradient(135deg,#4fffb0,#7c6aff);border-radius:50%;border:2px solid var(--bg1)';
+      el.appendChild(dot);
+    }
+    el.appendChild(icoSpan);
+    el.appendChild(lbl);
     el.onclick = () => switchSrv(id);
     wrap.appendChild(el);
   }
@@ -2809,6 +2880,7 @@ function renderChs() {
   if (document.hidden) { _chsDirty = true; return; }
   const srv = SERVERS[curSrv]; if (!srv) return;
   document.getElementById('srvname').textContent = srv.name;
+  if (curSbTab === 'board') renderNastenna();
   const list = document.getElementById('chlist');
   const frag = document.createDocumentFragment();
 
@@ -3468,14 +3540,16 @@ function renderMsgs(scrollDown = true) {
         + subBadgeHtml(m.sub)
         + roleBadge(role)
         + '<span class="mts">' + fmtTs(m.ts) + '</span></div>'
-        + '<div class="mt" style="' + fontStyle + '">' + fmt(m.text) + '</div>'
+        + '<div class="mt" style="' + fontStyle + '">' + (m.poll ? '' : fmt(m.text)) + '</div>'
+        + (m.poll ? renderPollHtml(m) : '')
         + (m.reactions && m.reactions.length ? rRxns(m.reactions, i, m.mid) : '')
         + '</div>'
         + '<div class="macts">' + actBtns(i, m) + '</div>';
     } else {
       row.innerHTML = '<div class="tsc"><span>' + fmtTs(m.ts).split(' ')[0] + '</span></div>'
         + '<div class="mw">'
-        + '<div class="mt" style="' + fontStyle + '">' + fmt(m.text) + '</div>'
+        + '<div class="mt" style="' + fontStyle + '">' + (m.poll ? '' : fmt(m.text)) + '</div>'
+        + (m.poll ? renderPollHtml(m) : '')
         + (m.reactions && m.reactions.length ? rRxns(m.reactions, i, m.mid) : '')
         + '</div>'
         + '<div class="macts">' + actBtns(i, m) + '</div>';
@@ -8339,6 +8413,178 @@ function toggleTheme() {
     }
   } catch {}
 })();
+
+// ══ SIDEBAR TAB ══
+function sbTab(tab) {
+  curSbTab = tab;
+  document.getElementById('chlist').style.display = tab === 'channels' ? '' : 'none';
+  const nb = document.getElementById('nastenna');
+  if (tab === 'board') { nb.classList.add('vis'); renderNastenna(); }
+  else nb.classList.remove('vis');
+  document.querySelectorAll('.sb-tab').forEach(el => el.classList.remove('act'));
+  document.getElementById('sbt-' + tab)?.classList.add('act');
+}
+
+// ══ NÁSTĚNKA ══
+function renderNastenna() {
+  const srv = SERVERS[curSrv]; if (!srv) return;
+  const nb = document.getElementById('nastenna');
+  if (!nb || !nb.classList.contains('vis')) return;
+  const canManage = ['owner','admin','mod'].includes(myRole().id);
+
+  const events = srv.events || [];
+  let evHtml = '<div class="nb"><div class="nb-title">📅 Nadcházející události</div>';
+  if (!events.length) evHtml += '<div class="nb-empty">Žádné události.</div>';
+  else events.slice().sort((a,b) => a.ts-b.ts).forEach(ev => {
+    const d = new Date(ev.ts);
+    const ts = d.toLocaleDateString('cs-CZ',{weekday:'short',day:'numeric',month:'numeric'}) + ' ' + d.toLocaleTimeString('cs-CZ',{hour:'2-digit',minute:'2-digit'});
+    evHtml += '<div class="ev-item"><div class="ev-dot"></div><div class="ev-name">' + ev.name + '</div><div class="ev-time">' + ts + '</div></div>';
+  });
+  if (canManage) evHtml += '<div class="ev-add-btn" onclick="openCreateEvent()">+ Přidat událost</div>';
+  evHtml += '</div>';
+
+  const polls = srv.polls || [];
+  let pollHtml = '<div class="nb"><div class="nb-title">📊 Aktivní ankety</div>';
+  if (!polls.length) pollHtml += '<div class="nb-empty">Žádné ankety.</div>';
+  else polls.forEach(p => { pollHtml += renderPollHtmlFromObj(p); });
+  if (canManage) pollHtml += '<div class="ev-add-btn" onclick="openCreatePoll()">+ Vytvořit anketu</div>';
+  pollHtml += '</div>';
+
+  let pinHtml = '<div class="nb"><div class="nb-title">📌 Připnuté zprávy</div>';
+  let pinCount = 0;
+  for (const [chId, msgs] of Object.entries(MESSAGES)) {
+    const ch = chById(chId); if (!ch) continue;
+    msgs.filter(m => m.pinned).forEach(m => {
+      pinCount++;
+      pinHtml += '<div class="pin-item"><div class="pin-author">#' + ch.name + ' · ' + m.author + '</div><div class="pin-text">' + (m.text||'').slice(0,120) + (m.text&&m.text.length>120?'…':'') + '</div></div>';
+    });
+  }
+  if (!pinCount) pinHtml += '<div class="nb-empty">Žádné připnuté zprávy.</div>';
+  pinHtml += '</div>';
+  nb.innerHTML = evHtml + pollHtml + pinHtml;
+}
+
+// ══ ANKETY ══
+function renderPollHtml(msg) {
+  const live = (SERVERS[curSrv]?.polls||[]).find(x => x.id === msg.poll?.id);
+  return '<div class="msg-poll">' + renderPollHtmlFromObj(live || msg.poll) + '</div>';
+}
+
+function renderPollHtmlFromObj(p) {
+  if (!p) return '';
+  const total = p.options.reduce((s,o) => s+(o.votes||[]).length, 0);
+  const myIdx = p.options.findIndex(o => (o.votes||[]).includes(ME.id));
+  const hasVoted = myIdx >= 0;
+  let html = '<div class="poll-wrap"><div class="poll-question">' + p.question + '</div>';
+  p.options.forEach((o,idx) => {
+    const votes = (o.votes||[]).length;
+    const pct = total > 0 ? Math.round(votes/total*100) : 0;
+    const isMe = myIdx === idx;
+    const cls = 'poll-opt' + (hasVoted?' voted':'') + (isMe?' my-vote':'');
+    const click = (!hasVoted && !p.closed) ? ' onclick="votePoll(\'' + p.id + '\',' + idx + ')"' : '';
+    html += '<div class="' + cls + '"' + click + '>';
+    if (hasVoted) html += '<div class="poll-bar-fill" style="width:' + pct + '%"></div>';
+    html += '<div class="poll-opt-text"><span>' + o.text + (isMe?' ✓':'') + '</span>';
+    if (hasVoted) html += '<span class="poll-pct">' + pct + '% (' + votes + ')</span>';
+    html += '</div></div>';
+  });
+  html += '<div class="poll-meta">' + total + ' hlasů' + (p.closed?' · <span style="color:var(--red)">Uzavřeno</span>':'') + '</div></div>';
+  return html;
+}
+
+function votePoll(pollId, optIdx) {
+  const srv = SERVERS[curSrv]; if (!srv) return;
+  if (!srv.polls) srv.polls = [];
+  const p = srv.polls.find(x => x.id === pollId);
+  if (!p || p.closed) return;
+  p.options.forEach(o => { o.votes = (o.votes||[]).filter(id => id !== ME.id); });
+  if (!p.options[optIdx].votes) p.options[optIdx].votes = [];
+  p.options[optIdx].votes.push(ME.id);
+  saveSrvs(); broadcastSrv();
+  renderMsgs(false);
+  if (curSbTab === 'board') renderNastenna();
+}
+
+function openCreatePoll() {
+  const ol = document.getElementById('overlay');
+  ol.innerHTML = '<div class="olc" style="max-width:420px"><div class="olh"><span>📊 Nová anketa</span><button class="olx" onclick="closeOl()">✕</button></div>'
+    + '<div class="olb">'
+    + '<div class="flabel">Otázka</div>'
+    + '<input id="poll-q" class="finp" placeholder="Co chceš zjistit?" style="margin-bottom:10px">'
+    + '<div class="flabel">Možnosti (každá na řádek)</div>'
+    + '<textarea id="poll-opts" class="finp" rows="4" placeholder="Možnost 1&#10;Možnost 2&#10;Možnost 3" style="resize:vertical"></textarea>'
+    + '<div style="display:flex;gap:8px;margin-top:14px">'
+    + '<button class="btn" onclick="sendPoll()">Vytvořit anketu</button>'
+    + '<button class="btn sec" onclick="closeOl()">Zrušit</button>'
+    + '</div></div></div>';
+  ol.classList.add('vis');
+}
+
+function sendPoll() {
+  const q = document.getElementById('poll-q')?.value.trim();
+  const optsRaw = document.getElementById('poll-opts')?.value.trim();
+  if (!q) { toast('Zadej otázku','er'); return; }
+  const opts = optsRaw.split('\n').map(s => s.trim()).filter(Boolean);
+  if (opts.length < 2) { toast('Přidej aspoň 2 možnosti','er'); return; }
+  const poll = { id: gid(), question: q, options: opts.map(t => ({text:t,votes:[]})), creator: ME.id, ts: Date.now(), closed: false };
+  const srv = SERVERS[curSrv]; if (!srv) return;
+  if (!srv.polls) srv.polls = [];
+  srv.polls.push(poll);
+  saveSrvs(); broadcastSrv();
+  if (curCh) {
+    const msg = { mid: gid(), authorId: ME.id, author: ME.name, color: ME.color, font: ME.font, avatar: ME.avatar, sub: ME.sub||'free', text: '📊 ' + q, poll, ts: Date.now(), reactions: [] };
+    if (!MESSAGES[curCh]) MESSAGES[curCh] = [];
+    MESSAGES[curCh].push(msg); saveMsgs();
+    bcast({ type: 'chat', ch: curCh, msg });
+    renderMsgs(true);
+  }
+  closeOl(); toast('Anketa vytvořena ✓','ok');
+  if (curSbTab === 'board') renderNastenna();
+}
+
+// ══ UDÁLOSTI ══
+function openCreateEvent() {
+  const tom = new Date(); tom.setDate(tom.getDate()+1); tom.setHours(20,0,0,0);
+  const ol = document.getElementById('overlay');
+  ol.innerHTML = '<div class="olc" style="max-width:380px"><div class="olh"><span>📅 Nová událost</span><button class="olx" onclick="closeOl()">✕</button></div>'
+    + '<div class="olb">'
+    + '<div class="flabel">Název události</div>'
+    + '<input id="ev-name" class="finp" placeholder="Game night, Livestream..." style="margin-bottom:10px">'
+    + '<div class="flabel">Datum a čas</div>'
+    + '<input id="ev-dt" type="datetime-local" class="finp" value="' + tom.toISOString().slice(0,16) + '" style="margin-bottom:10px">'
+    + '<div class="flabel">Popis (volitelný)</div>'
+    + '<input id="ev-desc" class="finp" placeholder="Krátký popis..." style="margin-bottom:14px">'
+    + '<div style="display:flex;gap:8px">'
+    + '<button class="btn" onclick="saveEvent()">Přidat událost</button>'
+    + '<button class="btn sec" onclick="closeOl()">Zrušit</button>'
+    + '</div></div></div>';
+  ol.classList.add('vis');
+}
+
+function saveEvent() {
+  const name = document.getElementById('ev-name')?.value.trim();
+  const dt   = document.getElementById('ev-dt')?.value;
+  if (!name) { toast('Zadej název','er'); return; }
+  if (!dt)   { toast('Vyber datum','er'); return; }
+  const ev = { id: gid(), name, ts: new Date(dt).getTime(), desc: document.getElementById('ev-desc')?.value.trim(), creator: ME.id };
+  const srv = SERVERS[curSrv]; if (!srv) return;
+  if (!srv.events) srv.events = [];
+  srv.events.push(ev);
+  saveSrvs(); broadcastSrv();
+  closeOl(); toast('Událost přidána ✓','ok');
+  const ch = curCh || srv.cats?.[0]?.chs?.[0]?.id;
+  if (ch) {
+    const d = new Date(ev.ts);
+    const ds = d.toLocaleDateString('cs-CZ',{weekday:'long',day:'numeric',month:'long'}) + ' ' + d.toLocaleTimeString('cs-CZ',{hour:'2-digit',minute:'2-digit'});
+    const sys = { mid: gid(), authorId:'system', author:'NexusChat', color:'var(--acc)', avatar:'', text:'📅 Nová událost: **' + name + '** — ' + ds, ts: Date.now(), reactions:[], sub:'free' };
+    if (!MESSAGES[ch]) MESSAGES[ch] = [];
+    MESSAGES[ch].push(sys); saveMsgs();
+    bcast({ type:'chat', ch, msg: sys });
+    if (curCh === ch) renderMsgs(true);
+  }
+  if (curSbTab === 'board') renderNastenna();
+}
+
 </script>
 </body>
 </html>
