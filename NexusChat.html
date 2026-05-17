@@ -2133,19 +2133,16 @@ function connectWS(url) {
       if (ME.name && ME.name !== '?') {
         bcast({ type: 'presence', m: myInfo() });
       }
-      // Save full profile to cloud — avatar se posílá jen pokud ho máme,
-      // jinak by přepsal fotku nastavenou z jiného zařízení
+      // Save full profile to cloud
       setTimeout(() => {
         if (wsConn && wsConn.readyState === 1 && ME.id && ME.name) {
           try {
-            const profileToSave = { name: ME.name, color: ME.color, tag: ME.tag, font: ME.font, status: ME.status };
-            if (ME.avatar) profileToSave.avatar = ME.avatar; // jen pokud máme fotku
             wsConn.send(JSON.stringify({
               type: 'account_save',
               userId: ME.id,
               servers: SERVERS,
               roles: MBROLES,
-              profile: profileToSave
+              profile: { name: ME.name, color: ME.color, tag: ME.tag, avatar: ME.avatar, font: ME.font, status: ME.status }
             }));
           } catch {}
         }
@@ -2490,14 +2487,18 @@ function handleNet(d) {
     }
 
     // Restore profile (avatar, color, font etc.)
-    if (d.account.profile) {
+    if (d.account.profile && d.account.profile.name === ME.name) {
       const p = d.account.profile;
-      // Avatar: server je source of truth — vždy načteme ze serveru
-      if (p.avatar !== undefined && p.avatar !== ME.avatar) {
-        ME.avatar = p.avatar;
-        lss('nx_avatar', p.avatar);
-        lss('nx_avatar_deleted', p.avatar ? 0 : Date.now());
-        changed = true;
+      // Avatar: server is source of truth
+      // If server has avatar and we don't → restore it
+      // If server has empty avatar (deleted) → clear it too
+      if (p.avatar !== undefined) {
+        if (p.avatar !== ME.avatar) {
+          ME.avatar = p.avatar;
+          lss('nx_avatar', p.avatar);
+          lss('nx_avatar_deleted', p.avatar ? 0 : Date.now());
+          changed = true;
+        }
       }
       if (p.color  && ME.color === '#7c6aff') { ME.color  = p.color;  lss('nx_color',  p.color);  }
       if (p.font   && !ME.font)  { ME.font   = p.font;   lss('nx_font',   p.font);   }
@@ -2796,7 +2797,15 @@ function renderRail() {
     const el = document.createElement('div');
     el.className = 'si' + (id === curSrv ? ' act' : '');
     el.title = srv.name;
+    el.style.position = 'relative';
     el.textContent = srv.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+    // Boost tečka — pokud boostuješ tento server
+    if (ME.subBoostSrv === id) {
+      const dot = document.createElement('span');
+      dot.title = 'Boostuješ tento server';
+      dot.style.cssText = 'position:absolute;bottom:2px;right:2px;width:10px;height:10px;background:linear-gradient(135deg,#4fffb0,#7c6aff);border-radius:50%;border:2px solid var(--bg1);font-size:0';
+      el.appendChild(dot);
+    }
     el.onclick = () => switchSrv(id);
     wrap.appendChild(el);
   }
@@ -2806,7 +2815,19 @@ function renderRail() {
 function renderChs() {
   if (document.hidden) { _chsDirty = true; return; }
   const srv = SERVERS[curSrv]; if (!srv) return;
-  document.getElementById('srvname').textContent = srv.name;
+  const srvnameEl = document.getElementById('srvname');
+  srvnameEl.textContent = srv.name;
+  // Zobraz ⚡ vedle názvu pokud boostuješ tento server
+  const existingBoostIcon = srvnameEl.parentElement.querySelector('.srv-boost-icon');
+  if (existingBoostIcon) existingBoostIcon.remove();
+  if (ME.subBoostSrv === curSrv) {
+    const icon = document.createElement('span');
+    icon.className = 'srv-boost-icon';
+    icon.title = 'Boostuješ tento server';
+    icon.style.cssText = 'font-size:12px;margin-left:4px;vertical-align:middle;filter:drop-shadow(0 0 4px #4fffb0)';
+    icon.textContent = '⚡';
+    srvnameEl.insertAdjacentElement('afterend', icon);
+  }
   const list = document.getElementById('chlist');
   const frag = document.createDocumentFragment();
 
@@ -5863,22 +5884,11 @@ function profAvatar() {
     + '<div class="eigrid">' + ICONS.map(ic => '<div class="eiopt" onclick="setEmojiAv(\'' + ic + '\')">' + ic + '</div>').join('') + '</div></div>';
 }
 
-function syncAvatarToServer() {
-  if (wsConn && wsConn.readyState === 1 && ME.id) {
-    try {
-      wsConn.send(JSON.stringify({
-        type: 'account_save', userId: ME.id,
-        profile: { name: ME.name, color: ME.color, tag: ME.tag, avatar: ME.avatar, font: ME.font, status: ME.status }
-      }));
-    } catch {}
-  }
-}
-
 function handleAv(input) {
   const file = input.files[0]; if (!file) return;
   if (file.size > 2 * 1024 * 1024) { toast('Soubor je příliš velký (max 2 MB)', 'er'); return; }
   const reader = new FileReader();
-  reader.onload = e => { ME.avatar = e.target.result; lss('nx_avatar', ME.avatar); applyProfile(); syncAvatarToServer(); toast(t('avatarUploaded'), 'ok'); profTab('avatar'); };
+  reader.onload = e => { ME.avatar = e.target.result; lss('nx_avatar', ME.avatar); applyProfile(); toast(t('avatarUploaded'), 'ok'); profTab('avatar'); };
   reader.readAsDataURL(file);
 }
 function setEmojiAv(emoji) {
@@ -5887,7 +5897,7 @@ function setEmojiAv(emoji) {
   ctx.fillStyle = ME.color + '33'; ctx.fillRect(0, 0, 128, 128);
   ctx.font = '72px serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.fillText(emoji, 64, 68);
-  ME.avatar = canvas.toDataURL(); lss('nx_avatar', ME.avatar); applyProfile(); syncAvatarToServer(); toast('Avatar nastaven ✓', 'ok'); profTab('avatar');
+  ME.avatar = canvas.toDataURL(); lss('nx_avatar', ME.avatar); applyProfile(); toast('Avatar nastaven ✓', 'ok'); profTab('avatar');
 }
 function removeAv() {
   ME.avatar = '';
@@ -8217,17 +8227,18 @@ function _renderBoostList() {
   if (!list) return;
   const srvs = Object.values(SERVERS);
   if (!srvs.length) { list.innerHTML = '<div style="color:var(--t3);font-size:13px">Nejsi na žádném serveru.</div>'; return; }
-  list.innerHTML = srvs.map(srv => {
+  list.innerHTML = Object.entries(SERVERS).map(([srvId, srv]) => {
     const isOwner = srv.ownerId === ME.id;
+    const isBoosted = ME.subBoostSrv === srvId;
     return '<div class="boost-card">'
-      + '<div class="boost-srv-name">' + (srv.name || 'Server') + '</div>'
-      + '<div style="font-size:11px;color:var(--t3);margin-bottom:10px">' + (isOwner ? '👑 Tvůj server' : 'Člen') + '</div>'
+      + '<div class="boost-srv-name">' + (srv.name || 'Server') + (isBoosted ? ' ⚡' : '') + '</div>'
+      + '<div style="font-size:11px;color:var(--t3);margin-bottom:10px">' + (isOwner ? '👑 Tvůj server' : 'Člen') + (isBoosted ? ' · <span style="color:#4fffb0">Aktivní boost</span>' : '') + '</div>'
       + '<div class="boost-tier"><span class="bt-plus">Nexus+ boost — 79 Kč/měs</span></div>'
       + '<div style="font-size:11px;color:var(--t2);margin-bottom:8px;line-height:1.5">Server dostane: vlastní emotikony, profilové bannery členů. Ty získáš výhody Nexus+.</div>'
-      + '<button class="boost-btn" onclick="shopBoostSrv(\'' + srv.id + '\',\'plus\')">🚀 Boost Nexus+</button>'
+      + '<button class="boost-btn" onclick="shopBoostSrv(\'' + srvId + '\',\'plus\')">🚀 Boost Nexus+</button>'
       + '<div class="boost-tier" style="margin-top:10px"><span class="bt-pro">Nexus Pro boost — 159 Kč/měs</span></div>'
       + '<div style="font-size:11px;color:var(--t2);margin-bottom:8px;line-height:1.5">Server dostane vše + vlastní bannery serverů. Ty získáš výhody Nexus Pro.</div>'
-      + '<button class="boost-btn" style="background:linear-gradient(135deg,#7c6aff,#a89cff)" onclick="shopBoostSrv(\'' + srv.id + '\',\'pro\')">⚡ Boost Nexus Pro</button>'
+      + '<button class="boost-btn" style="background:linear-gradient(135deg,#7c6aff,#a89cff)" onclick="shopBoostSrv(\'' + srvId + '\',\'pro\')">⚡ Boost Nexus Pro</button>'
       + '</div>';
   }).join('');
 }
