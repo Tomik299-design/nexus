@@ -8505,19 +8505,25 @@ function votePoll(pollId, optIdx) {
   if (curSbTab === 'board') renderNastenna();
 }
 
+function removeModal() { document.getElementById('nexus-modal')?.remove(); }
 function openCreatePoll() {
-  const ol = document.getElementById('overlay');
-  ol.innerHTML = '<div class="olc" style="max-width:420px"><div class="olh"><span>📊 Nová anketa</span><button class="olx" onclick="closeOl()">✕</button></div>'
-    + '<div class="olb">'
+  document.getElementById('nexus-modal')?.remove();
+  const modal = document.createElement('div');
+  modal.id = 'nexus-modal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9000;display:flex;align-items:center;justify-content:center';
+  modal.innerHTML = '<div style="background:var(--bg2);border:1px solid var(--bd);border-radius:12px;width:420px;max-width:95vw;padding:20px;box-shadow:0 8px 32px rgba(0,0,0,.5)">'
+    + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px"><span style="font-size:15px;font-weight:700;color:var(--t1)">📊 Nová anketa</span><button onclick="removeModal()" style="background:none;border:none;color:var(--t3);font-size:18px;cursor:pointer;line-height:1">✕</button></div>'
     + '<div class="flabel">Otázka</div>'
-    + '<input id="poll-q" class="finp" placeholder="Co chceš zjistit?" style="margin-bottom:10px">'
+    + '<input id="poll-q" class="finp" placeholder="Co chceš zjistit?" style="margin-bottom:10px;width:100%;box-sizing:border-box">'
     + '<div class="flabel">Možnosti (každá na řádek)</div>'
-    + '<textarea id="poll-opts" class="finp" rows="4" placeholder="Možnost 1&#10;Možnost 2&#10;Možnost 3" style="resize:vertical"></textarea>'
+    + '<textarea id="poll-opts" class="finp" rows="4" placeholder="Možnost 1&#10;Možnost 2&#10;Možnost 3" style="resize:vertical;width:100%;box-sizing:border-box"></textarea>'
     + '<div style="display:flex;gap:8px;margin-top:14px">'
     + '<button class="btn" onclick="sendPoll()">Vytvořit anketu</button>'
-    + '<button class="btn sec" onclick="closeOl()">Zrušit</button>'
-    + '</div></div></div>';
-  ol.classList.add('vis');
+    + '<button class="btn sec" onclick="removeModal()">Zrušit</button>'
+    + '</div></div>';
+  modal.onclick = e => { if (e.target === modal) modal.remove(); };
+  document.body.appendChild(modal);
+  document.getElementById('poll-q')?.focus();
 }
 
 function sendPoll() {
@@ -8538,27 +8544,33 @@ function sendPoll() {
     bcast({ type: 'chat', ch: curCh, msg });
     renderMsgs(true);
   }
-  closeOl(); toast('Anketa vytvořena ✓','ok');
+  document.getElementById('nexus-modal')?.remove(); toast('Anketa vytvořena ✓','ok');
   if (curSbTab === 'board') renderNastenna();
 }
 
 // ══ UDÁLOSTI ══
 function openCreateEvent() {
   const tom = new Date(); tom.setDate(tom.getDate()+1); tom.setHours(20,0,0,0);
-  const ol = document.getElementById('overlay');
-  ol.innerHTML = '<div class="olc" style="max-width:380px"><div class="olh"><span>📅 Nová událost</span><button class="olx" onclick="closeOl()">✕</button></div>'
-    + '<div class="olb">'
+  const dtVal = tom.toISOString().slice(0,16);
+  document.getElementById('nexus-modal')?.remove();
+  const modal = document.createElement('div');
+  modal.id = 'nexus-modal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9000;display:flex;align-items:center;justify-content:center';
+  modal.innerHTML = '<div style="background:var(--bg2);border:1px solid var(--bd);border-radius:12px;width:380px;max-width:95vw;padding:20px;box-shadow:0 8px 32px rgba(0,0,0,.5)">'
+    + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px"><span style="font-size:15px;font-weight:700;color:var(--t1)">📅 Nová událost</span><button onclick="removeModal()" style="background:none;border:none;color:var(--t3);font-size:18px;cursor:pointer;line-height:1">✕</button></div>'
     + '<div class="flabel">Název události</div>'
-    + '<input id="ev-name" class="finp" placeholder="Game night, Livestream..." style="margin-bottom:10px">'
+    + '<input id="ev-name" class="finp" placeholder="Game night, Livestream..." style="margin-bottom:10px;width:100%;box-sizing:border-box">'
     + '<div class="flabel">Datum a čas</div>'
-    + '<input id="ev-dt" type="datetime-local" class="finp" value="' + tom.toISOString().slice(0,16) + '" style="margin-bottom:10px">'
+    + '<input id="ev-dt" type="datetime-local" class="finp" value="' + dtVal + '" style="margin-bottom:10px;width:100%;box-sizing:border-box">'
     + '<div class="flabel">Popis (volitelný)</div>'
-    + '<input id="ev-desc" class="finp" placeholder="Krátký popis..." style="margin-bottom:14px">'
+    + '<input id="ev-desc" class="finp" placeholder="Krátký popis..." style="margin-bottom:14px;width:100%;box-sizing:border-box">'
     + '<div style="display:flex;gap:8px">'
     + '<button class="btn" onclick="saveEvent()">Přidat událost</button>'
-    + '<button class="btn sec" onclick="closeOl()">Zrušit</button>'
-    + '</div></div></div>';
-  ol.classList.add('vis');
+    + '<button class="btn sec" onclick="removeModal()">Zrušit</button>'
+    + '</div></div>';
+  modal.onclick = e => { if (e.target === modal) modal.remove(); };
+  document.body.appendChild(modal);
+  document.getElementById('ev-name')?.focus();
 }
 
 function saveEvent() {
@@ -8571,7 +8583,7 @@ function saveEvent() {
   if (!srv.events) srv.events = [];
   srv.events.push(ev);
   saveSrvs(); broadcastSrv();
-  closeOl(); toast('Událost přidána ✓','ok');
+  document.getElementById('nexus-modal')?.remove(); toast('Událost přidána ✓','ok');
   const ch = curCh || srv.cats?.[0]?.chs?.[0]?.id;
   if (ch) {
     const d = new Date(ev.ts);
